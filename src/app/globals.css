@@ -121,3 +121,150 @@ h1, h2 { font-family: var(--font-serif), serif; font-weight: 300; }
   .staff-grid { grid-template-columns: 1fr; }
 }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .booking-view { animation: none; } }
+
+/* Public site — faithful to the approved Symmetry launch direction. */
+.brand-header {
+  position: relative;
+  z-index: 30;
+  min-height: 116px;
+  padding: 1.65rem max(1.25rem, calc((100vw - 1200px) / 2));
+  border-bottom: 1px solid rgba(255,255,255,.16);
+}
+.brand-header.compact { min-height: 104px; }
+.brand-header nav { gap: clamp(1rem, 2.2vw, 2rem); }
+.brand-header nav a { position: relative; color: rgba(255,255,255,.72); font-size: .78rem; letter-spacing: .08em; text-transform: lowercase; }
+.brand-header nav a:first-child { color: rgba(255,255,255,.72); }
+.brand-header nav a:hover, .brand-header nav a.active { color: var(--white); }
+.brand-header nav a.active::after { content: ""; position: absolute; right: 0; bottom: -.55rem; left: 0; height: 1px; background: #cbb2b5; }
+.menu-toggle { display: none; min-height: 44px; padding: 0; border: 0; border-bottom: 1px solid var(--white); background: transparent; color: var(--white); font-size: .82rem; letter-spacing: .08em; }
+
+.marketing-home { background: var(--white); }
+.marketing-hero {
+  display: grid;
+  grid-template-columns: minmax(360px, .86fr) minmax(0, 1.14fr);
+  gap: clamp(2rem, 5vw, 6rem);
+  min-height: calc(100svh - 116px);
+  padding: clamp(3.5rem, 7vw, 7rem) max(1.25rem, calc((100vw - 1200px) / 2));
+  background: var(--black);
+  color: var(--white);
+}
+.marketing-hero-copy { align-self: center; padding-bottom: 4vh; }
+.marketing-hero h1 { max-width: 720px; margin: 1.4rem 0 1.5rem; font-size: clamp(4.7rem, 7vw, 7.7rem); line-height: .82; letter-spacing: -.035em; }
+.hero-intro { color: #c9c5c0; font-size: clamp(1rem, 1.4vw, 1.2rem); line-height: 1.65; }
+.hero-actions { display: flex; align-items: center; gap: 1.7rem; margin: 2rem 0; }
+.primary-button.light { border: 1px solid rgba(255,255,255,.7); }
+.text-link { display: inline-block; width: fit-content; padding-bottom: .22rem; border-bottom: 1px solid currentColor; }
+.light-link { color: var(--white); }
+.hero-address { margin: 3rem 0 0; color: #9c9893; font-size: .78rem; letter-spacing: .05em; }
+.marketing-hero-image { position: relative; align-self: center; min-height: min(67vh, 760px); margin: 0; overflow: hidden; }
+.marketing-hero-image::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 60%, rgba(22,22,22,.18)); pointer-events: none; }
+.marketing-hero-image img { object-fit: cover; object-position: center 46%; }
+
+.barbers-section {
+  display: grid;
+  grid-template-columns: minmax(240px, .7fr) minmax(0, 1.3fr);
+  gap: clamp(4rem, 9vw, 9rem);
+  padding: clamp(5rem, 10vw, 10rem) max(1.25rem, calc((100vw - 1200px) / 2));
+  background: var(--white);
+}
+.section-heading h2, .visit-section h2 { margin: 1rem 0 1.2rem; font-size: clamp(4rem, 7vw, 7rem); line-height: .86; }
+.section-heading > p:last-child, .visit-section p { color: var(--muted); line-height: 1.65; }
+.barber-list { border-top: 1px solid var(--oxblood); }
+.barber-card { display: grid; grid-template-columns: 96px 1fr auto; gap: 1.6rem; align-items: center; padding: 2.2rem 0; border-bottom: 1px solid var(--line); }
+.barber-monogram { display: grid; width: 96px; height: 112px; place-items: center; background: var(--bone); color: var(--oxblood); font: 300 3.3rem var(--font-serif), serif; text-transform: uppercase; }
+.barber-copy h3 { margin: 0 0 .2rem; font: 300 clamp(2.8rem, 4vw, 4.2rem)/.95 var(--font-serif), serif; }
+.barber-copy p { margin: 0 0 .55rem; color: var(--muted); }
+.barber-copy small { color: #99938c; font-size: .8rem; line-height: 1.5; }
+.services-row { display: flex; justify-content: space-between; gap: 1rem; padding: 2rem 0 0; color: var(--muted); }
+
+.visit-section {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, .8fr);
+  gap: clamp(4rem, 10vw, 10rem);
+  padding: clamp(5rem, 10vw, 9rem) max(1.25rem, calc((100vw - 1200px) / 2));
+  background: var(--bone);
+}
+.visit-section .text-link { margin-top: 1rem; color: var(--oxblood); }
+.hours-list { align-self: end; }
+.hours-list > div { display: flex; justify-content: space-between; gap: 2rem; padding: .9rem 0; border-bottom: 1px solid rgba(22,22,22,.13); }
+.hours-list time { font-variant-numeric: tabular-nums; }
+.hours-list .closed { color: var(--muted); }
+.hours-list > .text-link { margin-top: 1.5rem; }
+
+.site-footer { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; padding: clamp(4.5rem, 8vw, 7rem) max(1.25rem, calc((100vw - 1200px) / 2)); background: var(--black); color: var(--white); }
+.footer-mark { width: fit-content; margin-bottom: 3rem; font: 300 clamp(4rem, 7vw, 7rem)/.62 var(--font-serif), serif; letter-spacing: .18em; }
+.site-footer h2 { margin-bottom: .35rem; font-size: clamp(3.5rem, 6vw, 6rem); line-height: .9; }
+.site-footer p { color: #aaa6a1; line-height: 1.6; }
+.footer-links { display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-end; gap: 1.15rem; }
+.footer-links .primary-button { margin-bottom: 1rem; }
+.footer-links a:not(.primary-button) { border-bottom: 1px solid rgba(255,255,255,.65); font-size: .82rem; }
+.mobile-book-cta { display: none; }
+
+.information-page { min-height: 100svh; background: var(--bone); }
+.information-hero, .manage-page { padding: clamp(4rem, 8vw, 7rem) max(1.25rem, calc((100vw - 1200px) / 2)); }
+.information-hero h1, .hours-page-grid h1, .manage-page h1 { margin: 1rem 0; font-size: clamp(4.5rem, 9vw, 8rem); line-height: .85; }
+.information-hero > p:last-child, .manage-page > p { max-width: 610px; color: var(--muted); font-size: 1.08rem; line-height: 1.6; }
+.price-columns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; padding: 0 max(1.25rem, calc((100vw - 1200px) / 2)) clamp(5rem, 9vw, 9rem); }
+.price-column { padding: 1.6rem; background: var(--white); }
+.price-column > header { min-height: 105px; border-bottom: 1px solid var(--oxblood); }
+.price-column > header h2 { margin-bottom: .1rem; font-size: 3rem; line-height: 1; }
+.price-column > header p { color: var(--muted); }
+.price-row { display: flex; justify-content: space-between; gap: 1rem; padding: 1rem 0; border-bottom: 1px solid var(--line); }
+.price-row h3 { margin: 0 0 .25rem; font-size: .92rem; font-weight: 400; }
+.price-row small { color: var(--muted); }
+.price-row strong { font-weight: 400; }
+.price-column > .primary-button { width: 100%; margin-top: 1.5rem; padding-inline: .5rem; }
+.hours-page-grid { display: grid; grid-template-columns: 1fr minmax(360px, .85fr); gap: clamp(4rem, 10vw, 10rem); min-height: 70svh; padding: clamp(4rem, 8vw, 7rem) max(1.25rem, calc((100vw - 1200px) / 2)); }
+.hours-page-grid > div:first-child > p:not(.eyebrow) { color: var(--muted); line-height: 1.65; }
+.hours-list.large { align-self: center; font-size: 1.08rem; }
+.manage-page { min-height: 62svh; }
+.manage-page .primary-button { margin-top: 1rem; }
+
+.reveal { opacity: 0; transform: translateY(24px); transition: opacity .65s ease, transform .65s cubic-bezier(.2,.75,.25,1); }
+.reveal.is-visible { opacity: 1; transform: none; }
+
+@media (max-width: 900px) {
+  .brand-header { min-height: 104px; }
+  .menu-toggle { display: inline-block; }
+  .brand-header nav { position: absolute; top: 100%; right: 0; left: 0; display: none; flex-direction: column; align-items: stretch; gap: 0; padding: .5rem 1.25rem 1.25rem; border-top: 1px solid rgba(255,255,255,.12); background: var(--black); }
+  .brand-header nav.open { display: flex; }
+  .brand-header nav a { display: block !important; padding: .9rem 0; border-bottom: 1px solid rgba(255,255,255,.12); font-size: .92rem; }
+  .brand-header nav a.active::after { display: none; }
+  .marketing-hero { grid-template-columns: 1fr; min-height: auto; gap: 2.5rem; }
+  .marketing-hero-copy { padding: 0; }
+  .marketing-hero-image { min-height: 58vh; }
+  .barbers-section, .visit-section { grid-template-columns: 1fr; gap: 3rem; }
+  .price-columns { grid-template-columns: 1fr; }
+  .price-column > header { min-height: auto; }
+  .hours-page-grid { grid-template-columns: 1fr; gap: 3rem; }
+}
+
+@media (max-width: 600px) {
+  .marketing-home { padding-bottom: calc(66px + env(safe-area-inset-bottom)); }
+  .brand-header, .brand-header.compact { min-height: 92px; padding: 1.15rem 1.25rem; }
+  .wordmark img { width: 11.4rem; }
+  .wordmark small { margin-top: .55rem; font-size: .52rem; }
+  .marketing-hero { padding: 3.7rem 1.25rem 2.2rem; }
+  .marketing-hero h1 { font-size: clamp(4.15rem, 19vw, 5.4rem); }
+  .hero-actions { align-items: flex-start; flex-direction: column; gap: 1.2rem; }
+  .hero-address { margin-top: 2rem; }
+  .marketing-hero-image { min-height: 53vh; }
+  .barbers-section, .visit-section { padding: 4.8rem 1.25rem; }
+  .section-heading h2, .visit-section h2 { font-size: 4.4rem; }
+  .barber-card { grid-template-columns: 74px 1fr auto; gap: 1rem; padding: 1.7rem 0; }
+  .barber-monogram { width: 74px; height: 88px; font-size: 2.6rem; }
+  .barber-copy h3 { font-size: 2.65rem; }
+  .barber-copy small { display: none; }
+  .barber-card > .text-link { font-size: .85rem; }
+  .services-row { align-items: flex-start; flex-direction: column; }
+  .site-footer { grid-template-columns: 1fr; gap: 2rem; padding: 4.5rem 1.25rem; }
+  .footer-mark { margin-bottom: 2rem; }
+  .mobile-book-cta { position: fixed; z-index: 40; right: 0; bottom: 0; left: 0; display: grid; min-height: calc(66px + env(safe-area-inset-bottom)); place-items: center; padding-bottom: env(safe-area-inset-bottom); background: var(--oxblood); color: var(--white); font-size: .78rem; letter-spacing: .16em; text-transform: uppercase; box-shadow: 0 -8px 30px rgba(22,22,22,.12); }
+  .information-hero, .manage-page, .hours-page-grid { padding: 4rem 1.25rem; }
+  .information-hero h1, .hours-page-grid h1, .manage-page h1 { font-size: 4.8rem; }
+  .price-columns { padding: 0 1.25rem 5rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; transition: none; }
+}

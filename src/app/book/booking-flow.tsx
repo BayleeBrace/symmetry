@@ -28,9 +28,9 @@ async function fetchBusy(date: string, barber: BarberChoice): Promise<{ busy: Bu
   return response.json();
 }
 
-export function BookingFlow({ initialDate }: { initialDate: string }) {
+export function BookingFlow({ initialDate, initialBarber = "sean" }: { initialDate: string; initialBarber?: BarberChoice }) {
   const [step, setStep] = useState(0);
-  const [barber, setBarber] = useState<BarberChoice>("sean");
+  const [barber, setBarber] = useState<BarberChoice>(initialBarber);
   const [service, setService] = useState("");
   const [date, setDate] = useState(initialDate);
   const [month, setMonth] = useState(initialDate.slice(0, 7));

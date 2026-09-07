@@ -1,0 +1,41 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { BrandHeader } from "@/components/brand-header";
+import { SiteFooter } from "@/components/site-footer";
+import { BARBERS, money, SERVICES } from "@/lib/booking-data";
+
+export const metadata: Metadata = { title: "Prices" };
+
+export default function PricesPage() {
+  return (
+    <main className="information-page">
+      <BrandHeader />
+      <section className="information-hero">
+        <p className="eyebrow">cuts, fades and beards</p>
+        <h1>prices.</h1>
+        <p>Choose your barber to see their prices and timings.</p>
+      </section>
+      <section className="price-columns">
+        {Object.entries(BARBERS).map(([id, barber]) => (
+          <article className="price-column" key={id}>
+            <header>
+              <h2>{barber.name}</h2>
+              <p>{barber.role}</p>
+            </header>
+            {SERVICES.map((service) => {
+              const detail = service.barbers[id as keyof typeof BARBERS];
+              return (
+                <div className="price-row" key={service.id}>
+                  <div><h3>{service.name}</h3><small>{detail.duration} min</small></div>
+                  <strong>£{money(detail.price)}</strong>
+                </div>
+              );
+            })}
+            <Link className="primary-button" href={`/book?barber=${id}`}>book with {barber.name}</Link>
+          </article>
+        ))}
+      </section>
+      <SiteFooter />
+    </main>
+  );
+}

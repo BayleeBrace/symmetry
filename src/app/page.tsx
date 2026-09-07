@@ -1,26 +1,76 @@
 import Image from "next/image";
 import Link from "next/link";
 import { BrandHeader } from "@/components/brand-header";
+import { Reveal } from "@/components/reveal";
+import { SiteFooter } from "@/components/site-footer";
+import { BARBERS } from "@/lib/booking-data";
 
 export default function Home() {
   return (
-    <main>
-      <section className="home-hero">
-        <BrandHeader />
-        <div className="home-copy">
-          <p className="eyebrow">SAUNDERSFOOT, PEMBROKESHIRE</p>
+    <main className="marketing-home">
+      <BrandHeader />
+      <section className="marketing-hero">
+        <div className="marketing-hero-copy">
+          <p className="eyebrow">barbers in saundersfoot</p>
           <h1>same chairs.<br />new name.</h1>
-          <p>Three barbers. Cuts, fades and beards. Tuesday to Saturday.</p>
-          <Link className="primary-button" href="/book">book a trim</Link>
+          <p className="hero-intro">cuts, fades and beards.<br />formerly studio 4 barbers.</p>
+          <div className="hero-actions">
+            <Link className="primary-button light" href="/book">book a trim</Link>
+            <Link className="text-link light-link" href="/prices">view prices</Link>
+          </div>
+          <p className="hero-address">4 brewery terrace, saundersfoot.</p>
         </div>
-        <Image src="/images/shop.webp" alt="Inside Symmetry barbers in Saundersfoot" width={800} height={1067} priority sizes="(max-width: 760px) 100vw, 44vw" />
+        <figure className="marketing-hero-image">
+          <Image src="/images/shop.webp" alt="The three chairs inside Symmetry barbers in Saundersfoot" fill priority sizes="(max-width: 760px) calc(100vw - 40px), 48vw" />
+        </figure>
       </section>
-      <section className="home-strip">
-        <p className="eyebrow">THE APP</p>
-        <h2>Your next trim,<br />without the faff.</h2>
-        <p>Choose your barber—or take the first available chair. Book one date or your next few together.</p>
-        <Link href="/book">try the booking flow →</Link>
+
+      <section className="barbers-section">
+        <Reveal className="section-heading">
+          <p className="eyebrow">the shop</p>
+          <h2>your chair.</h2>
+          <p>three barbers. choose yours.</p>
+        </Reveal>
+        <div className="barber-list">
+          {Object.entries(BARBERS).map(([id, barber]) => (
+            <Reveal className="barber-card" key={id}>
+              <div className="barber-monogram" aria-hidden="true">{barber.name[0]}</div>
+              <div className="barber-copy">
+                <h3>{barber.name}</h3>
+                <p>{barber.role}</p>
+                <small>portrait and a few words from {barber.name} coming soon.</small>
+              </div>
+              <Link className="text-link" href={`/book?barber=${id}`}>book</Link>
+            </Reveal>
+          ))}
+          <Reveal className="services-row">
+            <span>cuts, fades and beards.</span>
+            <Link className="text-link" href="/prices">view prices</Link>
+          </Reveal>
+        </div>
       </section>
+
+      <section className="visit-section">
+        <Reveal>
+          <p className="eyebrow">saundersfoot, pembrokeshire</p>
+          <h2>see you here.</h2>
+          <p>4 brewery terrace, saundersfoot, SA69 9HG.</p>
+          <p>Use the shared entrance and look for Symmetry inside.</p>
+          <a className="text-link" href="https://maps.google.com/?q=4+Brewery+Terrace+Saundersfoot+SA69+9HG" target="_blank" rel="noreferrer">open in maps</a>
+        </Reveal>
+        <Reveal className="hours-list">
+          <div><span>tuesday</span><time>09:00 — 18:00</time></div>
+          <div><span>wednesday</span><time>11:00 — 19:00</time></div>
+          <div><span>thursday</span><time>11:00 — 19:00</time></div>
+          <div><span>friday</span><time>09:00 — 18:00</time></div>
+          <div><span>saturday</span><time>08:00 — 15:00</time></div>
+          <div className="closed"><span>sunday + monday</span><time>closed</time></div>
+          <Link className="text-link" href="/hours">opening hours</Link>
+        </Reveal>
+      </section>
+
+      <SiteFooter />
+      <Link className="mobile-book-cta" href="/book">book a trim</Link>
     </main>
   );
 }
