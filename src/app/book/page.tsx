@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { BrandHeader } from "@/components/brand-header";
+import { getCatalog, getPolicy } from "@/lib/catalog";
 import { BookingFlow } from "./booking-flow";
 import { addDays, BarberChoice, BARBERS, isOpen, shopToday } from "@/lib/booking-data";
 
@@ -22,15 +23,16 @@ export const metadata: Metadata = {
 };
 export const dynamic = "force-dynamic";
 
-export default async function BookPage({ searchParams }: { searchParams: Promise<{ barber?: string }> }) {
-  const { barber } = await searchParams;
+export default async function BookPage({ searchParams }: { searchParams: Promise<{ barber?: string; service?: string }> }) {
+  const { barber, service } = await searchParams;
+  const catalog = await getCatalog(); const policy = await getPolicy();
   const initialBarber: BarberChoice = barber && barber in BARBERS ? barber as keyof typeof BARBERS : "sean";
   let firstDate = shopToday();
   while (!isOpen(firstDate)) firstDate = addDays(firstDate, 1);
   return (
     <main className="app-shell">
       <BrandHeader compact />
-      <BookingFlow initialDate={firstDate} initialBarber={initialBarber} />
+      <BookingFlow initialDate={firstDate} initialBarber={initialBarber} initialService={service} catalog={catalog} policy={policy} />
     </main>
   );
 }

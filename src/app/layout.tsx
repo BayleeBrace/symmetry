@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { brandSans, brandSerif } from "./fonts";
 import "./globals.css";
+import {AppRegistration} from "@/components/app-registration";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://symmetrywales.com"),
@@ -67,6 +68,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="en-GB">
       <body className={`${brandSans.variable} ${brandSerif.variable}`}>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusiness).replace(/</g, "\\u003c") }} />
+        <AppRegistration/>
         {children}
       </body>
     </html>

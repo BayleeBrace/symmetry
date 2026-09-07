@@ -6,6 +6,8 @@ import { BrandHeader } from "@/components/brand-header";
 import { Reveal } from "@/components/reveal";
 import { SiteFooter } from "@/components/site-footer";
 import { TeaserLanding } from "@/components/teaser-landing";
+import {getCatalog} from "@/lib/catalog";
+import {clock} from "@/lib/booking-data";
 import { BARBERS } from "@/lib/booking-data";
 import { hasSiteAccess, SITE_ACCESS_COOKIE } from "@/lib/site-access";
 
@@ -34,6 +36,7 @@ export default async function Home() {
     return <TeaserLanding />;
   }
 
+  const catalog=await getCatalog();
   return (
     <main className="marketing-home">
       <BrandHeader />
@@ -87,12 +90,7 @@ export default async function Home() {
           <a className="text-link" href="https://maps.google.com/?q=4+Brewery+Terrace+Saundersfoot+SA69+9HG" target="_blank" rel="noreferrer">open in maps</a>
         </Reveal>
         <Reveal className="hours-list">
-          <div><span>tuesday</span><time>09:00 — 18:00</time></div>
-          <div><span>wednesday</span><time>11:00 — 19:00</time></div>
-          <div><span>thursday</span><time>11:00 — 19:00</time></div>
-          <div><span>friday</span><time>09:00 — 18:00</time></div>
-          <div><span>saturday</span><time>08:00 — 15:00</time></div>
-          <div className="closed"><span>sunday + monday</span><time>closed</time></div>
+          {['monday','tuesday','wednesday','thursday','friday','saturday','sunday'].map((day,i)=>{const h=catalog.hours[(i+1)%7];return <div key={day}><span>{day}</span><time>{h?clock(h[0])+' — '+clock(h[1]):'closed'}</time></div>;})}
           <Link className="text-link" href="/hours">opening hours</Link>
         </Reveal>
       </section>

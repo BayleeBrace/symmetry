@@ -2,6 +2,7 @@ import "server-only";
 
 import { createHash } from "node:crypto";
 import { createAdminClient, hasSupabase } from "@/lib/supabase/admin";
+import { verifyLink } from "@/lib/security";
 import type { BarberId } from "@/lib/booking-data";
 
 export type ManagedAppointment = {
@@ -17,7 +18,8 @@ export type ManagedAppointment = {
 
 export type ManagedBookingGroup = {
   id: string;
-  customer: { name: string; email: string };
+  customer: { name: string; email: string; preferences?: string };
+  policy?: { cancellation_hours: number; late_percent: number; no_show_percent: number };
   appointments: ManagedAppointment[];
 };
 
@@ -29,16 +31,14 @@ export async function loadManagedBookingGroup(token: string): Promise<ManagedBoo
   if (!hasSupabase()) return null;
 
   const supabase = createAdminClient();
-  const { data: group, error: groupError } = await supabase
-    .from("booking_groups")
-    .select("id,customer_id")
-    .eq("manage_token_hash", hashManageToken(token))
-    .maybeSingle();
+  const signedId = verifyLink(token, "manage");
+  const query = supabase.from("booking_groups").select("id,customer_id,policy_snapshot");
+  const { data: group, error: groupError } = await (signedId ? query.eq("id", signedId) : query.eq("manage_token_hash", hashManageToken(token))).maybeSingle();
 
   if (groupError || !group) return null;
 
   const [customerResult, bookingResult] = await Promise.all([
-    supabase.from("customers").select("name,email").eq("id", group.customer_id).single(),
+    supabase.from("customers").select("name,email,preferences").eq("id", group.customer_id).single(),
     supabase
       .from("bookings")
       .select("id,barber_id,service_id,local_date,start_minute,duration,price_pence,status")
@@ -84,6 +84,7 @@ export async function loadManagedBookingGroup(token: string): Promise<ManagedBoo
   return {
     id: group.id,
     customer: customerResult.data,
+    policy: group.policy_snapshot,
     appointments,
   };
 }

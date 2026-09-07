@@ -1,0 +1,6 @@
+self.addEventListener('install',()=>self.skipWaiting());
+self.addEventListener('activate',event=>event.waitUntil(self.clients.claim()));
+// Never cache customer details, staff pages, booking availability or payment flows.
+self.addEventListener('fetch',event=>{if(event.request.mode==='navigate')event.respondWith(fetch(event.request).catch(()=>new Response('<!doctype html><html><meta name="viewport" content="width=device-width"><title>Symmetry</title><body style="background:#efebe3;color:#161616;font:20px sans-serif;padding:32px"><h1>back soon.</h1><p>You’re offline. Reconnect to view your trims or make a booking.</p><button onclick="location.reload()">try again</button></body></html>',{headers:{'Content-Type':'text/html'}})));});
+self.addEventListener('push',event=>{let data={};try{data=event.data.json();}catch{}event.waitUntil(self.registration.showNotification('Symmetry',{body:data.body||'There’s an update to your trim.',icon:'/apple-touch-icon.png',data:{url:data.url||'/bookings'}}));});
+self.addEventListener('notificationclick',event=>{event.notification.close();const url=new URL(event.notification.data.url,self.location.origin);if(url.origin===self.location.origin)event.waitUntil(self.clients.openWindow(url.href));});

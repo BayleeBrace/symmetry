@@ -1,141 +1,18 @@
-"use client";
-
-import { useCallback, useEffect, useState } from "react";
-import { BARBERS, BusyPeriod, clock, fullDate, makeSlots, money, SERVICES, shopToday, Slot } from "@/lib/booking-data";
-import type { ManagedBookingGroup } from "@/lib/manage-bookings";
-
-export function ManageBookings({ token }: { token: string }) {
-  const [group, setGroup] = useState<ManagedBookingGroup | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [movingId, setMovingId] = useState("");
-  const [moveDate, setMoveDate] = useState("");
-  const [slots, setSlots] = useState<Slot[]>([]);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const response = await fetch(`/api/bookings/manage?token=${encodeURIComponent(token)}`, { cache: "no-store" });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "Your trims couldn’t be loaded.");
-      setGroup(result);
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Your trims couldn’t be loaded.");
-    } finally {
-      setLoading(false);
-    }
-  }, [token]);
-
-  useEffect(() => {
-    const task = window.setTimeout(() => void load(), 0);
-    return () => window.clearTimeout(task);
-  }, [load]);
-
-  async function cancelTrim(bookingId: string) {
-    if (!window.confirm("Cancel this trim?")) return;
-    setLoading(true);
-    setError("");
-    try {
-      const response = await fetch("/api/bookings/manage", {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ action: "cancel", token, bookingId }),
-      });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "That trim couldn’t be cancelled.");
-      await load();
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "That trim couldn’t be cancelled.");
-      setLoading(false);
-    }
-  }
-
-  async function chooseMoveDate(bookingId: string, value: string) {
-    setMoveDate(value);
-    setSlots([]);
-    setError("");
-    const appointment = group?.appointments.find((item) => item.id === bookingId);
-    if (!appointment || !value) return;
-
-    setLoading(true);
-    try {
-      const response = await fetch(`/api/availability?date=${value}&barber=${appointment.barber.slug}`, { cache: "no-store" });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "Availability couldn’t load.");
-      setSlots(makeSlots(value, appointment.barber.slug, appointment.service.slug, result.busy as BusyPeriod[]));
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Availability couldn’t load.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function moveTrim(bookingId: string, time: number) {
-    setLoading(true);
-    setError("");
-    try {
-      const response = await fetch("/api/bookings/manage", {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ action: "reschedule", token, bookingId, date: moveDate, time }),
-      });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "That trim couldn’t be moved.");
-      setMovingId("");
-      setMoveDate("");
-      setSlots([]);
-      await load();
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "That trim couldn’t be moved.");
-      setLoading(false);
-    }
-  }
-
-  if (loading && !group) return <p className="manage-status">loading your trims…</p>;
-  if (!group) return <p className="error-message" role="alert">{error || "Your trims couldn’t be loaded."}</p>;
-
-  const activeAppointments = group.appointments.filter((item) => item.status === "booked" || item.status === "arrived");
-
-  return (
-    <>
-      <div className="manage-intro-row">
-        <p>Hi {group.customer.name.split(" ")[0]}. You can move, cancel or add each trim to your calendar here.</p>
-        {activeAppointments.length > 1 && <a className="primary-button" href={`/api/calendar?token=${encodeURIComponent(token)}`}>add all to calendar</a>}
-      </div>
-
-      <div className="managed-booking-list">
-        {group.appointments.map((appointment) => {
-          const active = appointment.status === "booked";
-          const service = SERVICES.find((item) => item.id === appointment.service.slug);
-          return (
-            <article className={`managed-booking ${active ? "" : "inactive"}`} key={appointment.id}>
-              <div>
-                <p className="managed-date">{fullDate(appointment.date)} · {clock(appointment.time)}</p>
-                <h2>{appointment.service.name}</h2>
-                <p>with {BARBERS[appointment.barber.slug].name} · {appointment.duration} min · £{money(appointment.pricePence / 100)}</p>
-                {!active && <span className="booking-status">{appointment.status.replace("_", " ")}</span>}
-              </div>
-
-              {active && <div className="manage-links">
-                <a href={`/api/calendar?token=${encodeURIComponent(token)}&booking=${appointment.id}`}>add to calendar</a>
-                <button onClick={() => { setMovingId(appointment.id); setMoveDate(appointment.date); setSlots([]); }}>move</button>
-                <button onClick={() => cancelTrim(appointment.id)}>cancel</button>
-              </div>}
-
-              {movingId === appointment.id && service && <div className="move-panel">
-                <label>new date<input type="date" min={shopToday()} value={moveDate} onChange={(event) => chooseMoveDate(appointment.id, event.target.value)} /></label>
-                {loading && <p>checking the diary…</p>}
-                {!loading && moveDate && !slots.length && <p>No available times on this date.</p>}
-                {!!slots.length && <div className="move-times">{slots.map((slot) => <button key={slot.time} onClick={() => moveTrim(appointment.id, slot.time)}>{clock(slot.time)}</button>)}</div>}
-                <button className="close-move" onClick={() => { setMovingId(""); setSlots([]); }}>keep existing trim</button>
-              </div>}
-            </article>
-          );
-        })}
-      </div>
-
-      {error && <p className="error-message" role="alert">{error}</p>}
-    </>
-  );
+'use client';
+import {useCallback,useEffect,useRef,useState} from 'react';
+import {BARBERS,clock,fullDate,makeSlots,money,shopToday,addDays,type Slot,type BarberId,type Service,type OPENING_HOURS} from '@/lib/booking-data';
+import type {ManagedBookingGroup} from '@/lib/manage-bookings';
+import {PushButton} from '@/components/push-button';
+type Group=ManagedBookingGroup&{catalog:{services:Service[];hours:typeof OPENING_HOURS}};
+export function ManageBookings({token}:{token:string}){
+ const [group,setGroup]=useState<Group|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[move,setMove]=useState(''),[date,setDate]=useState(''),[barber,setBarber]=useState<BarberId>('sean'),[service,setService]=useState(''),[slots,setSlots]=useState<Slot[]>([]),[preferences,setPreferences]=useState(''),[notice,setNotice]=useState('');
+ const sequence=useRef(0),times=useRef<HTMLDivElement>(null);
+ const load=useCallback(async()=>{const r=await fetch('/api/bookings/manage?token='+encodeURIComponent(token),{cache:'no-store'});const d=await r.json();if(!r.ok)throw new Error(d.error);setGroup(d);setPreferences(d.customer.preferences||'');},[token]);
+ useEffect(()=>{const t=setTimeout(()=>void load().catch(e=>setError(e.message)),0);return()=>clearTimeout(t);},[load]);
+ async function change(data:Record<string,unknown>){setBusy(true);setError('');try{const r=await fetch('/api/bookings/manage',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({...data,token})});const d=await r.json();if(!r.ok)throw new Error(d.error);setMove('');setNotice('All updated.');await load();}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
+ async function availability(value:string,b=barber,s=service){const current=++sequence.current;setDate(value);setSlots([]);if(!value||!group)return;setBusy(true);setError('');try{const r=await fetch(`/api/availability?date=${value}&barber=${b}`);const data=await r.json();if(!r.ok)throw new Error(data.error);if(current!==sequence.current)return;setSlots(makeSlots(value,b,s,data.busy,group.catalog));requestAnimationFrame(()=>times.current?.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'}));}catch(e){if(current===sequence.current)setError((e as Error).message);}finally{if(current===sequence.current)setBusy(false);}}
+ if(!group)return <p role="status">{error||'loading your trims…'}</p>;
+ const policy=group.policy;
+ return <><p>Hi {group.customer.name.split(' ')[0]}. Everything for your next trim is here.</p>{policy&&<p>Free cancellation until {policy.cancellation_hours} hours before. Late cancellation: {policy.late_percent}%. No-show: {policy.no_show_percent}%.</p>}<div className="manage-links"><a href={'/api/calendar?token='+encodeURIComponent(token)}>add all to calendar</a><PushButton token={token}/></div><div className="managed-booking-list">{group.appointments.map(a=>{const active=a.status==='booked'&&a.date>=shopToday();return <article className="managed-booking" key={a.id}><p className="managed-date">{fullDate(a.date)} · {clock(a.time)}</p><h2>{a.service.name}</h2><p>with {a.barber.name} · {a.duration} min · £{money(a.pricePence/100)} · {a.status.replace('_',' ')}</p><div className="manage-links"><a href={`/book?barber=${a.barber.slug}&service=${a.service.slug}`}>book this trim again</a>{active&&<><a href={`/api/calendar?token=${encodeURIComponent(token)}&booking=${a.id}`}>add to calendar</a><button disabled={busy} onClick={()=>{setMove(a.id);setBarber(a.barber.slug);setService(a.service.slug);void availability(a.date,a.barber.slug,a.service.slug);}}>change trim</button><button disabled={busy} onClick={()=>{const fee=policy?money(Math.round(a.pricePence*policy.late_percent/100)/100):'0';if(confirm(`Cancel this trim? If it is within ${policy?.cancellation_hours||6} hours, a £${fee} late cancellation fee applies.`))void change({action:'cancel',bookingId:a.id,acceptFee:true});}}>cancel</button>{a.date===shopToday()&&<button disabled={busy} onClick={()=>void change({action:'late',bookingId:a.id,minutes:10})}>running 10 min late</button>}</>}</div>{active&&<WalletLinks token={token} booking={a.id}/>}{move===a.id&&<div className="move-panel"><label>barber<select value={barber} onChange={e=>{setBarber(e.target.value as BarberId);void availability(date,e.target.value as BarberId,service);}}>{Object.entries(BARBERS).map(([id,b])=><option key={id} value={id}>{b.name}</option>)}</select></label><label>trim<select value={service} onChange={e=>{setService(e.target.value);void availability(date,barber,e.target.value);}}>{group.catalog.services.filter(s=>s.barbers[barber]).map(s=><option value={s.id} key={s.id}>{s.name} · £{money(s.barbers[barber].price)}</option>)}</select></label><label>date<input type="date" min={shopToday()} max={addDays(shopToday(),120)} value={date} onChange={e=>void availability(e.target.value)}/></label><div ref={times} className="move-times">{busy?<p>checking the diary…</p>:slots.length?slots.map(s=><button key={s.time} onClick={()=>void change({action:'reschedule',bookingId:a.id,date,time:s.time,barber,service})}>{clock(s.time)}</button>):<p>No available times. Try another date.</p>}</div><button disabled={busy} onClick={()=>setMove('')}>keep existing trim</button></div>}</article>;})}</div><form className="details-form" onSubmit={e=>{e.preventDefault();void change({action:'preferences',preferences});}}><label>your preferences<textarea maxLength={1000} value={preferences} onChange={e=>setPreferences(e.target.value)}/></label><button disabled={busy}>save notes</button></form><p>After moving or cancelling a trim, update any calendar entry you previously downloaded.</p>{notice&&<p role="status">{notice}</p>}{error&&<p role="alert" className="error-message">{error}</p>}</>;
 }
+function WalletLinks({token,booking}:{token:string;booking:string}){const [enabled,setEnabled]=useState<{apple:boolean;google:boolean}|null>(null);useEffect(()=>{fetch('/api/wallet').then(r=>r.json()).then(setEnabled).catch(()=>{});},[]);return enabled?<div className="manage-links">{enabled.apple&&<a href={`/api/wallet?provider=apple&token=${encodeURIComponent(token)}&booking=${booking}`}>Apple Wallet</a>}{enabled.google&&<a href={`/api/wallet?provider=google&token=${encodeURIComponent(token)}&booking=${booking}`}>Google Wallet</a>}</div>:null;}

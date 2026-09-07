@@ -9,6 +9,7 @@ export async function proxy(request: NextRequest) {
 
   if (
     PUBLIC_PATHS.has(pathname) ||
+    pathname.startsWith("/api/") || pathname.startsWith("/staff") || pathname.startsWith("/bookings") || pathname === "/cancellation-policy" ||
     pathname.endsWith("/opengraph-image") ||
     pathname.startsWith("/_next/") ||
     /\.[a-z0-9]+$/i.test(pathname)

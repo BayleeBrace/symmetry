@@ -1,8 +1,10 @@
+export const dynamic = 'force-dynamic';
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BrandHeader } from "@/components/brand-header";
 import { SiteFooter } from "@/components/site-footer";
-import { BARBERS, money, SERVICES } from "@/lib/booking-data";
+import { getCatalog } from "@/lib/catalog";
+import { BARBERS, money } from "@/lib/booking-data";
 
 export const metadata: Metadata = {
   title: "Barber Prices in Saundersfoot",
@@ -21,7 +23,8 @@ export const metadata: Metadata = {
   },
 };
 
-export default function PricesPage() {
+export default async function PricesPage() {
+  const {services:SERVICES} = await getCatalog();
   return (
     <main className="information-page">
       <BrandHeader />
@@ -39,6 +42,7 @@ export default function PricesPage() {
             </header>
             {SERVICES.map((service) => {
               const detail = service.barbers[id as keyof typeof BARBERS];
+              if(!detail) return null;
               return (
                 <div className="price-row" key={service.id}>
                   <div><h3>{service.name}</h3><small>{detail.duration} min</small></div>

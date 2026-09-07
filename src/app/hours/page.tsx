@@ -1,3 +1,6 @@
+export const dynamic = 'force-dynamic';
+import {getCatalog} from "@/lib/catalog";
+import {clock} from "@/lib/booking-data";
 import type { Metadata } from "next";
 import { BrandHeader } from "@/components/brand-header";
 import { SiteFooter } from "@/components/site-footer";
@@ -19,12 +22,9 @@ export const metadata: Metadata = {
   },
 };
 
-const hours = [
-  ["monday", "closed"], ["tuesday", "09:00 — 18:00"], ["wednesday", "11:00 — 19:00"],
-  ["thursday", "11:00 — 19:00"], ["friday", "09:00 — 18:00"], ["saturday", "08:00 — 15:00"], ["sunday", "closed"],
-];
-
-export default function HoursPage() {
+export default async function HoursPage() {
+  const catalog=await getCatalog();
+  const hours=['monday','tuesday','wednesday','thursday','friday','saturday','sunday'].map((day,i)=>{const h=catalog.hours[(i+1)%7];return [day,h?clock(h[0])+' — '+clock(h[1]):'closed'];});
   return (
     <main className="information-page">
       <BrandHeader />

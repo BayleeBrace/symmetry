@@ -58,24 +58,37 @@ export function fullDate(value: string) {
 }
 
 export function isOpen(value: string) {
-  return Boolean(OPENING_HOURS[parseDate(value).getUTCDay()]);
+  return validDate(value) && Boolean(OPENING_HOURS[parseDate(value).getUTCDay()]);
 }
 
 export type Slot = { barber: BarberId; time: number; duration: number; price: number };
 export type BusyPeriod = { barber: BarberId; start: number; duration: number };
 
-export function makeSlots(date: string, barber: BarberChoice, serviceId: string, busy: BusyPeriod[]) {
-  const hours = OPENING_HOURS[parseDate(date).getUTCDay()];
-  const service = SERVICES.find((item) => item.id === serviceId);
+export function makeSlots(date: string, barber: BarberChoice, serviceId: string, busy: BusyPeriod[], catalog = {services:SERVICES,hours:OPENING_HOURS}) {
+  const hours = catalog.hours[parseDate(date).getUTCDay()];
+  const service = catalog.services.find((item) => item.id === serviceId);
   if (!hours || !service) return [];
   const barbers = barber === "any" ? Object.keys(BARBERS) as BarberId[] : [barber];
   return barbers.flatMap((barberId) => {
     const detail = service.barbers[barberId];
+    if (!detail) return [];
     const result: Slot[] = [];
     for (let time = hours[0]; time + detail.duration <= hours[1]; time += 15) {
       const clashes = busy.some((item) => item.barber === barberId && time < item.start + item.duration && time + detail.duration > item.start);
-      if (!clashes) result.push({ barber: barberId, time, ...detail });
+      if (!clashes && (date > shopToday() || (date === shopToday() && time > shopMinute()))) result.push({ barber: barberId, time, ...detail });
     }
     return result;
   }).sort((a, b) => a.time - b.time || a.barber.localeCompare(b.barber));
+}
+
+export function shopMinute(now = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/London", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(now);
+  return Number(parts.find(p => p.type === "hour")!.value) * 60 + Number(parts.find(p => p.type === "minute")!.value);
+}
+export function validDate(value: string) {
+  const parsed = parseDate(value);
+  return !Number.isNaN(parsed.valueOf()) && dateKey(parsed) === value;
+}
+export function cancellationFee(pricePence: number, kind: "late" | "no_show", latePercent = 50, noShowPercent = 100) {
+  return Math.round(pricePence * (kind === "late" ? latePercent : noShowPercent) / 100);
 }

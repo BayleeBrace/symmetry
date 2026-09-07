@@ -1,58 +1,46 @@
-# Symmetry app
+# Symmetry — booking app
 
-The production foundation for Symmetry Barbers, Saundersfoot. This is separate from the earlier static Netlify mock-up and is intended for GitHub, Vercel and Supabase.
+A mobile-first Symmetry website and bespoke booking app for GitHub, Vercel and Supabase. This package updates the existing app; it has not been deployed or connected to live payment or messaging accounts.
 
-## Working now
+## This update
 
-- Mobile-first booking flow using the approved Symmetry identity.
-- Sean, Travis, Dylan or "any barber".
-- Each barber's own price and service duration.
-- Month calendar, grouped times and guided mobile scrolling.
-- Multiple and repeating trims in one booking.
-- Universal calendar downloads for individual trims or a full multi-booking group.
-- Secure customer links to view, move and cancel their own trims without an account.
-- A conflicting repeat keeps the valid weeks and offers alternatives for only the week that clashes.
-- Required name, email and mobile with a separate unticked marketing choice.
-- Preview fallback when Supabase has not been connected. Preview submissions return a disposable reference and do not save contact details.
-- Installable web-app metadata and icons.
-- Staff area placeholder for the next development slice.
+- Editable cancellation policy: free until six hours before, then 50% late cancellation and 100% no-show. Sean must confirm these settings before live bookings are enabled.
+- Stripe-hosted card setup with no deposit. Fees use the price and policy accepted at booking, and require a separate owner review. Charges default to disabled.
+- Staff sign-in and chair-specific diary, walk-ins, arrivals, completed trims, no-shows, moves, breaks and holidays. Owners can manage prices, weekly schedules, policy and fee review.
+- Customer links for changing barber/service/time, cancellation, preferences, running-late updates, booking history and rebooking.
+- Calendar downloads, email recovery, confirmations and reminders, optional SMS and push, verified waitlist requests and availability alerts.
+- Basic completed-service and cancellation reports. Optional Apple and Google Wallet passes.
+- Server-side phone validation, rate limiting, atomic multi-booking and diary collision checks, accepted-policy snapshots and current-price checks.
 
-## Local development
+## Develop
 
-```bash
-npm install
-npm run dev
-```
+Use Node 22 or newer. Run `npm ci`, then `npm run dev`. Checks: `npm test`, `npm run lint`, `npm run build`. Vercel's root directory must be this folder containing package.json and src/app.
 
-Run checks with:
+## Connect a development project first
 
-```bash
-npm test
-npm run lint
-npm run build
-```
+1. Apply `supabase/migrations/20260906151133_initial_booking.sql` to a new Supabase development project. Skip it if it was already applied.
+2. Apply `supabase/upgrade.sql` **once** after the initial migration. Back up an existing database first. This upgrade is provided as SQL because migration generation through the Supabase CLI was unavailable here; add it to your project's migration history using the connected CLI before promoting environments.
+3. Copy `.env.example` to `.env.local`, then set the corresponding Vercel variables. Never expose server secrets with a NEXT_PUBLIC prefix. Keep LINK_SIGNING_SECRET stable: rotating it invalidates signed booking links.
+4. Create staff accounts through Supabase Auth. Add their UUIDs to `staff_members` with the corresponding barber_id and role (`owner` or `barber`), active=true. Staff sign in at `/staff` using email/password. Sessions currently require signing in again when the access token expires.
+5. In Stripe test mode configure `/api/stripe/webhook` for `checkout.session.completed`, and set its webhook signing secret. Checkout saves the payment method and then finalizes the booking. Availability is checked again after card setup; a saved card does not guarantee that a slot remains available.
+6. Configure Resend with a verified EMAIL_FROM address. Live booking creation requires email and webhook configuration. Configure Twilio for optional SMS. Notifications are operational booking messages; the separate marketing checkbox remains unticked by default. No marketing campaigns are sent by this app.
+7. Configure an external scheduler to call `GET /api/jobs` every minute with `Authorization: Bearer <CRON_SECRET>`. This is required for queued confirmations, reminders and waitlist alerts. The worker is not automatically scheduled by this ZIP. Use a scheduler and hosting plan that support the frequency and function duration required.
+8. Sign in as owner and confirm the cancellation policy. Keep CARD_CHARGES_ENABLED=false until test-card workflows and the fee policy have been signed off. Owner-initiated staff cancellation is treated as a courtesy cancellation without a fee.
+9. Keep SITE_LIVE=false and SITE_PASSWORD set during preview. Set SITE_LIVE=true at launch; the public sitemap then expands to the main shop pages.
 
-## Connect Supabase
+## Optional app features
 
-1. Create a new Supabase project in the London region.
-2. Apply `supabase/migrations/20260906151133_initial_booking.sql` to a development project first.
-3. Copy `.env.example` to `.env.local` and add the project's URL, publishable key and server-only secret key.
-4. Add the same values in Vercel. Never expose `SUPABASE_SECRET_KEY` with a `NEXT_PUBLIC_` prefix.
-5. Add each barber's authenticated user ID to `staff_members` before enabling the staff diary.
+Push requires VAPID keys and user permission. On iPhone, web push requires an installed Home Screen web app on a supported iOS version. Push subscriptions are tied to a staff account or secure booking link.
 
-The migration enables row-level security on every public table. Customers do not receive direct table access. Public booking creation calls a server-only atomic database function which rechecks current services, prices, durations, opening hours, diary blocks and collisions. A random management token is stored only as a SHA-256 hash.
+Wallet buttons appear only when the relevant certificates/service account variables are configured. Apple requires a Pass Type ID and signing certificates. Google requires an approved Generic Wallet class and service-account access. Wallet passes and downloaded calendar entries are snapshots: they do not update automatically after moves/cancellations. The customer booking link remains authoritative.
 
-## Before real customers use it
+## Operational limits and checks before launch
 
-- Finish the secure manage-booking route and its email link.
-- Add staff phone sign-in and complete the live diary actions.
-- Connect confirmation/reminder email and SMS providers.
-- Add rate limiting and abuse protection to public booking endpoints.
-- Normalise and verify international mobile numbers on the server.
-- Add individual barber schedules, holidays and exceptions.
-- Test concurrent booking, cancellation, repeat-booking, UK daylight-saving and permissions against a Supabase development branch.
-- Run Supabase security and performance advisors after applying the migration.
-- Agree privacy wording, retention, cancellation, deposit and no-show policies with Sean.
-- Reconcile every existing Fresha booking before public availability is opened.
-
-Do not treat the current staff screen as authentication and do not take live bookings until those launch checks are complete.
+- The production build and local PostgreSQL-compatible tests passed. Real Supabase permissions, simultaneous requests, provider delivery, Stripe authentication/failures and browser/device flows still need end-to-end staging verification. No real cards were charged or messages sent here.
+- Run Supabase security/performance advisors after applying the SQL. Reconcile existing Fresha bookings before opening availability.
+- Review `notification_jobs` for failed or interrupted deliveries. Provider acceptance is not proof of delivery. Failures do not automatically retry: reconcile the provider record before retrying to avoid duplicate SMS. Delivery webhooks and a dedicated message-monitoring screen are not included.
+- An interrupted fee with no recorded PaymentIntent pauses for manual Stripe reconciliation. Recorded intents are reused rather than creating another charge. Failed/authentication-required fees need owner handling; no unattended fee collection is enabled.
+- Weekly schedule changes are blocked when future bookings exist; reconcile those bookings first or use dated diary blocks.
+- Reminders are queued for 24 hours before a trim. Scheduler delays affect delivery time. Monitor queue backlog and tune worker capacity before scaling.
+- Reports show completed service value, not bank/payment reconciliation. Staff phone OTP, native mobile apps, automatic Wallet updates and full marketing campaigns remain future work.
+- Agree customer privacy/retention wording and retention cleanup before collecting live customer data. Do not commit .env.local or certificate/private-key files.

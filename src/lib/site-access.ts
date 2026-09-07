@@ -10,6 +10,7 @@ export async function createSiteAccessToken(value: string) {
 }
 
 export async function hasSiteAccess(cookieValue?: string) {
+  if (process.env.SITE_LIVE === "true") return true;
   const password = process.env.SITE_PASSWORD;
 
   if (!password || !cookieValue) {
