@@ -2,7 +2,12 @@ import type { Metadata } from "next";
 import { BrandHeader } from "@/components/brand-header";
 import { SiteFooter } from "@/components/site-footer";
 
-export const metadata: Metadata = { title: "Hours & location" };
+export const metadata: Metadata = {
+  title: "Opening Hours & Location",
+  description: "Find Symmetry Barbers at 4 Brewery Terrace, Saundersfoot. View our Tuesday to Saturday opening hours and get directions.",
+  alternates: { canonical: "/hours" },
+  openGraph: { title: "Opening Hours & Location | Symmetry Saundersfoot", url: "/hours" },
+};
 
 const hours = [
   ["monday", "closed"], ["tuesday", "09:00 — 18:00"], ["wednesday", "11:00 — 19:00"],

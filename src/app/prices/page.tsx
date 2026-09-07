@@ -4,7 +4,12 @@ import { BrandHeader } from "@/components/brand-header";
 import { SiteFooter } from "@/components/site-footer";
 import { BARBERS, money, SERVICES } from "@/lib/booking-data";
 
-export const metadata: Metadata = { title: "Prices" };
+export const metadata: Metadata = {
+  title: "Barber Prices",
+  description: "See prices and timings for cuts, skin fades and beard trims with Sean, Travis and Dylan at Symmetry Barbers in Saundersfoot.",
+  alternates: { canonical: "/prices" },
+  openGraph: { title: "Barber Prices | Symmetry Saundersfoot", url: "/prices" },
+};
 
 export default function PricesPage() {
   return (

@@ -21,7 +21,7 @@ export default function Home() {
           <p className="hero-address">4 brewery terrace, saundersfoot.</p>
         </div>
         <figure className="marketing-hero-image">
-          <Image src="/images/shop.webp" alt="The three chairs inside Symmetry barbers in Saundersfoot" fill priority sizes="(max-width: 760px) calc(100vw - 40px), 48vw" />
+          <Image src="/images/shop-hero.jpg" alt="The barber chairs and illuminated mirrors inside Symmetry Barbers in Saundersfoot" fill priority quality={88} sizes="(max-width: 760px) calc(100vw - 40px), 48vw" />
         </figure>
       </section>
 
