@@ -21,7 +21,7 @@ Use Node 22 or newer. Run `npm ci`, then `npm run dev`. Checks: `npm test`, `npm
 1. Apply `supabase/migrations/20260906151133_initial_booking.sql` to a new Supabase development project. Skip it if it was already applied.
 2. Apply `supabase/upgrade.sql` **once** after the initial migration. Back up an existing database first. This upgrade is provided as SQL because migration generation through the Supabase CLI was unavailable here; add it to your project's migration history using the connected CLI before promoting environments.
 3. Copy `.env.example` to `.env.local`, then set the corresponding Vercel variables. Never expose server secrets with a NEXT_PUBLIC prefix. Keep LINK_SIGNING_SECRET stable: rotating it invalidates signed booking links.
-4. Create staff accounts through Supabase Auth. Add their UUIDs to `staff_members` with the corresponding barber_id and role (`owner` or `barber`), active=true. Staff sign in at `/staff` using email/password. Sessions currently require signing in again when the access token expires.
+4. Create staff accounts through Supabase Auth. Add their UUIDs to `staff_members` with the corresponding barber_id and role (`owner` or `barber`), active=true. Staff sign in at `/staff` using email/password. Sessions renew through an HTTP-only refresh cookie. Existing staff must sign in once after this update; expiry, revocation and two-tab behaviour still need a real-account trial.
 5. In Stripe test mode configure `/api/stripe/webhook` for `checkout.session.completed`, and set its webhook signing secret. Checkout saves the payment method and then finalizes the booking. Availability is checked again after card setup; a saved card does not guarantee that a slot remains available.
 6. Configure Resend with a verified EMAIL_FROM address. Live booking creation requires email and webhook configuration. Configure Twilio for optional SMS. Notifications are operational booking messages; the separate marketing checkbox remains unticked by default. No marketing campaigns are sent by this app.
 7. This package includes a Vercel cron calling `/api/jobs` every minute (requires a plan supporting minute-level jobs, such as Pro). Set CRON_SECRET and enable NOTIFICATIONS_ENABLED only after configuring your intended test/live providers. Cron runs on production deployments; trigger the protected endpoint manually in staging. See https://vercel.com/docs/cron-jobs.
@@ -55,3 +55,15 @@ Confirmation/reminder messages and customer booking pages show the precise free-
 The owner-only **launch checks** tab reports configuration presence and pending/failed messages. It never displays secret values, and it does not certify delivery or payment success.
 
 See LAUNCH-CHECKS.md for the remaining staging and Fresha cutover checks. Live customer bookings and messaging both default to disabled independently of the website teaser switch.
+
+## Session, recovery and layout update
+
+Supporting copy now has more space below headings across the site. Booking preview and progress labels use larger, darker, regular-weight text.
+
+Staff sessions renew while the diary is used and when returning to the tab. Removed staff lose access. A rejected renewal asks for sign-in again.
+
+Trims already added to a booking are saved in the same tab for up to two hours, without customer contact details or payment tokens. Recovery rechecks availability, durations and current prices. Customers returning from card setup are prompted to check their bookings before starting another booking.
+
+Owners see a diary warning for failed messages or messages delayed more than 15 minutes. Optional owner push alerts require VAPID configuration, a subscribed owner device and the notification worker; alerts are attempted at most once per hour. This cannot detect a stopped scheduler or database outage: external monitoring remains necessary. Customer messages are not blindly retried.
+
+See `handover/TRIAL-AND-SWITCH.md` for the lads’ trial and Fresha reconciliation. `scripts/check-handover.py` compares normalized booking CSVs without importing anything or contacting customers.

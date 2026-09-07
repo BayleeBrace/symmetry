@@ -19,6 +19,8 @@ run('preview checkout accepts a valid booking, rejects overlap and missing conse
 });
 run('private routes and card callbacks fail safely without access',async()=>{
  assert.equal((await fetch(base+'/api/staff/readiness')).status,403);
+ assert.equal((await fetch(base+'/api/staff/alerts')).status,403);
+ assert.equal((await fetch(base+'/api/staff/session',{method:'PATCH',headers:{Origin:base}})).status,401);
  assert.equal((await fetch(base+'/api/jobs')).status,401);
  assert.equal((await fetch(base+'/api/stripe/webhook',{method:'POST',body:'{}'})).status,400);
  assert.equal((await fetch(base+'/api/bookings/manage?token=not-a-real-booking')).status,404);

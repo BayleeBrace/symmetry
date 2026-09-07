@@ -1,5 +1,6 @@
 "use client";
 
+import {DRAFT_KEY,readDraft,encodeDraft,type SavedDraft} from "@/lib/booking-draft";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   addDays, BARBERS, BarberChoice, BarberId, BusyPeriod, clock, dateKey, fullDate,
@@ -51,6 +52,24 @@ export function BookingFlow({ initialDate, initialBarber = "sean", initialServic
   const [error, setError] = useState("");
   const [done, setDone] = useState<{ reference: string; manageToken?: string } | null>(null);
   const [details, setDetails] = useState<Details>({ name: "", email: "", country: "GB", phone: "", marketing: false, preferences: "" });
+  const [savedDraft,setSavedDraft]=useState<SavedDraft|null>(null);
+  const [draftChecked,setDraftChecked]=useState(false);
+  useEffect(()=>{const timer=setTimeout(()=>{try{setSavedDraft(readDraft(sessionStorage.getItem(DRAFT_KEY)));}catch{}setDraftChecked(true);},0);return()=>clearTimeout(timer);},[]);
+  useEffect(()=>{if(!draftChecked||savedDraft)return;try{if(basket.length&&!done)sessionStorage.setItem(DRAFT_KEY,encodeDraft(basket));else sessionStorage.removeItem(DRAFT_KEY);}catch{}},[basket,done,draftChecked,savedDraft]);
+  async function restoreDraft(){
+    if(!savedDraft)return;setLoading(true);setError("");
+    try{
+      const restored:Draft[]=[];
+      for(const old of savedDraft.basket){
+        const response=await fetchBusy(old.date,old.barber);
+        const available=makeSlots(old.date,old.barber,old.service,response.busy,catalog);
+        const chosen=available.find(s=>s.time===old.time);
+        if(chosen)restored.push({...chosen,date:old.date,service:old.service});
+      }
+      setBasket(restored);setSavedDraft(null);setPolicyAccepted(false);setStep(restored.length?3:0);
+      setError(restored.length<savedDraft.basket.length?"Some saved times are no longer available. We kept the ones that still work; review current prices and add replacements.":"Your trims are restored with current prices. Please review them and enter your details.");
+    }catch(e){setError(e instanceof Error?e.message:"Could not recover those dates. Try again.");}finally{setLoading(false);}
+  }
   const timesRef = useRef<HTMLHeadingElement>(null);
   const repeatRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -144,7 +163,7 @@ export function BookingFlow({ initialDate, initialBarber = "sean", initialServic
       const response = await fetch("/api/bookings", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ customer: details, appointments: basket, policyAccepted, policyVersion:policy.version, requestId:requestId.current }) });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Your booking couldn’t be completed.");
-      if(result.mode === "card_setup") { window.location.assign(result.url); return; }
+      if(result.mode === "card_setup") { try{sessionStorage.setItem(DRAFT_KEY,encodeDraft(basket));}catch{} window.location.assign(result.url); return; }
       requestId.current = "";
       setDone({ reference: result.reference, manageToken: result.manageToken });
       setMode(result.mode);
@@ -166,6 +185,7 @@ export function BookingFlow({ initialDate, initialBarber = "sean", initialServic
   return (
     <>
       <div className="booking-frame">
+        {savedDraft&&<div className="draft-notice" role="status"><strong>Pick up where you left off?</strong><p>{savedDraft.basket.length} saved trim{savedDraft.basket.length===1?'':'s'}. We’ll check the dates and prices again. If you already saved your card, check your bookings before starting another.</p><button disabled={loading} onClick={()=>void restoreDraft()}>recover my trims</button><button disabled={loading} onClick={()=>{setSavedDraft(null);try{sessionStorage.removeItem(DRAFT_KEY);}catch{}}}>start fresh</button><a href="/bookings">check my bookings</a></div>}
         <p className="app-note">{mode === "live" ? "live availability" : "development preview · no trims are reserved yet"}</p>
         <div className="progress" aria-label="Booking progress">
           {["barber", "service", "dates", "booking"].map((label, index) => <span key={label} className={step === index ? "active" : ""}>{index + 1} · {label}</span>)}
