@@ -66,5 +66,5 @@ export async function POST(request: Request) {
     const conflict = error.code === "23P01" || error.message.includes("not available");
     return NextResponse.json({ error: conflict ? "One of those times has just been taken. Choose another." : "We couldn’t complete your booking. Please try again." }, { status: conflict ? 409 : 503 });
   }
-  return NextResponse.json({ mode: "live", reference: data, manageToken }, { status: 201 });
+  return NextResponse.json({ mode: "live", reference: data, manageToken, manageUrl: `/bookings?token=${encodeURIComponent(manageToken)}` }, { status: 201 });
 }

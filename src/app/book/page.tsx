@@ -3,7 +3,23 @@ import { BrandHeader } from "@/components/brand-header";
 import { BookingFlow } from "./booking-flow";
 import { addDays, BarberChoice, BARBERS, isOpen, shopToday } from "@/lib/booking-data";
 
-export const metadata: Metadata = { title: "Book a trim", robots: { index: false, follow: false } };
+export const metadata: Metadata = {
+  title: "Book a Trim",
+  description: "Choose Sean, Travis or Dylan and book your next trim at Symmetry Barbers in Saundersfoot.",
+  alternates: { canonical: "/book" },
+  robots: { index: false, follow: false },
+  openGraph: {
+    title: "Book a Trim | Symmetry Saundersfoot",
+    description: "Choose your barber, service and time at Symmetry Barbers in Saundersfoot.",
+    url: "/book",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Book a Trim | Symmetry Saundersfoot",
+    description: "Choose your barber, service and time.",
+  },
+};
 export const dynamic = "force-dynamic";
 
 export default async function BookPage({ searchParams }: { searchParams: Promise<{ barber?: string }> }) {

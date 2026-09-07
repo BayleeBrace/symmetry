@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { BrandHeader } from "@/components/brand-header";
 import { Reveal } from "@/components/reveal";
@@ -7,6 +8,23 @@ import { SiteFooter } from "@/components/site-footer";
 import { TeaserLanding } from "@/components/teaser-landing";
 import { BARBERS } from "@/lib/booking-data";
 import { hasSiteAccess, SITE_ACCESS_COOKIE } from "@/lib/site-access";
+
+export const metadata: Metadata = {
+  title: "Symmetry Barbers Saundersfoot | Cuts, Fades & Beards",
+  description: "Symmetry Barbers is coming soon to Saundersfoot, Pembrokeshire. The same three chairs, with a new name. Cuts, skin fades and beard trims.",
+  alternates: { canonical: "/" },
+  openGraph: {
+    title: "Symmetry Barbers Saundersfoot",
+    description: "Same chairs. New name. Cuts, fades and beards in Saundersfoot, Pembrokeshire.",
+    url: "/",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Symmetry Barbers Saundersfoot",
+    description: "Same chairs. New name. Cuts, fades and beards in Saundersfoot.",
+  },
+};
 
 export default async function Home() {
   const cookieStore = await cookies();

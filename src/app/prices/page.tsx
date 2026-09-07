@@ -5,10 +5,20 @@ import { SiteFooter } from "@/components/site-footer";
 import { BARBERS, money, SERVICES } from "@/lib/booking-data";
 
 export const metadata: Metadata = {
-  title: "Barber Prices",
+  title: "Barber Prices in Saundersfoot",
   description: "See prices and timings for cuts, skin fades and beard trims with Sean, Travis and Dylan at Symmetry Barbers in Saundersfoot.",
   alternates: { canonical: "/prices" },
-  openGraph: { title: "Barber Prices | Symmetry Saundersfoot", url: "/prices" },
+  openGraph: {
+    title: "Barber Prices | Symmetry Saundersfoot",
+    description: "Prices and timings for cuts, skin fades and beard trims with Sean, Travis and Dylan.",
+    url: "/prices",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Barber Prices | Symmetry Saundersfoot",
+    description: "Cuts, fades and beard trims with Sean, Travis and Dylan.",
+  },
 };
 
 export default function PricesPage() {

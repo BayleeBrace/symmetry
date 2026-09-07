@@ -203,7 +203,7 @@ export function BookingFlow({ initialDate, initialBarber = "sean" }: { initialDa
               <button type="submit" hidden>finish</button>
             </form>
           </>}
-          {step === 3 && done && <><h1>{mode === "live" ? "you’re booked." : "preview complete."}</h1><div className="success-card"><p>{mode === "live" ? "Your trims are reserved. We’ll send your confirmation shortly." : "The complete journey works. No real trims were reserved and your details were not saved."}</p><p>reference · <strong>{done.reference}</strong></p></div></>}
+          {step === 3 && done && <><h1>{mode === "live" ? "you’re booked." : "preview complete."}</h1><div className="success-card"><p>{mode === "live" ? "Your trims are reserved. We’ll send your confirmation and secure management link shortly." : "The complete journey works. No real trims were reserved and your details were not saved."}</p><p>reference · <strong>{done.reference}</strong></p>{mode === "live" && done.manageToken && <div className="success-actions"><a className="primary-button" href={`/api/calendar?token=${encodeURIComponent(done.manageToken)}`}>add to calendar</a><a className="text-link" href={`/bookings?token=${encodeURIComponent(done.manageToken)}`}>manage your trims</a></div>}</div></>}
           {error && <p className="error-message" role="alert">{error}</p>}
         </section>
       </div>

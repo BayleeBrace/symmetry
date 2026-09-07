@@ -7,6 +7,7 @@ export const metadata: Metadata = {
   title: { default: "Symmetry Barbers Saundersfoot | Cuts, Fades & Beards", template: "%s | Symmetry Saundersfoot" },
   description: "Independent barbers in Saundersfoot, Pembrokeshire. Book cuts, skin fades and beard trims with Sean, Travis or Dylan at Symmetry, formerly Studio 4 Barbers.",
   applicationName: "Symmetry",
+  category: "barbers",
   keywords: ["barbers Saundersfoot", "barber Saundersfoot", "skin fade Saundersfoot", "haircut Saundersfoot", "barbers Pembrokeshire", "beard trim Saundersfoot", "Symmetry Barbers"],
   alternates: { canonical: "/" },
   openGraph: {
@@ -24,6 +25,12 @@ export const metadata: Metadata = {
   },
   appleWebApp: { capable: true, title: "Symmetry", statusBarStyle: "black-translucent" },
   icons: { icon: "/favicon.svg", apple: "/apple-touch-icon.png" },
+  formatDetection: { address: false, email: false, telephone: false },
+  verification: { google: process.env.GOOGLE_SITE_VERIFICATION },
+  other: {
+    "geo.region": "GB-PEM",
+    "geo.placename": "Saundersfoot",
+  },
 };
 
 export const viewport: Viewport = { themeColor: "#161616", colorScheme: "light" };
@@ -54,11 +61,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       { "@type": "OpeningHoursSpecification", dayOfWeek: "Saturday", opens: "08:00", closes: "15:00" },
     ],
     sameAs: ["https://www.instagram.com/symmetry.wales/"],
-    potentialAction: {
-      "@type": "ReserveAction",
-      target: "https://symmetrywales.com/book",
-      result: { "@type": "Reservation", name: "Barber appointment" },
-    },
   };
 
   return (

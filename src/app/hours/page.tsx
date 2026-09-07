@@ -3,10 +3,20 @@ import { BrandHeader } from "@/components/brand-header";
 import { SiteFooter } from "@/components/site-footer";
 
 export const metadata: Metadata = {
-  title: "Opening Hours & Location",
+  title: "Opening Hours & Location in Saundersfoot",
   description: "Find Symmetry Barbers at 4 Brewery Terrace, Saundersfoot. View our Tuesday to Saturday opening hours and get directions.",
   alternates: { canonical: "/hours" },
-  openGraph: { title: "Opening Hours & Location | Symmetry Saundersfoot", url: "/hours" },
+  openGraph: {
+    title: "Opening Hours & Location | Symmetry Saundersfoot",
+    description: "Find Symmetry Barbers at 4 Brewery Terrace, Saundersfoot. Open Tuesday to Saturday.",
+    url: "/hours",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Opening Hours | Symmetry Saundersfoot",
+    description: "4 Brewery Terrace, Saundersfoot. Open Tuesday to Saturday.",
+  },
 };
 
 const hours = [

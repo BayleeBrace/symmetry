@@ -9,6 +9,8 @@ The production foundation for Symmetry Barbers, Saundersfoot. This is separate f
 - Each barber's own price and service duration.
 - Month calendar, grouped times and guided mobile scrolling.
 - Multiple and repeating trims in one booking.
+- Universal calendar downloads for individual trims or a full multi-booking group.
+- Secure customer links to view, move and cancel their own trims without an account.
 - A conflicting repeat keeps the valid weeks and offers alternatives for only the week that clashes.
 - Required name, email and mobile with a separate unticked marketing choice.
 - Preview fallback when Supabase has not been connected. Preview submissions return a disposable reference and do not save contact details.
