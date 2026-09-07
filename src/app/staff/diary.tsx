@@ -149,24 +149,29 @@ export function Diary() {
   return (
     <section className="staff-content">
       <div className="staff-toolbar">
-        <h1>your day.</h1>
-        <button
-          onClick={async () => {
-            const r = await fetch("/api/staff/session", { method: "DELETE" });
-            resetStaffSession();
-            setDiary(null);
-            if (!r.ok) setError((await r.json()).error);
-          }}
-        >
-          sign out
-        </button>
+        <div>
+          <p className="staff-kicker">staff diary</p>
+          <h1>your day.</h1>
+        </div>
+        <div className="staff-toolbar-actions">
+          <PushButton />
+          <button
+            className="staff-sign-out"
+            onClick={async () => {
+              const r = await fetch("/api/staff/session", { method: "DELETE" });
+              resetStaffSession();
+              setDiary(null);
+              if (!r.ok) setError((await r.json()).error);
+            }}
+          >
+            sign out
+          </button>
+        </div>
       </div>
-      <p className="price-note">prices in pounds.</p>
-      <PushButton />
       {diary.staff.role === "owner" && (
         <DeliveryAlert onReview={() => setTab("launch checks")} />
       )}
-      <div className="staff-tabs">
+      <div className="staff-tabs" aria-label="Staff sections">
         {[
           "diary",
           "walk-in",
@@ -191,14 +196,16 @@ export function Diary() {
           </button>
         ))}
       </div>
-      <label className="diary-date">
-        date
-        <input
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-        />
-      </label>
+      {["diary", "walk-in", "breaks"].includes(tab) && (
+        <label className="diary-date">
+          date
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+          />
+        </label>
+      )}
       {error && (
         <p className="error-message" role="alert">
           {error}
@@ -729,40 +736,76 @@ function Readiness() {
       .catch((e) => setError(e.message));
   }, []);
   if (!data) return <p role="status">{error || "Checking setup…"}</p>;
+  const ready = data.checks.filter((check) => check.ready).length;
   return (
-    <div>
-      <h2>ready for launch?</h2>
-      <p>{data.note}</p>
-      <ul>
+    <div className="readiness-dashboard">
+      <header className="readiness-header">
+        <div>
+          <p className="readiness-kicker">launch</p>
+          <h2>ready for launch?</h2>
+          <p>{data.note}</p>
+        </div>
+        <div
+          className="readiness-score"
+          aria-label={`${ready} of ${data.checks.length} checks complete`}
+        >
+          <strong>
+            {ready}/{data.checks.length}
+          </strong>
+          <span>complete</span>
+        </div>
+      </header>
+      <ul className="readiness-checks">
         {data.checks.map((c) => (
-          <li key={c.label}>
-            {c.ready ? "✓" : "○"} {c.label}
+          <li
+            className={c.ready ? "is-ready" : "needs-attention"}
+            key={c.label}
+          >
+            <span className="readiness-icon" aria-hidden="true">
+              {c.ready ? "✓" : ""}
+            </span>
+            <span>
+              <strong>{c.label}</strong>
+              <small>{c.ready ? "ready" : "needs attention"}</small>
+            </span>
           </li>
         ))}
       </ul>
-      <h2>message queue.</h2>
-      {!data.jobs.length ? (
-        <p>No pending or failed messages.</p>
-      ) : (
-        data.jobs.map((j) => (
-          <article className="diary-trim" key={j.id}>
-            <strong>
-              {j.kind.replaceAll("_", " ")} · {j.channel}
-            </strong>
-            <p>
-              {j.status} · due{" "}
-              {new Date(j.due_at).toLocaleString("en-GB", {
-                timeZone: "Europe/London",
-              })}
-            </p>
-            {j.last_error && <p>{j.last_error}</p>}
-          </article>
-        ))
-      )}
-      <p>
-        Check failed deliveries against the provider record before retrying.
-        This list shows the oldest 50 unsettled messages.
-      </p>
+      <section className="message-queue">
+        <header>
+          <div>
+            <p className="queue-kicker">messages</p>
+            <h2>message queue.</h2>
+          </div>
+          <span>{data.jobs.length}</span>
+        </header>
+        {!data.jobs.length ? (
+          <p className="queue-empty">
+            Everything is clear. No pending or failed messages.
+          </p>
+        ) : (
+          <div className="queue-list">
+            {data.jobs.map((j) => (
+              <article className="diary-trim" key={j.id}>
+                <strong>
+                  {j.kind.replaceAll("_", " ")} · {j.channel}
+                </strong>
+                <p>
+                  {j.status} · due{" "}
+                  {new Date(j.due_at).toLocaleString("en-GB", {
+                    timeZone: "Europe/London",
+                  })}
+                </p>
+                {j.last_error && <p>{j.last_error}</p>}
+              </article>
+            ))}
+          </div>
+        )}
+        <small>
+          Check failed deliveries against the provider before retrying. The
+          oldest 50 unsettled messages appear here.
+        </small>
+      </section>
     </div>
   );
 }

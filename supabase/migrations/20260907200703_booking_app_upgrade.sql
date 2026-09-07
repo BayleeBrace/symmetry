@@ -15,7 +15,7 @@ create table public.booking_attempts (id uuid primary key, token_hash text uniqu
 create table public.booking_events (id uuid primary key default gen_random_uuid(), booking_id uuid references public.bookings(id), group_id uuid references public.booking_groups(id), kind text not null, actor uuid, detail jsonb not null default '{}', created_at timestamptz not null default now());
 create table public.notification_jobs (id uuid primary key default gen_random_uuid(), dedupe_key text unique not null, group_id uuid references public.booking_groups(id), booking_id uuid references public.bookings(id), kind text not null, channel text not null check(channel in ('email','sms','push')), payload jsonb not null default '{}', due_at timestamptz not null default now(), status text not null default 'pending' check(status in ('pending','sending','sent','failed','cancelled')), attempts integer not null default 0, locked_at timestamptz, provider_id text, last_error text);
 create index notification_due_idx on public.notification_jobs(due_at) where status='pending';
-create table public.rate_limits (key text primary key, count integer not null, expires_at timestamptz not null);
+create table if not exists public.rate_limits (key text primary key, count integer not null, expires_at timestamptz not null);
 alter table public.waitlist_requests add column email text, add column phone text, add column token_hash text unique, add column verified boolean not null default false;
 alter table public.waitlist_requests alter column customer_id drop not null;
 create table public.push_subscriptions (id uuid primary key default gen_random_uuid(), group_id uuid references public.booking_groups(id), staff_user uuid references auth.users(id), endpoint text unique not null, subscription jsonb not null, check ((group_id is null) <> (staff_user is null)));
@@ -25,7 +25,7 @@ do $$ declare t text; begin foreach t in array array['shop_settings','barber_sch
 revoke update on public.bookings from authenticated;
 revoke insert,update,delete on public.diary_blocks from authenticated;
 
-create function public.take_rate_limit(p_key text,p_limit integer,p_seconds integer) returns boolean language plpgsql security definer set search_path='' as $$ declare n integer; begin
+create or replace function public.take_rate_limit(p_key text,p_limit integer,p_seconds integer) returns boolean language plpgsql security definer set search_path='' as $$ declare n integer; begin
  insert into public.rate_limits(key,count,expires_at) values(p_key,1,now()+make_interval(secs=>p_seconds)) on conflict(key) do update set count=case when public.rate_limits.expires_at<now() then 1 else public.rate_limits.count+1 end, expires_at=case when public.rate_limits.expires_at<now() then now()+make_interval(secs=>p_seconds) else public.rate_limits.expires_at end returning count into n;
  return n<=p_limit; end $$;
 

@@ -20,6 +20,12 @@ test("database rejects blocked moves, enforces fees and keeps rejected batches a
       "utf8",
     ),
   );
+  await db.exec(
+    await readFile(
+      "supabase/migrations/20260907202315_repair_rate_limit_schema.sql",
+      "utf8",
+    ),
+  );
   const pricesBefore = (
     await db.query(
       "select barber_id,service_id,price_pence,duration from service_prices order by barber_id,service_id",
