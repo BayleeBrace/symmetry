@@ -60,7 +60,7 @@ export default async function BookPage({
     <main className="app-shell">
       <BrandHeader compact />
       {showFormerly() && (
-        <p className="booking-rename">formerly studio 4 barbers.</p>
+        <p className="booking-rename">Formerly Studio 4 Barbers.</p>
       )}
       <BookingFlow
         initialDate={firstDate}

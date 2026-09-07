@@ -3,13 +3,13 @@ export function OpeningHours({ hours }: { hours: typeof OPENING_HOURS }) {
   return (
     <dl className="opening-hours">
       {[
-        "monday",
-        "tuesday",
-        "wednesday",
-        "thursday",
-        "friday",
-        "saturday",
-        "sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday",
       ].map((day, i) => {
         const h = hours[(i + 1) % 7];
         return (
@@ -23,7 +23,7 @@ export function OpeningHours({ hours }: { hours: typeof OPENING_HOURS }) {
                   <time dateTime={inputTime(h[1])}>{hourWord(h[1])}</time>
                 </>
               ) : (
-                "closed"
+                "Closed"
               )}
             </dd>
           </div>

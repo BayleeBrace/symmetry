@@ -33,7 +33,7 @@
 
 ## Copy rule
 
-Lowercase headings, labels and address lines; sentence case for full sentences; uppercase postcodes and proper names where needed for clarity. Do not invent barber biographies or claims about every cut.
+Proper capitalisation throughout, at Sean's request (7 September 2026): sentence case for sentences, headings, buttons and labels; capitals for names, places, days and months (Sean, Saundersfoot, 4 Brewery Terrace, Monday). Uppercase tracked labels keep their treatment. Do not invent barber biographies or claims about every cut. See CHANGELOG-2026-09-07-staff-and-copy.md.
 
 ## Verification
 

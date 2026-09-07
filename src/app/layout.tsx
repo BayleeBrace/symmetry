@@ -122,7 +122,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           }}
         />
         <a href="#main-content" className="skip-link">
-          skip to content
+          Skip to content
         </a>
         <AppRegistration />
         {children}

@@ -34,17 +34,17 @@ export default async function HoursPage() {
       <BrandHeader />
       <section className="hours-page-grid">
         <div>
-          <p className="eyebrow">saundersfoot, pembrokeshire</p>
-          <h1>come by.</h1>
+          <p className="eyebrow">Saundersfoot, Pembrokeshire</p>
+          <h1>Come by.</h1>
           <p>
-            4 brewery terrace
+            4 Brewery Terrace
             <br />
-            saundersfoot
+            Saundersfoot
             <br />
             SA69 9HG
           </p>
           <p className="opening-status">{openingStatus(catalog.hours)}</p>
-          <h2 className="finding-title">finding us.</h2>
+          <h2 className="finding-title">Finding us.</h2>
           <p>
             Our entrance on Brewery Terrace is shared with two other shops. Come
             through and look for the Symmetry door inside.
@@ -56,7 +56,7 @@ export default async function HoursPage() {
             target="_blank"
             rel="noreferrer"
           >
-            open in maps
+            Open in maps
           </a>
         </div>
         <div className="hours-list large">

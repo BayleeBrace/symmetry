@@ -1,77 +1,67 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   staffApi as api,
   StaffSignInRequired,
   resetStaffSession,
 } from "@/lib/staff-client";
 import { PushButton } from "@/components/push-button";
-import { clock, inputTime, money, shopToday } from "@/lib/booking-data";
-type Barber = { id: string; name: string; slug: string };
-type Booking = {
-  id: string;
-  group_id: string;
-  barber_id: string;
-  start_minute: number;
-  duration: number;
-  status: string;
-  price_pence: number;
-  fee_pence: number;
-  fee_status: string;
-  updated_at: string;
-  late_minutes: number;
-  barbers: { name: string };
-  services: { name: string };
-  booking_groups: {
-    customers: {
-      name: string;
-      email: string;
-      phone: string;
-      preferences: string;
-    };
-  };
+import { addDays, shopToday } from "@/lib/booking-data";
+import {
+  type Barber,
+  type Diary as DiaryData,
+  dayLabel,
+  shortDay,
+} from "./types";
+import { DayTimeline } from "./timeline";
+import { BreakForm, WalkInForm, type WalkInPrefill } from "./forms";
+import { Reports } from "./reports";
+import { Settings } from "./settings";
+import { DeliveryAlert, Readiness } from "./readiness";
+
+const TABS = [
+  "diary",
+  "walk-in",
+  "breaks",
+  "reports",
+  "settings",
+  "launch checks",
+] as const;
+type Tab = (typeof TABS)[number];
+const TAB_LABEL: Record<Tab, string> = {
+  diary: "Diary",
+  "walk-in": "Walk-in",
+  breaks: "Breaks",
+  reports: "Reports",
+  settings: "Settings",
+  "launch checks": "Launch checks",
 };
-type Diary = {
-  staff: { role: string; barber_id: string };
-  bookings: Booking[];
-  barbers: Barber[];
-  services: { id: string; slug: string; name: string }[];
-  blocks: {
-    id: string;
-    barber_id: string;
-    start_minute: number;
-    duration: number;
-    label: string;
-  }[];
-  events: { id: string; kind: string; created_at: string }[];
-};
-type Report = {
-  period: string;
-  trims: number;
-  completed: number;
-  noShows: number;
-  cancelled: number;
-  completedValue: number;
-  fees: number;
-};
+
 export function Diary() {
-  const [date, setDate] = useState(shopToday()),
-    [diary, setDiary] = useState<Diary | null>(null),
-    [error, setError] = useState(""),
-    [busy, setBusy] = useState(false),
-    [report, setReport] = useState<Report | null>(null),
-    [tab, setTab] = useState("diary");
+  const [date, setDate] = useState(shopToday());
+  const [diary, setDiary] = useState<DiaryData | null>(null);
+  const [checked, setChecked] = useState(false);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [tab, setTab] = useState<Tab>("diary");
+  const [walkIn, setWalkIn] = useState<WalkInPrefill>(null);
+  const dateInput = useRef<HTMLInputElement>(null);
+
   const load = useCallback(async () => {
     try {
-      setDiary(await api("/api/staff/diary?date=" + date));
+      const next = (await api("/api/staff/diary?date=" + date)) as DiaryData;
+      setDiary(next);
       setError("");
     } catch (e) {
       if (e instanceof StaffSignInRequired) {
         setDiary(null);
         setError("");
       } else setError((e as Error).message);
+    } finally {
+      setChecked(true);
     }
   }, [date]);
+
   useEffect(() => {
     const t = setTimeout(() => void load(), 0);
     const interval = setInterval(() => {
@@ -87,6 +77,7 @@ export function Diary() {
       document.removeEventListener("visibilitychange", resume);
     };
   }, [load]);
+
   async function act(url: string, data: unknown) {
     setBusy(true);
     setError("");
@@ -96,41 +87,57 @@ export function Diary() {
     } catch (e) {
       if (e instanceof StaffSignInRequired) setDiary(null);
       setError((e as Error).message);
+      throw e;
     } finally {
       setBusy(false);
     }
   }
+  const quietAct = (url: string, data: unknown) =>
+    act(url, data).catch(() => undefined);
+
+  if (!checked)
+    return (
+      <section className="staff-shell">
+        <p role="status" className="staff-muted">
+          Opening the diary…
+        </p>
+      </section>
+    );
+
   if (!diary)
     return (
-      <section className="staff-content">
-        <h1>your day.</h1>
-        <p>Sign in to your chair.</p>
+      <section className="staff-shell staff-signin">
+        <p className="staff-kicker">Staff</p>
+        <h1>Your day.</h1>
+        <p className="staff-muted">Sign in to your chair.</p>
         <form
-          className="details-form"
+          className="staff-form"
           onSubmit={async (e) => {
             e.preventDefault();
             const f = new FormData(e.currentTarget);
             setBusy(true);
+            setError("");
             try {
               await api("/api/staff/session", {
                 email: f.get("email"),
                 password: f.get("password"),
               });
+              resetStaffSession();
               await load();
-            } catch (e) {
-              if (e instanceof StaffSignInRequired) setDiary(null);
-              setError((e as Error).message);
+            } catch (err) {
+              if (err instanceof StaffSignInRequired) setDiary(null);
+              setError((err as Error).message);
             } finally {
               setBusy(false);
             }
           }}
         >
-          <label>
-            email
+          <label className="wide">
+            Email
             <input required type="email" name="email" autoComplete="username" />
           </label>
-          <label>
-            password
+          <label className="wide">
+            Password
             <input
               required
               type="password"
@@ -138,715 +145,182 @@ export function Diary() {
               autoComplete="current-password"
             />
           </label>
-          <button disabled={busy}>sign in</button>
+          <div className="form-actions">
+            <button type="submit" className="button-primary" disabled={busy}>
+              Sign in
+            </button>
+          </div>
         </form>
-        {error && <p role="alert">{error}</p>}
+        {error && (
+          <p role="alert" className="staff-error">
+            {error}
+          </p>
+        )}
       </section>
     );
-  const visible = diary.barbers.filter(
-    (b) => diary.staff.role === "owner" || b.id === diary.staff.barber_id,
+
+  const owner = diary.staff.role === "owner";
+  const barbers: Barber[] = diary.barbers.filter(
+    (b) => b.active !== false && (owner || b.id === diary.staff.barber_id),
   );
+  const today = shopToday();
+  const tabs = TABS.filter(
+    (t) => owner || !["settings", "launch checks"].includes(t),
+  );
+  const showDate = ["diary", "walk-in", "breaks"].includes(tab);
+
   return (
-    <section className="staff-content">
-      <div className="staff-toolbar">
+    <section className="staff-shell">
+      <div className="staff-top">
         <div>
-          <p className="staff-kicker">staff diary</p>
-          <h1>your day.</h1>
+          <p className="staff-kicker">
+            {owner ? "Owner" : "Barber"} ·{" "}
+            {barbers.map((b) => b.name).join(", ")}
+          </p>
+          <h1>Your day.</h1>
         </div>
-        <div className="staff-toolbar-actions">
+        <div className="staff-who">
           <PushButton />
           <button
-            className="staff-sign-out"
+            type="button"
+            className="text-button"
             onClick={async () => {
-              const r = await fetch("/api/staff/session", { method: "DELETE" });
+              const r = await fetch("/api/staff/session", {
+                method: "DELETE",
+              });
               resetStaffSession();
               setDiary(null);
               if (!r.ok) setError((await r.json()).error);
             }}
           >
-            sign out
+            Sign out
           </button>
         </div>
       </div>
-      {diary.staff.role === "owner" && (
-        <DeliveryAlert onReview={() => setTab("launch checks")} />
-      )}
-      <div className="staff-tabs" aria-label="Staff sections">
-        {[
-          "diary",
-          "walk-in",
-          "breaks",
-          "reports",
-          ...(diary.staff.role === "owner"
-            ? ["settings", "launch checks"]
-            : []),
-        ].map((t) => (
+
+      {owner && <DeliveryAlert onReview={() => setTab("launch checks")} />}
+
+      <nav className="staff-nav" aria-label="Staff sections">
+        {tabs.map((t) => (
           <button
             key={t}
+            type="button"
             aria-pressed={tab === t}
             onClick={() => {
               setTab(t);
-              if (t === "reports")
-                api("/api/staff/reports")
-                  .then(setReport)
-                  .catch((e) => setError(e.message));
+              if (t !== "walk-in") setWalkIn(null);
             }}
           >
-            {t}
+            {TAB_LABEL[t]}
           </button>
         ))}
-      </div>
-      {["diary", "walk-in", "breaks"].includes(tab) && (
-        <label className="diary-date">
-          date
+      </nav>
+
+      {showDate && (
+        <div className="day-nav">
+          <button
+            type="button"
+            className="arrow"
+            aria-label="Previous day"
+            onClick={() => setDate(addDays(date, -1))}
+          >
+            ‹
+          </button>
+          <button
+            type="button"
+            className="day-name"
+            onClick={() => {
+              const input = dateInput.current;
+              if (!input) return;
+              if ("showPicker" in input) {
+                try {
+                  (
+                    input as HTMLInputElement & { showPicker: () => void }
+                  ).showPicker();
+                  return;
+                } catch {}
+              }
+              input.focus();
+            }}
+            aria-label={`Pick a date. Showing ${dayLabel(date)}`}
+          >
+            {date === today ? "Today · " : ""}
+            <span className="day-long">{dayLabel(date)}</span>
+            <span className="day-short">{shortDay(date)}</span>
+          </button>
+          <button
+            type="button"
+            className="arrow"
+            aria-label="Next day"
+            onClick={() => setDate(addDays(date, 1))}
+          >
+            ›
+          </button>
           <input
+            ref={dateInput}
+            className="day-picker"
             type="date"
+            aria-label="Date"
             value={date}
-            onChange={(e) => setDate(e.target.value)}
+            onChange={(e) => e.target.value && setDate(e.target.value)}
           />
-        </label>
+          {date !== today && (
+            <button
+              type="button"
+              className="text-button"
+              onClick={() => setDate(today)}
+            >
+              Back to today
+            </button>
+          )}
+        </div>
       )}
+
       {error && (
-        <p className="error-message" role="alert">
+        <p className="staff-error" role="alert">
           {error}
         </p>
       )}
+
       {tab === "diary" && (
-        <div className="diary-columns">
-          {visible.map((barber) => (
-            <div key={barber.id}>
-              <h2>{barber.name}.</h2>
-              {diary.bookings
-                .filter((b) => b.barber_id === barber.id)
-                .map((b) => (
-                  <article className="diary-trim" key={b.id}>
-                    <strong>
-                      {clock(b.start_minute)} ·{" "}
-                      {b.booking_groups.customers.name}
-                    </strong>
-                    <p>
-                      {b.services.name} · {b.duration} min ·
-                      {money(b.price_pence / 100)}
-                    </p>
-                    <p className="booking-status">
-                      {b.status.replace("_", " ")}
-                      {b.late_minutes > 0
-                        ? ` · running ${b.late_minutes} min late`
-                        : ""}
-                    </p>
-                    {b.booking_groups.customers.preferences && (
-                      <p>{b.booking_groups.customers.preferences}</p>
-                    )}
-                    <p>
-                      <a href={"tel:" + b.booking_groups.customers.phone}>
-                        {b.booking_groups.customers.phone}
-                      </a>
-                    </p>
-                    {["booked", "arrived"].includes(b.status) && (
-                      <>
-                        <div className="manage-links">
-                          {["arrived", "done", "no_show", "cancelled"]
-                            .filter((s) => s !== b.status)
-                            .map((status) => (
-                              <button
-                                disabled={busy}
-                                key={status}
-                                onClick={() => {
-                                  if (
-                                    ["no_show", "cancelled"].includes(status) &&
-                                    !confirm(
-                                      `Mark this trim ${status.replace("_", " ")}?`,
-                                    )
-                                  )
-                                    return;
-                                  void act("/api/staff/diary", {
-                                    action: "status",
-                                    id: b.id,
-                                    status,
-                                    version: b.updated_at,
-                                  });
-                                }}
-                              >
-                                {status.replace("_", " ")}
-                              </button>
-                            ))}
-                        </div>
-                        <details>
-                          <summary>move trim</summary>
-                          <form
-                            onSubmit={(e) => {
-                              e.preventDefault();
-                              const f = new FormData(e.currentTarget);
-                              const [h, m] = String(f.get("time"))
-                                .split(":")
-                                .map(Number);
-                              void act("/api/staff/diary", {
-                                action: "move",
-                                id: b.id,
-                                date: f.get("date"),
-                                time: h * 60 + m,
-                                version: b.updated_at,
-                              });
-                            }}
-                          >
-                            <input
-                              aria-label="New date"
-                              name="date"
-                              type="date"
-                              required
-                              defaultValue={date}
-                            />
-                            <input
-                              aria-label="New time"
-                              name="time"
-                              type="time"
-                              step="900"
-                              required
-                              defaultValue={inputTime(b.start_minute)}
-                            />
-                            <button disabled={busy}>save move</button>
-                          </form>
-                        </details>
-                      </>
-                    )}
-                    {b.fee_pence > 0 && (
-                      <p>
-                        Fee: {money(b.fee_pence / 100)} · {b.fee_status}
-                      </p>
-                    )}
-                    {diary.staff.role === "owner" &&
-                      ["review", "charging"].includes(b.fee_status) && (
-                        <div className="manage-links">
-                          <button
-                            disabled={busy}
-                            onClick={() => {
-                              if (
-                                confirm(
-                                  `Charge the authorised ${money(b.fee_pence / 100)} pounds fee to this customer's saved card?`,
-                                )
-                              )
-                                void act("/api/staff/charge", {
-                                  action: "charge",
-                                  id: b.id,
-                                });
-                            }}
-                          >
-                            charge fee
-                          </button>
-                          {b.fee_status === "review" && (
-                            <button
-                              disabled={busy}
-                              onClick={() =>
-                                void act("/api/staff/charge", {
-                                  action: "waive",
-                                  id: b.id,
-                                })
-                              }
-                            >
-                              waive
-                            </button>
-                          )}
-                        </div>
-                      )}
-                  </article>
-                ))}
-              {!diary.bookings.some((b) => b.barber_id === barber.id) && (
-                <p>No trims booked.</p>
-              )}
-              {diary.blocks
-                .filter((b) => b.barber_id === barber.id)
-                .map((b) => (
-                  <article className="diary-block" key={b.id}>
-                    {clock(b.start_minute)} —{" "}
-                    {clock(b.start_minute + b.duration)} · {b.label}
-                    <button
-                      disabled={busy}
-                      onClick={() =>
-                        void act("/api/staff/diary", {
-                          action: "unblock",
-                          id: b.id,
-                        })
-                      }
-                    >
-                      remove block
-                    </button>
-                  </article>
-                ))}
-            </div>
-          ))}
-        </div>
+        <DayTimeline
+          diary={diary}
+          barbers={barbers}
+          date={date}
+          busy={busy}
+          act={quietAct}
+          onWalkIn={(barber, minute) => {
+            setWalkIn({ barberId: barber.id, minute });
+            setTab("walk-in");
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }}
+        />
       )}
       {tab === "walk-in" && (
-        <form
-          className="details-form"
-          onSubmit={(e) => {
-            e.preventDefault();
-            const f = new FormData(e.currentTarget);
-            const [h, m] = String(f.get("time")).split(":").map(Number);
-            void act("/api/staff/diary", {
-              action: "walkin",
-              date,
-              time: h * 60 + m,
-              name: f.get("name"),
-              email: f.get("email"),
-              phone: f.get("phone"),
-              barber: f.get("barber"),
-              service: f.get("service"),
-            });
-          }}
-        >
-          <h2>add a trim.</h2>
-          <label>
-            customer
-            <input name="name" required minLength={2} />
-          </label>
-          <label>
-            email (optional)
-            <input type="email" name="email" />
-          </label>
-          <label>
-            mobile (optional)
-            <input type="tel" name="phone" />
-          </label>
-          <label>
-            barber
-            <select name="barber">
-              {visible.map((b) => (
-                <option value={b.slug} key={b.id}>
-                  {b.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            service
-            <select name="service">
-              {diary.services.map((s) => (
-                <option value={s.slug} key={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            time
-            <input type="time" step="900" name="time" required />
-          </label>
-          <button disabled={busy}>add to diary</button>
-        </form>
+        <WalkInForm
+          key={walkIn ? `${walkIn.barberId}-${walkIn.minute}` : "fresh"}
+          diary={diary}
+          barbers={barbers}
+          date={date}
+          prefill={walkIn}
+          busy={busy}
+          act={act}
+        />
       )}
       {tab === "breaks" && (
-        <form
-          className="details-form"
-          onSubmit={(e) => {
-            e.preventDefault();
-            const f = new FormData(e.currentTarget);
-            const [h, m] = String(f.get("time")).split(":").map(Number);
-            void act("/api/staff/diary", {
-              action: "block",
-              date,
-              time: h * 60 + m,
-              barber: f.get("barber"),
-              duration: Number(f.get("duration")),
-              label: f.get("label"),
-            });
-          }}
-        >
-          <h2>make some space.</h2>
-          <p>
-            Add a break or block the whole day for a holiday. Existing bookings
-            must be moved first.
-          </p>
-          <label>
-            barber
-            <select name="barber">
-              {visible.map((b) => (
-                <option value={b.id} key={b.id}>
-                  {b.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            label
-            <input name="label" required defaultValue="break" />
-          </label>
-          <label>
-            from
-            <input
-              type="time"
-              step="900"
-              name="time"
-              required
-              defaultValue="00:00"
-            />
-          </label>
-          <label>
-            minutes
-            <input
-              type="number"
-              name="duration"
-              min="5"
-              max="1440"
-              defaultValue="1440"
-              required
-            />
-          </label>
-          <button disabled={busy}>block time</button>
-        </form>
+        <BreakForm
+          barbers={barbers}
+          date={date}
+          hours={diary.hours}
+          busy={busy}
+          act={act}
+        />
       )}
-      {tab === "reports" && report && (
-        <>
-          <h2>{report.period}.</h2>
-          <div className="report-grid">
-            {[
-              ["Completed trims", report.completed],
-              [
-                "Completed service value",
-                `${money(report.completedValue / 100)}`,
-              ],
-              ["No-shows", report.noShows],
-              ["Cancellations", report.cancelled],
-              ["Collected fees", `${money(report.fees / 100)}`],
-            ].map(([label, value]) => (
-              <article key={label}>
-                <span>{label}</span>
-                <strong>{value}</strong>
-              </article>
-            ))}
-          </div>
-          <p>
-            Service value is based on completed trims; it is not a payment
-            reconciliation.
-          </p>
-        </>
+      {tab === "reports" && <Reports />}
+      {tab === "settings" && owner && (
+        <Settings diary={diary} act={act} busy={busy} />
       )}
-      {tab === "launch checks" && <Readiness />}
-      {tab === "settings" && <Settings diary={diary} act={act} busy={busy} />}
+      {tab === "launch checks" && owner && <Readiness />}
     </section>
-  );
-}
-function Settings({
-  diary,
-  act,
-  busy,
-}: {
-  diary: Diary;
-  act: (url: string, data: unknown) => Promise<void>;
-  busy: boolean;
-}) {
-  const [policy, setPolicy] = useState<{
-    cancellation_hours: number;
-    late_percent: number;
-    no_show_percent: number;
-    policy_confirmed: boolean;
-  } | null>(null);
-  const [loadError, setLoadError] = useState("");
-  useEffect(() => {
-    api("/api/staff/settings")
-      .then((d) => setPolicy(d.policy))
-      .catch((e) => setLoadError(e.message));
-  }, []);
-  if (!policy) return <p role="status">{loadError || "Loading settings…"}</p>;
-  return (
-    <div className="settings-grid">
-      <form
-        className="details-form"
-        onSubmit={(e) => {
-          e.preventDefault();
-          const f = new FormData(e.currentTarget);
-          void act("/api/staff/settings", {
-            action: "policy",
-            cancellation_hours: Number(f.get("hours")),
-            late_percent: Number(f.get("late")),
-            no_show_percent: Number(f.get("noShow")),
-            policy_confirmed: f.get("confirmed") === "on",
-          });
-        }}
-      >
-        <h2>cancellation policy.</h2>
-        <p>
-          Changes apply to new bookings. Existing bookings keep the policy
-          accepted at checkout.
-        </p>
-        <label>
-          free cancellation notice (hours)
-          <input
-            name="hours"
-            type="number"
-            min="0"
-            max="168"
-            defaultValue={policy.cancellation_hours}
-          />
-        </label>
-        <label>
-          late cancellation (%)
-          <input
-            name="late"
-            type="number"
-            min="0"
-            max="100"
-            defaultValue={policy.late_percent}
-          />
-        </label>
-        <label>
-          no-show (%)
-          <input
-            name="noShow"
-            type="number"
-            min="0"
-            max="100"
-            defaultValue={policy.no_show_percent}
-          />
-        </label>
-        <label>
-          <input
-            type="checkbox"
-            name="confirmed"
-            defaultChecked={policy.policy_confirmed}
-          />{" "}
-          I confirm this is the shop’s policy
-        </label>
-        <button disabled={busy}>save policy</button>
-      </form>
-      <form
-        className="details-form"
-        onSubmit={(e) => {
-          e.preventDefault();
-          const f = new FormData(e.currentTarget);
-          void act("/api/staff/settings", {
-            action: "price",
-            barber_id: f.get("barber"),
-            service_id: f.get("service"),
-            price_pence: Math.round(Number(f.get("price")) * 100),
-            duration: Number(f.get("duration")),
-          });
-        }}
-      >
-        <h2>prices & timings.</h2>
-        <label>
-          barber
-          <select name="barber">
-            {diary.barbers.map((b) => (
-              <option value={b.id} key={b.id}>
-                {b.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          service
-          <select name="service">
-            {diary.services.map((s) => (
-              <option value={s.id} key={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          price (pounds)
-          <input name="price" type="number" step="0.01" min="0" required />
-        </label>
-        <label>
-          duration (minutes)
-          <input name="duration" type="number" min="5" max="480" required />
-        </label>
-        <button disabled={busy}>save price</button>
-      </form>
-      <form
-        className="details-form"
-        onSubmit={(e) => {
-          e.preventDefault();
-          const f = new FormData(e.currentTarget);
-          const minute = (v: FormDataEntryValue | null) => {
-            if (!v) return null;
-            const [h, m] = String(v).split(":").map(Number);
-            return h * 60 + m;
-          };
-          void act("/api/staff/settings", {
-            action: "schedule",
-            barber_id: f.get("barber"),
-            iso_weekday: Number(f.get("day")),
-            open_minute: minute(f.get("open")),
-            close_minute: minute(f.get("close")),
-          });
-        }}
-      >
-        <h2>weekly hours.</h2>
-        <label>
-          barber
-          <select name="barber">
-            {diary.barbers.map((b) => (
-              <option value={b.id} key={b.id}>
-                {b.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          day
-          <select name="day">
-            {[
-              "Monday",
-              "Tuesday",
-              "Wednesday",
-              "Thursday",
-              "Friday",
-              "Saturday",
-              "Sunday",
-            ].map((d, i) => (
-              <option value={i + 1} key={d}>
-                {d}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          start (blank for day off)
-          <input name="open" type="time" />
-        </label>
-        <label>
-          finish
-          <input name="close" type="time" />
-        </label>
-        <button disabled={busy}>save working hours</button>
-      </form>
-    </div>
-  );
-}
-
-function Readiness() {
-  const [data, setData] = useState<{
-    checks: { label: string; ready: boolean }[];
-    jobs: {
-      id: string;
-      kind: string;
-      channel: string;
-      status: string;
-      due_at: string;
-      last_error: string | null;
-    }[];
-    note: string;
-  } | null>(null);
-  const [error, setError] = useState("");
-  useEffect(() => {
-    api("/api/staff/readiness")
-      .then(setData)
-      .catch((e) => setError(e.message));
-  }, []);
-  if (!data) return <p role="status">{error || "Checking setup…"}</p>;
-  const ready = data.checks.filter((check) => check.ready).length;
-  return (
-    <div className="readiness-dashboard">
-      <header className="readiness-header">
-        <div>
-          <p className="readiness-kicker">launch</p>
-          <h2>ready for launch?</h2>
-          <p>{data.note}</p>
-        </div>
-        <div
-          className="readiness-score"
-          aria-label={`${ready} of ${data.checks.length} checks complete`}
-        >
-          <strong>
-            {ready}/{data.checks.length}
-          </strong>
-          <span>complete</span>
-        </div>
-      </header>
-      <ul className="readiness-checks">
-        {data.checks.map((c) => (
-          <li
-            className={c.ready ? "is-ready" : "needs-attention"}
-            key={c.label}
-          >
-            <span className="readiness-icon" aria-hidden="true">
-              {c.ready ? "✓" : ""}
-            </span>
-            <span>
-              <strong>{c.label}</strong>
-              <small>{c.ready ? "ready" : "needs attention"}</small>
-            </span>
-          </li>
-        ))}
-      </ul>
-      <section className="message-queue">
-        <header>
-          <div>
-            <p className="queue-kicker">messages</p>
-            <h2>message queue.</h2>
-          </div>
-          <span>{data.jobs.length}</span>
-        </header>
-        {!data.jobs.length ? (
-          <p className="queue-empty">
-            Everything is clear. No pending or failed messages.
-          </p>
-        ) : (
-          <div className="queue-list">
-            {data.jobs.map((j) => (
-              <article className="diary-trim" key={j.id}>
-                <strong>
-                  {j.kind.replaceAll("_", " ")} · {j.channel}
-                </strong>
-                <p>
-                  {j.status} · due{" "}
-                  {new Date(j.due_at).toLocaleString("en-GB", {
-                    timeZone: "Europe/London",
-                  })}
-                </p>
-                {j.last_error && <p>{j.last_error}</p>}
-              </article>
-            ))}
-          </div>
-        )}
-        <small>
-          Check failed deliveries against the provider before retrying. The
-          oldest 50 unsettled messages appear here.
-        </small>
-      </section>
-    </div>
-  );
-}
-
-function DeliveryAlert({ onReview }: { onReview: () => void }) {
-  const [health, setHealth] = useState<{
-      failed: number;
-      delayed: number;
-    } | null>(null),
-    [error, setError] = useState("");
-  useEffect(() => {
-    const load = () => {
-      api("/api/staff/alerts")
-        .then((d) => {
-          setHealth(d);
-          setError("");
-        })
-        .catch(() => setError("Message status could not be checked."));
-    };
-    const first = setTimeout(load, 0);
-    const timer = setInterval(load, 60000);
-    return () => {
-      clearTimeout(first);
-      clearInterval(timer);
-    };
-  }, []);
-  if (error)
-    return (
-      <div className="staff-alert" role="status">
-        {error}
-        <button onClick={onReview}>check messages</button>
-      </div>
-    );
-  if (!health || (!health.failed && !health.delayed)) return null;
-  return (
-    <div className="staff-alert" role="alert">
-      <strong>Booking messages need attention.</strong>
-      <p>
-        {health.failed} failed · {health.delayed} delayed more than 15 minutes.
-      </p>
-      <button onClick={onReview}>review messages</button>
-    </div>
   );
 }

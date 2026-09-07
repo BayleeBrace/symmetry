@@ -2,7 +2,13 @@ import { z } from "zod";
 import { randomBytes, createHash } from "node:crypto";
 import { requireStaff } from "@/lib/staff";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { validDate, shopToday, shopMinute } from "@/lib/booking-data";
+import {
+  validDate,
+  shopToday,
+  shopMinute,
+  parseDate,
+} from "@/lib/booking-data";
+import { getCatalog } from "@/lib/catalog";
 import { sameOrigin, privateJson, publicError } from "@/lib/security";
 const actions = z.discriminatedUnion("action", [
   z.object({
@@ -56,12 +62,13 @@ export async function GET(req: Request) {
       q = q.eq("barber_id", staff.barber_id);
       blocks = blocks.eq("barber_id", staff.barber_id);
     }
-    const [rows, br, bl, sv, pr] = await Promise.all([
+    const [rows, br, bl, sv, pr, catalog] = await Promise.all([
       q,
       db.from("barbers").select("*"),
       blocks,
       db.from("services").select("*").eq("active", true),
       db.from("service_prices").select("*"),
+      getCatalog(),
     ]);
     if (rows.error || br.error || bl.error || sv.error || pr.error)
       throw new Error("The diary could not load");
@@ -74,6 +81,8 @@ export async function GET(req: Request) {
       .limit(30);
     return privateJson({
       staff,
+      date,
+      hours: catalog.hours[parseDate(date).getUTCDay()] ?? null,
       bookings: rows.data,
       barbers: br.data,
       blocks: bl.data,

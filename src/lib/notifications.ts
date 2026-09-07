@@ -135,7 +135,7 @@ export async function processNotifications() {
         }
         if (!process.env.RESEND_API_KEY || !process.env.EMAIL_FROM)
           throw new Error("Email provider not configured");
-        const html = `<div style="background:#efebe3;color:#161616;padding:36px;font:16px Arial,sans-serif"><img src="${escape(siteUrl())}/wordmark-email.png" width="320" height="112" alt="Symmetry" style="display:block;width:320px;max-width:100%;height:auto" /><h1 style="font:normal 28px Arial,sans-serif">${escape(subject)}.</h1><p>${escape(text)}</p><p><a href="${escape(url!)}" style="display:inline-block;background:#161616;color:#fff;padding:14px 20px;text-decoration:none">${job.kind === "waitlist_verify" ? "confirm request" : "view details"}</a></p><p>4 Brewery Terrace, Saundersfoot</p></div>`;
+        const html = `<div style="background:#efebe3;color:#161616;padding:36px;font:16px Arial,sans-serif"><img src="${escape(siteUrl())}/wordmark-email.png" width="320" height="112" alt="Symmetry" style="display:block;width:320px;max-width:100%;height:auto" /><h1 style="font:normal 28px Arial,sans-serif">${escape(subject)}.</h1><p>${escape(text)}</p><p><a href="${escape(url!)}" style="display:inline-block;background:#161616;color:#fff;padding:14px 20px;text-decoration:none">${job.kind === "waitlist_verify" ? "Confirm request" : "View details"}</a></p><p>4 Brewery Terrace, Saundersfoot</p></div>`;
         const response = await fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: {

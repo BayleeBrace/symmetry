@@ -3,6 +3,7 @@ import { DRAFT_KEY } from "@/lib/booking-draft";
 import { useEffect, useState } from "react";
 export function Recovery() {
   const [message, setMessage] = useState("");
+  const [failed, setFailed] = useState(false);
   return (
     <form
       className="details-form"
@@ -17,17 +18,23 @@ export function Recovery() {
           });
           const d = await r.json();
           setMessage(d.message || d.error);
+          setFailed(!r.ok);
         } catch {
           setMessage("Please try again.");
         }
       }}
     >
       <label>
-        booking email
+        Booking email
         <input name="email" type="email" required />
       </label>
-      <button>send my booking link</button>
-      <p role="status">{message}</p>
+      <button>Send my booking link</button>
+      <p
+        role={failed ? "alert" : "status"}
+        className={failed ? "form-error" : ""}
+      >
+        {message}
+      </p>
     </form>
   );
 }
@@ -53,8 +60,8 @@ export function SetupComplete({ session }: { session: string }) {
     <>
       <p role="status">{message}</p>
       <p>
-        <a href="/bookings">check my bookings</a> ·{" "}
-        <a href="/book">return to my saved trims</a>
+        <a href="/bookings">Check my bookings</a> ·{" "}
+        <a href="/book">Return to my saved trims</a>
       </p>
     </>
   );

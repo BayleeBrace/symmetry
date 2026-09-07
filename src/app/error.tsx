@@ -11,8 +11,8 @@ export default function ErrorPage({
     <main className="information-page">
       <BrandHeader />
       <section className="information-hero">
-        <p className="eyebrow">a little interruption</p>
-        <h1>one moment.</h1>
+        <p className="eyebrow">A little interruption</p>
+        <h1>One moment.</h1>
         <p>We couldn’t load this page. Try again in a moment.</p>
         <p>
           If you were saving your card, check your bookings before starting
@@ -20,19 +20,19 @@ export default function ErrorPage({
         </p>
         <div className="hero-actions">
           <button className="primary-button" onClick={() => retry()}>
-            try again
+            Try again
           </button>
           <Link className="quiet-button" href="/bookings">
-            your bookings
+            Your bookings
           </Link>
           <Link className="text-link" href="/">
-            back to shop
+            Back to the shop
           </Link>
         </div>
       </section>
       <footer className="site-footer">
-        <h2>diolch.</h2>
-        <Link href="/privacy">privacy</Link>
+        <h2>Diolch.</h2>
+        <Link href="/privacy">Privacy</Link>
       </footer>
     </main>
   );

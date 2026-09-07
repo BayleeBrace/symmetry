@@ -7,10 +7,10 @@ export function BrandHeader({ compact = false }: { compact?: boolean }) {
   const [open, setOpen] = useState(false);
   const path = usePathname();
   const links = [
-    ["prices", "/prices"],
-    ["hours", "/hours"],
-    ["book", "/book"],
-    ["your bookings", "/bookings"],
+    ["Prices", "/prices"],
+    ["Hours", "/hours"],
+    ["Book", "/book"],
+    ["Your bookings", "/bookings"],
   ];
   return (
     <>
@@ -42,7 +42,7 @@ export function BrandHeader({ compact = false }: { compact?: boolean }) {
         </Link>
         {compact ? (
           <Link href="/" className="back-to-site">
-            back to the site
+            Back to the site
           </Link>
         ) : (
           <>
@@ -53,7 +53,7 @@ export function BrandHeader({ compact = false }: { compact?: boolean }) {
               aria-controls="main-navigation"
               onClick={() => setOpen((v) => !v)}
             >
-              {open ? "close" : "menu"}
+              {open ? "Close" : "Menu"}
             </button>
             <nav
               id="main-navigation"
