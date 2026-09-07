@@ -140,25 +140,27 @@ h1, h2 { font-family: var(--font-serif), serif; font-weight: 300; }
 
 .marketing-home { background: var(--white); }
 .marketing-hero {
-  display: grid;
-  grid-template-columns: minmax(360px, .86fr) minmax(0, 1.14fr);
-  gap: clamp(2rem, 5vw, 6rem);
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
   min-height: calc(100svh - 116px);
   padding: clamp(3.5rem, 7vw, 7rem) max(1.25rem, calc((100vw - 1200px) / 2));
   background: var(--black);
   color: var(--white);
 }
-.marketing-hero-copy { align-self: center; padding-bottom: 4vh; }
-.marketing-hero h1 { max-width: 720px; margin: 1.4rem 0 1.5rem; font-size: clamp(4.7rem, 7vw, 7.7rem); line-height: .82; letter-spacing: -.035em; }
+.marketing-hero::after { content: ""; position: absolute; z-index: 1; inset: 0; background: linear-gradient(90deg, rgba(22,22,22,.98) 0%, rgba(22,22,22,.89) 32%, rgba(22,22,22,.5) 62%, rgba(22,22,22,.12) 100%), linear-gradient(0deg, rgba(22,22,22,.72), transparent 45%); pointer-events: none; }
+.marketing-hero-copy { position: relative; z-index: 2; width: min(100%, 620px); }
+.marketing-hero .eyebrow { color: #d4b9bd; }
+.marketing-hero h1 { max-width: 620px; margin: 1.15rem 0 1.25rem; font-size: clamp(4.4rem, 6.4vw, 7rem); line-height: .84; letter-spacing: -.035em; }
 .hero-intro { color: #c9c5c0; font-size: clamp(1rem, 1.4vw, 1.2rem); line-height: 1.65; }
 .hero-actions { display: flex; align-items: center; gap: 1.7rem; margin: 2rem 0; }
 .primary-button.light { border: 1px solid rgba(255,255,255,.7); }
 .text-link { display: inline-block; width: fit-content; padding-bottom: .22rem; border-bottom: 1px solid currentColor; }
 .light-link { color: var(--white); }
 .hero-address { margin: 3rem 0 0; color: #9c9893; font-size: .78rem; letter-spacing: .05em; }
-.marketing-hero-image { position: relative; align-self: center; min-height: min(67vh, 760px); margin: 0; overflow: hidden; }
-.marketing-hero-image::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 60%, rgba(22,22,22,.18)); pointer-events: none; }
-.marketing-hero-image img { object-fit: cover; object-position: center 46%; }
+.marketing-hero-image { position: absolute; inset: 0; margin: 0; overflow: hidden; }
+.marketing-hero-image img { object-fit: cover; object-position: center 55%; }
 
 .barbers-section {
   display: grid;
@@ -230,9 +232,7 @@ h1, h2 { font-family: var(--font-serif), serif; font-weight: 300; }
   .brand-header nav.open { display: flex; }
   .brand-header nav a { display: block !important; padding: .9rem 0; border-bottom: 1px solid rgba(255,255,255,.12); font-size: .92rem; }
   .brand-header nav a.active::after { display: none; }
-  .marketing-hero { grid-template-columns: 1fr; min-height: auto; gap: 2.5rem; }
-  .marketing-hero-copy { padding: 0; }
-  .marketing-hero-image { min-height: 58vh; }
+  .marketing-hero { min-height: calc(100svh - 104px); }
   .barbers-section, .visit-section { grid-template-columns: 1fr; gap: 3rem; }
   .price-columns { grid-template-columns: 1fr; }
   .price-column > header { min-height: auto; }
@@ -244,11 +244,15 @@ h1, h2 { font-family: var(--font-serif), serif; font-weight: 300; }
   .brand-header, .brand-header.compact { min-height: 92px; padding: 1.15rem 1.25rem; }
   .wordmark img { width: 11.4rem; }
   .wordmark small { margin-top: .55rem; font-size: .52rem; }
-  .marketing-hero { padding: 3.7rem 1.25rem 2.2rem; }
-  .marketing-hero h1 { font-size: clamp(4.15rem, 19vw, 5.4rem); }
-  .hero-actions { align-items: flex-start; flex-direction: column; gap: 1.2rem; }
-  .hero-address { margin-top: 2rem; }
-  .marketing-hero-image { min-height: 53vh; }
+  .marketing-hero { min-height: max(620px, calc(100svh - 92px)); padding: 3rem 1.25rem calc(5.2rem + env(safe-area-inset-bottom)); }
+  .marketing-hero::after { background: linear-gradient(0deg, rgba(22,22,22,.98) 0%, rgba(22,22,22,.86) 45%, rgba(22,22,22,.36) 78%, rgba(22,22,22,.25) 100%); }
+  .marketing-hero-copy { width: 100%; }
+  .marketing-hero h1 { max-width: 350px; margin: .8rem 0 1rem; font-size: clamp(3.55rem, 16vw, 4.3rem); line-height: .86; }
+  .hero-intro { margin-bottom: 0; font-size: .98rem; line-height: 1.5; }
+  .hero-actions { align-items: center; flex-direction: row; gap: 1.35rem; margin: 1.35rem 0; }
+  .hero-actions .primary-button { min-height: 46px; padding-inline: 1.15rem; font-size: .72rem; }
+  .hero-address { margin-top: 1.4rem; color: #b4afa9; }
+  .marketing-hero-image img { object-position: 46% center; }
   .barbers-section, .visit-section { padding: 4.8rem 1.25rem; }
   .section-heading h2, .visit-section h2 { font-size: 4.4rem; }
   .barber-card { grid-template-columns: 74px 1fr auto; gap: 1rem; padding: 1.7rem 0; }
