@@ -19,7 +19,7 @@ Use Node 22 or newer. Run `npm ci`, then `npm run dev`. Checks: `npm test`, `npm
 ## Connect a development project first
 
 1. Apply `supabase/migrations/20260906151133_initial_booking.sql` to a new Supabase development project. Skip it if it was already applied.
-2. Apply `supabase/upgrade.sql` **once** after the initial migration. Back up an existing database first. This upgrade is provided as SQL because migration generation through the Supabase CLI was unavailable here; add it to your project's migration history using the connected CLI before promoting environments.
+2. Apply `supabase/migrations/20260907200703_booking_app_upgrade.sql` after the initial and canonical service-name migrations. It contains the complete booking, policy, notification, rate-limit and staff-diary backend added after the foundation schema.
 3. Copy `.env.example` to `.env.local`, then set the corresponding Vercel variables. Never expose server secrets with a NEXT_PUBLIC prefix. Keep LINK_SIGNING_SECRET stable: rotating it invalidates signed booking links.
 4. Create staff accounts through Supabase Auth. Add their UUIDs to `staff_members` with the corresponding barber_id and role (`owner` or `barber`), active=true. Staff sign in at `/staff` using email/password. Sessions renew through an HTTP-only refresh cookie. Existing staff must sign in once after this update; expiry, revocation and two-tab behaviour still need a real-account trial.
 5. In Stripe test mode configure `/api/stripe/webhook` for `checkout.session.completed`, and set its webhook signing secret. Checkout saves the payment method and then finalizes the booking. Availability is checked again after card setup; a saved card does not guarantee that a slot remains available.

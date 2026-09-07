@@ -14,7 +14,12 @@ test("database rejects blocked moves, enforces fees and keeps rejected batches a
       "utf8",
     ),
   );
-  await db.exec(await readFile("supabase/upgrade.sql", "utf8"));
+  await db.exec(
+    await readFile(
+      "supabase/migrations/20260907200703_booking_app_upgrade.sql",
+      "utf8",
+    ),
+  );
   const pricesBefore = (
     await db.query(
       "select barber_id,service_id,price_pence,duration from service_prices order by barber_id,service_id",
@@ -37,6 +42,17 @@ test("database rejects blocked moves, enforces fees and keeps rejected batches a
       )
     ).rows,
     pricesBefore,
+  );
+  const limiterKey = "a".repeat(64);
+  const attempts = await db.query<{ allowed: boolean }>(
+    `select take_rate_limit($1, 2, 600) as allowed
+     union all select take_rate_limit($1, 2, 600)
+     union all select take_rate_limit($1, 2, 600)`,
+    [limiterKey],
+  );
+  assert.deepEqual(
+    attempts.rows.map(({ allowed }) => allowed),
+    [true, true, false],
   );
 
   const { rows: days } = await db.query<{ d: string }>(
