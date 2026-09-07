@@ -21,7 +21,10 @@ export async function rateLimit(request: Request, scope: string, limit=20, secon
 }
 export function sameOrigin(request:Request) {
  const origin=request.headers.get('origin');
- if(origin && origin!==new URL(request.url).origin && origin!==siteUrl()) throw new Error('Invalid request origin');
+ if (!origin) return;
+ const parsed = new URL(origin);
+ const sameHost = ['http:', 'https:'].includes(parsed.protocol) && parsed.host === request.headers.get('host');
+ if(!sameHost && origin!==new URL(request.url).origin && origin!==siteUrl()) throw new Error('Invalid request origin');
 }
 export const privateJson=(data:unknown,status=200)=>Response.json(data,{status,headers:{'Cache-Control':'private, no-store','Referrer-Policy':'no-referrer'}});
 export function publicError(error:unknown,status=400) { return privateJson({error:error instanceof Error?error.message:'Something went wrong. Please try again.'},status); }

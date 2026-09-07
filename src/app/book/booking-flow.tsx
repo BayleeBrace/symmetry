@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   addDays, BARBERS, BarberChoice, BarberId, BusyPeriod, clock, dateKey, fullDate,
-  isOpen, makeSlots, money, parseDate, Slot, type Service, type OPENING_HOURS,
+  makeSlots, money, parseDate, Slot, type Service, type OPENING_HOURS,
 } from "@/lib/booking-data";
 
 type Draft = Slot & { date: string; service: string; alternatives?: Slot[] };
@@ -32,7 +32,8 @@ export function BookingFlow({ initialDate, initialBarber = "sean", initialServic
   const SERVICES = catalog.services;
   const [policyAccepted,setPolicyAccepted] = useState(false);
   const requestId = useRef<string>("");
-  const [step, setStep] = useState(0);
+  const quickBook = SERVICES.some(s=>s.id===initialService && (initialBarber === "any" ? Object.keys(s.barbers).length : s.barbers[initialBarber]));
+  const [step, setStep] = useState(quickBook ? 2 : 0);
   const [barber, setBarber] = useState<BarberChoice>(initialBarber);
   const [service, setService] = useState(SERVICES.some(s=>s.id===initialService) ? initialService : "");
   const [date, setDate] = useState(initialDate);
@@ -45,7 +46,8 @@ export function BookingFlow({ initialDate, initialBarber = "sean", initialServic
   const [count, setCount] = useState(4);
   const [basket, setBasket] = useState<Draft[]>([]);
   const [pending, setPending] = useState<Draft[] | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(quickBook);
+  const [availabilityReady, setAvailabilityReady] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState<{ reference: string; manageToken?: string } | null>(null);
   const [details, setDetails] = useState<Details>({ name: "", email: "", country: "GB", phone: "", marketing: false, preferences: "" });
@@ -54,7 +56,7 @@ export function BookingFlow({ initialDate, initialBarber = "sean", initialServic
   const formRef = useRef<HTMLFormElement>(null);
 
   const serviceInfo = SERVICES.find((item) => item.id === service);
-  const slots = useMemo(() => service ? makeSlots(date, barber, service, busy, catalog) : [], [date, barber, service, busy, catalog]);
+  const slots = useMemo(() => service && availabilityReady ? makeSlots(date, barber, service, busy, catalog) : [], [date, barber, service, busy, catalog, availabilityReady]);
   const grouped = {
     morning: slots.filter((item) => item.time < 720),
     afternoon: slots.filter((item) => item.time >= 720 && item.time < 1020),
@@ -68,8 +70,9 @@ export function BookingFlow({ initialDate, initialBarber = "sean", initialServic
     fetchBusy(date, barber).then((result) => {
       if (!current) return;
       setBusy(result.busy);
+      setAvailabilityReady(true);
       setMode(result.mode);
-    }).catch((reason: Error) => current && setError(reason.message)).finally(() => current && setLoading(false));
+    }).catch((reason: Error) => { if(current) { setAvailabilityReady(false); setBusy([]); setSlot(null); setError(reason.message); } }).finally(() => current && setLoading(false));
     return () => { current = false; };
   }, [date, barber, service, step]);
 
@@ -79,7 +82,7 @@ export function BookingFlow({ initialDate, initialBarber = "sean", initialServic
 
   const chooseDate = (value: string) => {
     if (value === date) { guide(timesRef); return; }
-    setLoading(true); setDate(value); setSlot(null); setError(""); setPending(null);
+    setAvailabilityReady(false); setLoading(true); setDate(value); setSlot(null); setError(""); setPending(null);
     guide(timesRef);
   };
 
@@ -100,7 +103,7 @@ export function BookingFlow({ initialDate, initialBarber = "sean", initialServic
         setError("One or more weeks need another time.");
       } else {
         setBasket((items) => [...items, ...checked]);
-        setStep(3); setSlot(null); setPending(null);
+        setStep(3); setPolicyAccepted(false); setSlot(null); setPending(null);
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
     } catch (reason) {
@@ -114,7 +117,7 @@ export function BookingFlow({ initialDate, initialBarber = "sean", initialServic
     try {
       for (let offset = 1; offset <= 7; offset++) {
         const nextDate = addDays(pending[index].date, offset);
-        if (!isOpen(nextDate)) continue;
+        if (nextDate > addDays(initialDate,120) || !catalog.hours[parseDate(nextDate).getUTCDay()]) continue;
         const result = await fetchBusy(nextDate, pending[index].barber);
         const choice = makeSlots(nextDate, pending[index].barber, pending[index].service, result.busy, catalog)[0];
         if (choice) {
@@ -123,13 +126,13 @@ export function BookingFlow({ initialDate, initialBarber = "sean", initialServic
         }
       }
       setError("There isn’t another gap in the following week.");
-    } finally { setLoading(false); }
+    } catch (reason) { setError(reason instanceof Error ? reason.message : "The diary could not load. Try again."); } finally { setLoading(false); }
   }
 
   function keepResolved() {
     if (!pending || pending.some((item) => item.alternatives)) return;
     setBasket((items) => [...items, ...pending]);
-    setPending(null); setStep(3); setSlot(null); setError("");
+    setPending(null); setStep(3); setPolicyAccepted(false); setSlot(null); setError("");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -158,7 +161,7 @@ export function BookingFlow({ initialDate, initialBarber = "sean", initialServic
   }, [month]);
 
   const summary = step === 0 ? `with ${barber === "any" ? "any barber" : BARBERS[barber].name}` : step === 1 && serviceInfo ? serviceInfo.name : step === 2 && slot ? `${fullDate(date)} · ${clock(slot.time)} with ${BARBERS[slot.barber].name}` : `${basket.length} booking${basket.length === 1 ? "" : "s"} · £${money(basket.reduce((sum, item) => sum + item.price, 0))}`;
-  const nextDisabled = loading || (step === 1 && !service) || (step === 2 && (!slot || Boolean(pending?.some((item) => item.alternatives)))) || (step === 3 && !basket.length);
+  const nextDisabled = loading || (step === 1 && (!serviceInfo || (barber !== "any" && !serviceInfo.barbers[barber]))) || (step === 2 && (!slot || Boolean(pending?.some((item) => item.alternatives)))) || (step === 3 && !basket.length);
 
   return (
     <>
@@ -169,9 +172,9 @@ export function BookingFlow({ initialDate, initialBarber = "sean", initialServic
         </div>
         <section className="booking-view" key={`${step}-${pending ? "pending" : "normal"}`}>
           {step === 0 && <>
-            <h1>your barber.</h1><p className="intro">Choose your usual chair, or take the first available.</p>
+            <h1>your barber.</h1><p><a className="quiet-button" href="/bookings">book my usual / find my bookings</a></p><p className="intro">Choose your usual chair, or take the first available.</p>
             <div className="choice-grid">
-              {(Object.entries(BARBERS) as [BarberId, typeof BARBERS[BarberId]][]).map(([id, item]) => <button key={id} className={`choice ${barber === id ? "selected" : ""}`} onClick={() => setBarber(id)}><strong>{item.name}</strong><small>{item.role}</small></button>)}
+              {(Object.entries(BARBERS) as [BarberId, typeof BARBERS[BarberId]][]).map(([id, item]) => <button key={id} className={`choice ${barber === id ? "selected" : ""}`} onClick={() => { setBarber(id); if (!SERVICES.find(s=>s.id===service)?.barbers[id]) setService(""); }}><strong>{item.name}</strong><small>{item.role}</small></button>)}
               <button className={`choice any ${barber === "any" ? "selected" : ""}`} onClick={() => setBarber("any")}><strong>any barber</strong><small>show me the first available trim</small></button>
             </div>
           </>}
@@ -192,12 +195,12 @@ export function BookingFlow({ initialDate, initialBarber = "sean", initialServic
               {item.alternatives && <><div className="alternate-grid">{item.alternatives.map((choice) => <button key={`${choice.barber}-${choice.time}`} onClick={() => setPending((items) => items?.map((draft, itemIndex) => itemIndex === index ? { ...draft, ...choice, alternatives: undefined } : draft) ?? null)}>{clock(choice.time)} · {BARBERS[choice.barber].name}</button>)}</div><button className="quiet-button" onClick={() => findNextDay(index)}>try the next open day</button></>}
             </article>) : <>
               <div className="month-nav"><button onClick={() => setMonth(shiftMonth(month, -1))} disabled={month <= initialDate.slice(0, 7)} aria-label="Previous month">‹</button><strong>{monthTitle(month)}</strong><button onClick={() => setMonth(shiftMonth(month, 1))} disabled={month >= addDays(initialDate, 120).slice(0, 7)} aria-label="Next month">›</button></div>
-              <div className="calendar">{["M","T","W","T","F","S","S"].map((day, index) => <span className="weekday" key={`${day}-${index}`}>{day}</span>)}{Array.from({ length: days.offset }).map((_, index) => <span key={`blank-${index}`} />)}{days.dates.map((value) => { const enabled = value >= initialDate && value <= addDays(initialDate, 120) && Boolean(catalog.hours[parseDate(value).getUTCDay()]); return <button className={`date-cell ${date === value ? "selected" : ""}`} disabled={!enabled} onClick={() => chooseDate(value)} key={value}>{Number(value.slice(-2))}</button>; })}</div>
+              <div className="calendar">{["M","T","W","T","F","S","S"].map((day, index) => <span className="weekday" key={`${day}-${index}`}>{day}</span>)}{Array.from({ length: days.offset }).map((_, index) => <span key={`blank-${index}`} />)}{days.dates.map((value) => { const enabled = value >= initialDate && value <= addDays(initialDate, 120) && Boolean(catalog.hours[parseDate(value).getUTCDay()]); return <button className={`date-cell ${date === value ? "selected" : ""}`} disabled={!enabled} onClick={() => chooseDate(value)} aria-label={fullDate(value)} aria-pressed={date === value} key={value}>{Number(value.slice(-2))}</button>; })}</div>
               <h2 ref={timesRef} className="times-heading">{fullDate(date)}</h2>
               <div className="periods">{(["morning","afternoon","evening"] as const).map((name) => <button className={`period ${activePeriod === name ? "selected" : ""}`} disabled={!grouped[name].length} onClick={() => setPeriod(name)} key={name}>{name}</button>)}</div>
               <div className="time-grid">{loading ? <p>Checking the diary…</p> : grouped[activePeriod].map((choice) => <button className={`time-cell ${slot?.time === choice.time && slot.barber === choice.barber ? "selected" : ""}`} key={`${choice.barber}-${choice.time}`} onClick={() => { setSlot(choice); guide(repeatRef); }}>{clock(choice.time)}{barber === "any" && <small>{BARBERS[choice.barber].name} · £{money(choice.price)}</small>}</button>)}</div>
               {!loading && !slots.length && <p className="error-message">No space on this day. Try another date or <a href="/waitlist">join the waitlist</a>.</p>}
-              <div ref={repeatRef} className="repeat-box"><label>repeat this trim<select value={repeat} onChange={(event) => setRepeat(Number(event.target.value))}><option value="0">just once</option><option value="7">every week</option><option value="14">every 2 weeks</option><option value="28">every 4 weeks</option></select></label>{repeat > 0 && <label>trims in total<select value={count} onChange={(event) => setCount(Number(event.target.value))}>{[2,3,4,5,6,8].map((value) => <option value={value} key={value}>{value}</option>)}</select></label>}</div>
+              <div ref={repeatRef} className="repeat-box"><label>repeat this trim<select value={repeat} onChange={(event) => setRepeat(Number(event.target.value))}><option value="0">just once</option><option value="7">every week</option><option value="14">every 2 weeks</option><option value="21">every 3 weeks</option><option value="28">every 4 weeks</option><option value="42">every 6 weeks</option></select></label>{repeat > 0 && <label>trims in total<select value={count} onChange={(event) => setCount(Number(event.target.value))}>{[2,3,4,5,6,8].map((value) => <option value={value} key={value}>{value}</option>)}</select></label>}</div>
             </>}
           </>}
           {step === 3 && !done && <>
@@ -215,11 +218,11 @@ export function BookingFlow({ initialDate, initialBarber = "sean", initialServic
               <button type="submit" hidden>finish</button>
             </form>
           </>}
-          {step === 3 && done && <><h1>{mode === "live" ? "you’re booked." : "preview complete."}</h1><div className="success-card"><p>{mode === "live" ? "Your trims are reserved. Keep your management link below to view or change them." : "The complete journey works. No real trims were reserved and your details were not saved."}</p><p>reference · <strong>{done.reference}</strong></p>{mode === "live" && done.manageToken && <div className="success-actions"><a className="primary-button" href={`/api/calendar?token=${encodeURIComponent(done.manageToken)}`}>add to calendar</a><a className="text-link" href={`/bookings?token=${encodeURIComponent(done.manageToken)}`}>manage your trims</a></div>}</div></>}
+          {step === 3 && done && <><h1>{mode === "live" ? "you’re booked." : "preview complete."}</h1><div className="success-card"><p>{mode === "live" ? "Your trims are reserved. Keep your management link below to view or change them." : "You’ve completed the preview. No real trims were reserved and your details were not saved."}</p><p>reference · <strong>{done.reference}</strong></p>{mode === "live" && done.manageToken && <div className="success-actions"><a className="primary-button" href={`/api/calendar?token=${encodeURIComponent(done.manageToken)}`}>add to calendar</a><a className="text-link" href={`/bookings?token=${encodeURIComponent(done.manageToken)}`}>manage your trims</a></div>}</div></>}
           {error && <p className="error-message" role="alert">{error}</p>}
         </section>
       </div>
-      <div className="booking-bar"><p>{summary}</p><div className={`booking-actions ${step === 0 || done ? "single" : ""}`}>{step > 0 && !done && <button className="back" onClick={() => { setError(""); if (pending) setPending(null); else setStep(step - 1); }}>back</button>}<button disabled={nextDisabled} onClick={() => { setError(""); if (done) { setDone(null); setBasket([]); setStep(0); } else if (step < 2) { if (step === 1) setLoading(true); setStep(step + 1); } else if (step === 2) { if (pending) keepResolved(); else addDates(); } else finishBooking(); }}>{loading ? "checking…" : done ? "start again" : step === 0 ? "choose a trim" : step === 1 ? "choose dates" : step === 2 ? pending ? "keep these dates" : repeat ? "add these trims" : "add this trim" : mode === "live" ? "save card & book" : "finish preview"}</button></div></div>
+      <div className="booking-bar"><p>{summary}</p><div className={`booking-actions ${step === 0 || done ? "single" : ""}`}>{step > 0 && !done && <button className="back" onClick={() => { setError(""); if (pending) setPending(null); else setStep(step - 1); }}>back</button>}<button disabled={nextDisabled} onClick={() => { setError(""); if (done) { setDone(null); setBasket([]); setPolicyAccepted(false); setStep(0); } else if (step < 2) { if (step === 1) { setLoading(true); setAvailabilityReady(false); } setStep(step + 1); } else if (step === 2) { if (pending) keepResolved(); else addDates(); } else finishBooking(); }}>{loading ? "checking…" : done ? "start again" : step === 0 ? "choose a trim" : step === 1 ? "choose dates" : step === 2 ? pending ? "keep these dates" : repeat ? "add these trims" : "add this trim" : mode === "live" ? "save card & book" : "finish preview"}</button></div></div>
     </>
   );
 }

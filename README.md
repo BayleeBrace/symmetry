@@ -24,8 +24,8 @@ Use Node 22 or newer. Run `npm ci`, then `npm run dev`. Checks: `npm test`, `npm
 4. Create staff accounts through Supabase Auth. Add their UUIDs to `staff_members` with the corresponding barber_id and role (`owner` or `barber`), active=true. Staff sign in at `/staff` using email/password. Sessions currently require signing in again when the access token expires.
 5. In Stripe test mode configure `/api/stripe/webhook` for `checkout.session.completed`, and set its webhook signing secret. Checkout saves the payment method and then finalizes the booking. Availability is checked again after card setup; a saved card does not guarantee that a slot remains available.
 6. Configure Resend with a verified EMAIL_FROM address. Live booking creation requires email and webhook configuration. Configure Twilio for optional SMS. Notifications are operational booking messages; the separate marketing checkbox remains unticked by default. No marketing campaigns are sent by this app.
-7. Configure an external scheduler to call `GET /api/jobs` every minute with `Authorization: Bearer <CRON_SECRET>`. This is required for queued confirmations, reminders and waitlist alerts. The worker is not automatically scheduled by this ZIP. Use a scheduler and hosting plan that support the frequency and function duration required.
-8. Sign in as owner and confirm the cancellation policy. Keep CARD_CHARGES_ENABLED=false until test-card workflows and the fee policy have been signed off. Owner-initiated staff cancellation is treated as a courtesy cancellation without a fee.
+7. This package includes a Vercel cron calling `/api/jobs` every minute (requires a plan supporting minute-level jobs, such as Pro). Set CRON_SECRET and enable NOTIFICATIONS_ENABLED only after configuring your intended test/live providers. Cron runs on production deployments; trigger the protected endpoint manually in staging. See https://vercel.com/docs/cron-jobs.
+8. Sign in as owner and confirm the cancellation policy. Set BOOKINGS_ENABLED=true only for the intended test/live environment. Keep CARD_CHARGES_ENABLED=false until test-card workflows and the fee policy have been signed off. Owner-initiated staff cancellation is treated as a courtesy cancellation without a fee.
 9. Keep SITE_LIVE=false and SITE_PASSWORD set during preview. Set SITE_LIVE=true at launch; the public sitemap then expands to the main shop pages.
 
 ## Optional app features
@@ -38,9 +38,20 @@ Wallet buttons appear only when the relevant certificates/service account variab
 
 - The production build and local PostgreSQL-compatible tests passed. Real Supabase permissions, simultaneous requests, provider delivery, Stripe authentication/failures and browser/device flows still need end-to-end staging verification. No real cards were charged or messages sent here.
 - Run Supabase security/performance advisors after applying the SQL. Reconcile existing Fresha bookings before opening availability.
-- Review `notification_jobs` for failed or interrupted deliveries. Provider acceptance is not proof of delivery. Failures do not automatically retry: reconcile the provider record before retrying to avoid duplicate SMS. Delivery webhooks and a dedicated message-monitoring screen are not included.
+- Review `notification_jobs` for failed or interrupted deliveries. Provider acceptance is not proof of delivery. Failures do not automatically retry: reconcile the provider record before retrying to avoid duplicate SMS. The owner’s launch-checks tab shows the oldest 50 unsettled messages. Delivery webhooks are not included.
 - An interrupted fee with no recorded PaymentIntent pauses for manual Stripe reconciliation. Recorded intents are reused rather than creating another charge. Failed/authentication-required fees need owner handling; no unattended fee collection is enabled.
 - Weekly schedule changes are blocked when future bookings exist; reconcile those bookings first or use dated diary blocks.
 - Reminders are queued for 24 hours before a trim. Scheduler delays affect delivery time. Monitor queue backlog and tune worker capacity before scaling.
 - Reports show completed service value, not bank/payment reconciliation. Staff phone OTP, native mobile apps, automatic Wallet updates and full marketing campaigns remain future work.
 - Agree customer privacy/retention wording and retention cleanup before collecting live customer data. Do not commit .env.local or certificate/private-key files.
+
+
+## Latest readiness pass
+
+“Book my usual” links now start directly at dates, retaining the selected barber and service. Customers still see the current service and review the booking before saving a card. Unavailable services fall back to selection.
+
+Confirmation/reminder messages and customer booking pages show the precise free-cancellation deadline in Europe/London, including daylight-saving changes. Reminders for trims that have started or been cancelled are suppressed. Waitlist links preserve the requested date. Availability failures no longer leave selectable stale times.
+
+The owner-only **launch checks** tab reports configuration presence and pending/failed messages. It never displays secret values, and it does not certify delivery or payment success.
+
+See LAUNCH-CHECKS.md for the remaining staging and Fresha cutover checks. Live customer bookings and messaging both default to disabled independently of the website teaser switch.

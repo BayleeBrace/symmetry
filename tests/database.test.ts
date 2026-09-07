@@ -26,5 +26,14 @@ test('database rejects blocked moves, enforces fees and keeps rejected batches a
  const {rows:cancelled}=await db.query<{status:string;fee_pence:number;fee_status:string}>(`select status,fee_pence,fee_status from public.bookings where id=$1`,[b.id]);assert.equal(cancelled[0].status,'cancelled');assert.equal(cancelled[0].fee_pence,900);assert.equal(cancelled[0].fee_status,'review');
  await call('c',[{date:day,time:600,barber:'sean',service:'cut'}]);
  assert((await db.query<{n:number}>(`select count(*)::integer n from public.notification_jobs`)).rows[0].n>0);
+ const payload={customer:{name:'Card Test',email:'card@example.com',country:'GB',phone:'+447700900123',marketing:false},policy:{cancellation_hours:6,late_percent:50,no_show_percent:100},appointments:[{date:day,time:900,barber:'travis',service:'cut',price:17,duration:30}]};
+ const draft=(await db.query<{id:string}>(`insert into public.booking_attempts(id,token_hash,payload) values(gen_random_uuid(),$1,$2::jsonb) returning id`,['d'.repeat(64),JSON.stringify(payload)])).rows[0].id;
+ const finalize=()=>db.query<{id:string}>(`select public.finalize_card_booking($1,'cus_test','pm_test') id`,[draft]);
+ const completed=(await finalize()).rows[0].id;
+ assert.equal((await finalize()).rows[0].id,completed,'duplicate webhook returns the existing group');
+ assert.equal((await db.query<{n:number}>(`select count(*)::integer n from public.bookings where group_id=$1`,[completed])).rows[0].n,1);
+ const invalid=(await db.query<{id:string}>(`insert into public.booking_attempts(id,token_hash,payload) values(gen_random_uuid(),$1,$2::jsonb) returning id`,['e'.repeat(64),JSON.stringify({...payload,appointments:[{...payload.appointments[0],time:960,price:1}]})])).rows[0].id;
+ await assert.rejects(db.query(`select public.finalize_card_booking($1,'cus_test','pm_test')`,[invalid]),/Price or duration changed/);
+ assert.equal((await db.query<{allowed:boolean}>(`select has_function_privilege('anon','public.finalize_card_booking(uuid,text,text)','execute') allowed`)).rows[0].allowed,false);
  await db.close();
 });

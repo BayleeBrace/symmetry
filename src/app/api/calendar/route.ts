@@ -6,7 +6,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const querySchema = z.object({
-  token: z.string().min(20).max(200),
+  token: z.string().min(20).max(2000),
   booking: z.uuid().optional(),
 });
 

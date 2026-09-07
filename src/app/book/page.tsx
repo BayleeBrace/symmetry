@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { BrandHeader } from "@/components/brand-header";
 import { getCatalog, getPolicy } from "@/lib/catalog";
 import { BookingFlow } from "./booking-flow";
-import { addDays, BarberChoice, BARBERS, isOpen, shopToday } from "@/lib/booking-data";
+import { addDays, BarberChoice, BARBERS, parseDate, shopToday, validDate } from "@/lib/booking-data";
 
 export const metadata: Metadata = {
   title: "Book a Trim",
@@ -23,12 +23,12 @@ export const metadata: Metadata = {
 };
 export const dynamic = "force-dynamic";
 
-export default async function BookPage({ searchParams }: { searchParams: Promise<{ barber?: string; service?: string }> }) {
-  const { barber, service } = await searchParams;
+export default async function BookPage({ searchParams }: { searchParams: Promise<{ barber?: string; service?: string; date?: string }> }) {
+  const { barber, service, date } = await searchParams;
   const catalog = await getCatalog(); const policy = await getPolicy();
   const initialBarber: BarberChoice = barber && barber in BARBERS ? barber as keyof typeof BARBERS : "sean";
-  let firstDate = shopToday();
-  while (!isOpen(firstDate)) firstDate = addDays(firstDate, 1);
+  let firstDate = date && validDate(date) && date >= shopToday() && date <= addDays(shopToday(),120) ? date : shopToday();
+  for(let i=0; i<7 && !catalog.hours[parseDate(firstDate).getUTCDay()]; i++) firstDate = addDays(firstDate,1);
   return (
     <main className="app-shell">
       <BrandHeader compact />
