@@ -38,6 +38,8 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
+/supabase/.temp/
+__pycache__/
 next-env.d.ts
 
 !.env.example

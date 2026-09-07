@@ -1,4 +1,4 @@
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BrandHeader } from "@/components/brand-header";
@@ -8,11 +8,13 @@ import { BARBERS, money } from "@/lib/booking-data";
 
 export const metadata: Metadata = {
   title: "Barber Prices in Saundersfoot",
-  description: "See prices and timings for cuts, skin fades and beard trims with Sean, Travis and Dylan at Symmetry Barbers in Saundersfoot.",
+  description:
+    "See prices for cuts, skin fades and beard trims with Sean, Travis and Dylan at Symmetry Barbers in Saundersfoot.",
   alternates: { canonical: "/prices" },
   openGraph: {
     title: "Barber Prices | Symmetry Saundersfoot",
-    description: "Prices and timings for cuts, skin fades and beard trims with Sean, Travis and Dylan.",
+    description:
+      "Prices for cuts, skin fades and beard trims with Sean, Travis and Dylan.",
     url: "/prices",
     type: "website",
   },
@@ -24,35 +26,56 @@ export const metadata: Metadata = {
 };
 
 export default async function PricesPage() {
-  const {services:SERVICES} = await getCatalog();
+  const { services: SERVICES } = await getCatalog();
   return (
     <main className="information-page">
       <BrandHeader />
       <section className="information-hero">
         <p className="eyebrow">cuts, fades and beards</p>
         <h1>prices.</h1>
-        <p>Choose your barber to see their prices and timings.</p>
+        <p>Choose your barber to see their prices.</p>
       </section>
-      <section className="price-columns">
-        {Object.entries(BARBERS).map(([id, barber]) => (
-          <article className="price-column" key={id}>
-            <header>
-              <h2>{barber.name}</h2>
-              <p>{barber.role}</p>
-            </header>
-            {SERVICES.map((service) => {
-              const detail = service.barbers[id as keyof typeof BARBERS];
-              if(!detail) return null;
-              return (
-                <div className="price-row" key={service.id}>
-                  <div><h3>{service.name}</h3><small>{detail.duration} min</small></div>
-                  <strong>£{money(detail.price)}</strong>
-                </div>
-              );
-            })}
-            <Link className="primary-button" href={`/book?barber=${id}`}>book with {barber.name}</Link>
-          </article>
-        ))}
+      <section className="price-panel">
+        <table className="brand-price-table">
+          <caption className="sr-only">
+            Service prices in pounds by barber
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">service</th>
+              {(["dylan", "travis", "sean"] as const).map((id) => (
+                <th key={id} scope="col" aria-label={BARBERS[id].name}>
+                  {id[0]}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {SERVICES.map((service) => (
+              <tr key={service.id}>
+                <th scope="row">{service.name}</th>
+                {(["dylan", "travis", "sean"] as const).map((id) => (
+                  <td key={id}>
+                    {service.barbers[id] ? (
+                      money(service.barbers[id].price)
+                    ) : (
+                      <span aria-label="Not offered">—</span>
+                    )}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <p className="price-legend">d dylan · t travis · s sean</p>
+        <p className="price-note">prices in pounds.</p>
+        <div className="price-book-links">
+          {(["dylan", "travis", "sean"] as const).map((id) => (
+            <Link className="quiet-button" key={id} href={`/book?barber=${id}`}>
+              book with {BARBERS[id].name}
+            </Link>
+          ))}
+        </div>
       </section>
       <SiteFooter />
     </main>

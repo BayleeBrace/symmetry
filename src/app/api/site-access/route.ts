@@ -1,11 +1,21 @@
+import { sameOrigin, rateLimit, publicError } from "@/lib/security";
 import { NextResponse } from "next/server";
 import { createSiteAccessToken, SITE_ACCESS_COOKIE } from "@/lib/site-access";
 
 export async function POST(request: Request) {
+  try {
+    sameOrigin(request);
+    await rateLimit(request, "site-access", 10, 600);
+  } catch (error) {
+    return publicError(error);
+  }
   const sitePassword = process.env.SITE_PASSWORD;
 
   if (!sitePassword) {
-    return NextResponse.json({ error: "Preview access is not configured." }, { status: 503 });
+    return NextResponse.json(
+      { error: "Preview access is not configured." },
+      { status: 503 },
+    );
   }
 
   let submittedPassword = "";

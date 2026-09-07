@@ -67,3 +67,9 @@ Trims already added to a booking are saved in the same tab for up to two hours, 
 Owners see a diary warning for failed messages or messages delayed more than 15 minutes. Optional owner push alerts require VAPID configuration, a subscribed owner device and the notification worker; alerts are attempted at most once per hour. This cannot detect a stopped scheduler or database outage: external monitoring remains necessary. Customer messages are not blindly retried.
 
 See `handover/TRIAL-AND-SWITCH.md` for the lads’ trial and Fresha reconciliation. `scripts/check-handover.py` compares normalized booking CSVs without importing anything or contacting customers.
+
+## September site audit fixes
+
+See `AUDIT-FOLLOWUP.md` for the visual, SEO, privacy, contact and security changes, verification results and outstanding owner/account tasks. Contact fields are configurable; the privacy notice remains a clearly marked draft until reviewed. No DNS records or provider accounts were changed.
+
+Apply `supabase/migrations/20260907190113_canonical_service_names.sql` after the existing setup to align database service labels. It changes names only. Set FORMERLY_UNTIL to the first date without the old-name line once the launch date is agreed.

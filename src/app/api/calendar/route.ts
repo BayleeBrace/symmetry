@@ -16,26 +16,37 @@ const calendarTime = (date: string, minutes: number) => {
   return `${date.replaceAll("-", "")}T${hours}${mins}00`;
 };
 
-const escapeCalendarText = (value: string) => value
-  .replaceAll("\\", "\\\\")
-  .replaceAll(";", "\\;")
-  .replaceAll(",", "\\,")
-  .replaceAll("\n", "\\n");
+const escapeCalendarText = (value: string) =>
+  value
+    .replaceAll("\\", "\\\\")
+    .replaceAll(";", "\\;")
+    .replaceAll(",", "\\,")
+    .replaceAll("\n", "\\n");
 
 export async function GET(request: NextRequest) {
-  const parsed = querySchema.safeParse(Object.fromEntries(request.nextUrl.searchParams));
-  if (!parsed.success) return new Response("Invalid calendar link.", { status: 400 });
+  const parsed = querySchema.safeParse(
+    Object.fromEntries(request.nextUrl.searchParams),
+  );
+  if (!parsed.success)
+    return new Response("Invalid calendar link.", { status: 400 });
 
   const group = await loadManagedBookingGroup(parsed.data.token);
-  if (!group) return new Response("Those bookings could not be found.", { status: 404 });
+  if (!group)
+    return new Response("Those bookings could not be found.", { status: 404 });
 
-  const appointments = group.appointments.filter((item) =>
-    ["booked", "arrived"].includes(item.status) && (!parsed.data.booking || item.id === parsed.data.booking),
+  const appointments = group.appointments.filter(
+    (item) =>
+      ["booked", "arrived"].includes(item.status) &&
+      (!parsed.data.booking || item.id === parsed.data.booking),
   );
-  if (!appointments.length) return new Response("There are no active trims to add.", { status: 404 });
+  if (!appointments.length)
+    return new Response("There are no active trims to add.", { status: 404 });
 
   const manageUrl = `${request.nextUrl.origin}/bookings?token=${encodeURIComponent(parsed.data.token)}`;
-  const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+  const stamp = new Date()
+    .toISOString()
+    .replace(/[-:]/g, "")
+    .replace(/\.\d{3}/, "");
   const events = appointments.flatMap((appointment) => [
     "BEGIN:VEVENT",
     `UID:${appointment.id}@symmetrywales.com`,

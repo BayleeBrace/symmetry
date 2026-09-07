@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import sharp from "sharp";
 import { ImageResponse } from "next/og";
 
 export const OG_IMAGE_SIZE = { width: 1200, height: 630 };
@@ -10,7 +11,11 @@ type OgImageOptions = {
   detail: string;
 };
 
-export async function createBrandedOgImage({ eyebrow, title, detail }: OgImageOptions) {
+export async function createBrandedOgImage({
+  eyebrow,
+  title,
+  detail,
+}: OgImageOptions) {
   const [photo, wordmark, serif, sans] = await Promise.all([
     readFile(join(process.cwd(), "public/images/shop-hero.jpg")),
     readFile(join(process.cwd(), "public/symmetry-wordmark.svg")),
@@ -21,7 +26,7 @@ export async function createBrandedOgImage({ eyebrow, title, detail }: OgImageOp
   const photoUrl = `data:image/jpeg;base64,${photo.toString("base64")}`;
   const wordmarkUrl = `data:image/svg+xml;base64,${wordmark.toString("base64")}`;
 
-  return new ImageResponse(
+  const rendered = new ImageResponse(
     <div
       style={{
         display: "flex",
@@ -42,7 +47,8 @@ export async function createBrandedOgImage({ eyebrow, title, detail }: OgImageOp
         height="1600"
         style={{
           position: "absolute",
-          inset: 0,
+          top: 0,
+          left: 0,
           width: "100%",
           height: "100%",
           objectFit: "cover",
@@ -53,7 +59,10 @@ export async function createBrandedOgImage({ eyebrow, title, detail }: OgImageOp
         style={{
           display: "flex",
           position: "absolute",
-          inset: 0,
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: "100%",
           background: "rgba(15,15,15,.5)",
         }}
       />
@@ -61,8 +70,12 @@ export async function createBrandedOgImage({ eyebrow, title, detail }: OgImageOp
         style={{
           display: "flex",
           position: "absolute",
-          inset: 0,
-          backgroundImage: "linear-gradient(90deg, rgba(22,22,22,.94) 0%, rgba(22,22,22,.8) 48%, rgba(22,22,22,.22) 100%)",
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: "100%",
+          backgroundImage:
+            "linear-gradient(90deg, rgba(22,22,22,.94) 0%, rgba(22,22,22,.8) 48%, rgba(22,22,22,.22) 100%)",
         }}
       />
       <div
@@ -104,7 +117,7 @@ export async function createBrandedOgImage({ eyebrow, title, detail }: OgImageOp
             style={{
               display: "flex",
               marginBottom: 14,
-              color: "#d1aeb3",
+              color: "rgba(255,255,255,.7)",
               fontFamily: "Brand Sans",
               fontSize: 16,
               fontWeight: 300,
@@ -120,7 +133,7 @@ export async function createBrandedOgImage({ eyebrow, title, detail }: OgImageOp
               fontFamily: "Brand Serif",
               fontSize: 72,
               fontWeight: 300,
-              lineHeight: 0.84,
+              lineHeight: 1.05,
               letterSpacing: "-0.025em",
               whiteSpace: "pre-line",
             }}
@@ -133,7 +146,7 @@ export async function createBrandedOgImage({ eyebrow, title, detail }: OgImageOp
               width: 72,
               height: 2,
               margin: "23px 0 18px",
-              background: "#7b3d46",
+              background: "#4a2026",
             }}
           />
           <div
@@ -159,4 +172,10 @@ export async function createBrandedOgImage({ eyebrow, title, detail }: OgImageOp
       ],
     },
   );
+  const jpeg = await sharp(Buffer.from(await rendered.arrayBuffer()))
+    .jpeg({ quality: 82, mozjpeg: true })
+    .toBuffer();
+  return new Response(new Uint8Array(jpeg), {
+    headers: { "Content-Type": "image/jpeg" },
+  });
 }

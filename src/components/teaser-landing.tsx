@@ -21,7 +21,13 @@ export function TeaserLanding() {
       });
 
       if (!response.ok) {
-        setMessage(response.status === 401 ? "That password isn’t quite right." : "Preview access isn’t available yet.");
+        setMessage(
+          response.status === 429
+            ? "Too many attempts. Please wait a few minutes."
+            : response.status === 401
+              ? "That password isn’t quite right."
+              : "Preview access isn’t available yet.",
+        );
         return;
       }
 
@@ -34,27 +40,45 @@ export function TeaserLanding() {
   }
 
   return (
-    <main className="teaser-page">
+    <main id="main-content" tabIndex={-1} className="teaser-page">
       <Image
         className="teaser-background"
         src="/images/shop-hero.jpg"
         alt=""
         fill
         priority
-        quality={92}
+        quality={85}
         sizes="100vw"
       />
       <div className="teaser-overlay" />
 
       <div className="teaser-content">
         <header className="teaser-brand">
-          <Image src="/symmetry-wordmark.svg" alt="Symmetry" width={540} height={118} priority />
-          <p>barbers · saundersfoot</p>
+          <Image
+            className="full-mark"
+            src="/symmetry-wordmark.svg"
+            alt="Symmetry"
+            width={264}
+            height={38}
+            priority
+          />
+
+          <Image
+            className="monogram"
+            src="/symmetry-monogram.svg"
+            width={44}
+            height={44}
+            alt="Symmetry"
+          />
         </header>
 
         <div className="teaser-message">
           <p className="eyebrow">coming soon</p>
-          <h1>same chairs.<br />new name.</h1>
+          <h1>
+            same chairs.
+            <br />
+            new name.
+          </h1>
         </div>
 
         <form className="teaser-form" onSubmit={unlock}>
@@ -74,7 +98,9 @@ export function TeaserLanding() {
               {isSubmitting ? "opening…" : "enter"}
             </button>
           </div>
-          <p className="teaser-form-message" aria-live="polite">{message}</p>
+          <p className="teaser-form-message" aria-live="polite">
+            {message}
+          </p>
         </form>
       </div>
     </main>

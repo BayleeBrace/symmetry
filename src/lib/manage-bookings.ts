@@ -19,7 +19,11 @@ export type ManagedAppointment = {
 export type ManagedBookingGroup = {
   id: string;
   customer: { name: string; email: string; preferences?: string };
-  policy?: { cancellation_hours: number; late_percent: number; no_show_percent: number };
+  policy?: {
+    cancellation_hours: number;
+    late_percent: number;
+    no_show_percent: number;
+  };
   appointments: ManagedAppointment[];
 };
 
@@ -27,34 +31,53 @@ export function hashManageToken(token: string) {
   return createHash("sha256").update(token).digest("hex");
 }
 
-export async function loadManagedBookingGroup(token: string): Promise<ManagedBookingGroup | null> {
+export async function loadManagedBookingGroup(
+  token: string,
+): Promise<ManagedBookingGroup | null> {
   if (!hasSupabase()) return null;
 
   const supabase = createAdminClient();
   const signedId = verifyLink(token, "manage");
-  const query = supabase.from("booking_groups").select("id,customer_id,policy_snapshot");
-  const { data: group, error: groupError } = await (signedId ? query.eq("id", signedId) : query.eq("manage_token_hash", hashManageToken(token))).maybeSingle();
+  const query = supabase
+    .from("booking_groups")
+    .select("id,customer_id,policy_snapshot");
+  const { data: group, error: groupError } = await (
+    signedId
+      ? query.eq("id", signedId)
+      : query.eq("manage_token_hash", hashManageToken(token))
+  ).maybeSingle();
 
   if (groupError || !group) return null;
 
   const [customerResult, bookingResult] = await Promise.all([
-    supabase.from("customers").select("name,email,preferences").eq("id", group.customer_id).single(),
+    supabase
+      .from("customers")
+      .select("name,email,preferences")
+      .eq("id", group.customer_id)
+      .single(),
     supabase
       .from("bookings")
-      .select("id,barber_id,service_id,local_date,start_minute,duration,price_pence,status")
+      .select(
+        "id,barber_id,service_id,local_date,start_minute,duration,price_pence,status",
+      )
       .eq("group_id", group.id)
       .order("local_date")
       .order("start_minute"),
   ]);
 
-  if (customerResult.error || bookingResult.error || !customerResult.data) return null;
+  if (customerResult.error || bookingResult.error || !customerResult.data)
+    return null;
 
   if (!bookingResult.data.length) {
     return { id: group.id, customer: customerResult.data, appointments: [] };
   }
 
-  const barberIds = [...new Set(bookingResult.data.map((item) => item.barber_id))];
-  const serviceIds = [...new Set(bookingResult.data.map((item) => item.service_id))];
+  const barberIds = [
+    ...new Set(bookingResult.data.map((item) => item.barber_id)),
+  ];
+  const serviceIds = [
+    ...new Set(bookingResult.data.map((item) => item.service_id)),
+  ];
   const [barberResult, serviceResult] = await Promise.all([
     supabase.from("barbers").select("id,slug,name").in("id", barberIds),
     supabase.from("services").select("id,slug,name").in("id", serviceIds),
@@ -69,16 +92,22 @@ export async function loadManagedBookingGroup(token: string): Promise<ManagedBoo
     const service = services.get(item.service_id);
     if (!barber || !service) return [];
 
-    return [{
-      id: item.id,
-      date: item.local_date,
-      time: item.start_minute,
-      duration: item.duration,
-      pricePence: item.price_pence,
-      status: item.status,
-      barber: { id: barber.id, slug: barber.slug as BarberId, name: barber.name },
-      service: { id: service.id, slug: service.slug, name: service.name },
-    } satisfies ManagedAppointment];
+    return [
+      {
+        id: item.id,
+        date: item.local_date,
+        time: item.start_minute,
+        duration: item.duration,
+        pricePence: item.price_pence,
+        status: item.status,
+        barber: {
+          id: barber.id,
+          slug: barber.slug as BarberId,
+          name: barber.name,
+        },
+        service: { id: service.id, slug: service.slug, name: service.name },
+      } satisfies ManagedAppointment,
+    ];
   });
 
   return {
