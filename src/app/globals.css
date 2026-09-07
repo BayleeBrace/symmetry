@@ -449,7 +449,7 @@ p[role="alert"] {
 }
 .staff-content h1 {
   margin-bottom: 1rem;
-  font-size: clamp(4rem, 9vw, 7rem);
+  font-size: clamp(3.55rem, 6.4vw, 6rem);
   line-height: 0.85;
 }
 @keyframes enter {
@@ -562,12 +562,12 @@ p[role="alert"] {
   background:
     linear-gradient(
       90deg,
-      rgba(22, 22, 22, 0.98) 0%,
-      rgba(22, 22, 22, 0.89) 32%,
-      rgba(22, 22, 22, 0.5) 62%,
-      rgba(22, 22, 22, 0.12) 100%
+      rgba(22, 22, 22, 0.9) 0%,
+      rgba(22, 22, 22, 0.72) 32%,
+      rgba(22, 22, 22, 0.3) 62%,
+      rgba(22, 22, 22, 0.06) 100%
     ),
-    linear-gradient(0deg, rgba(22, 22, 22, 0.72), transparent 45%);
+    linear-gradient(0deg, rgba(22, 22, 22, 0.55), transparent 45%);
   pointer-events: none;
 }
 .marketing-hero-copy {
@@ -635,7 +635,7 @@ p[role="alert"] {
 .section-heading h2,
 .visit-section h2 {
   margin: 1rem 0 1.2rem;
-  font-size: clamp(4rem, 7vw, 7rem);
+  font-size: clamp(3.4rem, 5.6vw, 5.5rem);
   line-height: 0.86;
 }
 .section-heading > p:last-child,
@@ -755,7 +755,7 @@ p[role="alert"] {
 .hours-page-grid h1,
 .manage-page h1 {
   margin: 1rem 0;
-  font-size: clamp(4.5rem, 9vw, 8rem);
+  font-size: clamp(3.55rem, 6.4vw, 6rem);
   line-height: 0.85;
 }
 .information-hero > p:last-child,
@@ -1059,7 +1059,7 @@ p[role="alert"] {
   .information-hero h1,
   .hours-page-grid h1,
   .manage-page h1 {
-    font-size: 4.8rem;
+    font-size: 3.8rem;
   }
   .success-actions,
   .manage-intro-row {
@@ -1753,12 +1753,24 @@ h2 {
 }
 .price-book-links {
   display: flex;
-  gap: 0.8rem;
+  align-items: center;
+  gap: 0.8rem 1.4rem;
   flex-wrap: wrap;
   margin-top: 2rem;
 }
-.price-book-links .quiet-button {
-  background: transparent;
+.price-book-with {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+.price-book-with a {
+  color: var(--black);
+  text-decoration: underline;
+  text-underline-offset: 0.25em;
+}
+@media (max-width: 600px) {
+  .price-book-links .primary-button {
+    width: 100%;
+  }
 }
 .barber-card {
   grid-template-columns: 1fr auto;
@@ -1786,9 +1798,41 @@ h2 {
   background: white;
   color: var(--black);
   display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 38px;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
+  min-height: auto;
+  padding: 22px max(24px, 4vw);
+  border-bottom: 1px solid var(--line);
+}
+.brand-header.compact .header-note {
+  margin-right: auto;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+.brand-header.compact .back-to-site {
+  margin-left: auto;
+}
+@media (max-width: 600px) {
+  .brand-header.compact,
+  .brand-header.compact.compact {
+    padding: 16px 20px;
+  }
+  .brand-header.compact .full-mark {
+    display: none;
+  }
+  .brand-header.compact .monogram {
+    display: block;
+    width: 44px;
+    height: 44px;
+  }
+  .brand-header.compact .header-note {
+    order: 3;
+    flex-basis: 100%;
+    margin: 0;
+  }
 }
 .back-to-site {
   font-size: 0.85rem;
@@ -1892,12 +1936,6 @@ h2 {
 }
 .teaser-brand {
   padding-block: 44px;
-}
-.booking-rename {
-  width: min(100% - 2.5rem, 720px);
-  margin: 1rem auto;
-  color: var(--muted);
-  font-size: 0.85rem;
 }
 @media (max-width: 340px) {
   .footer-wordmark {

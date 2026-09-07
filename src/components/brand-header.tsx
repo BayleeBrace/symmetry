@@ -3,7 +3,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-export function BrandHeader({ compact = false }: { compact?: boolean }) {
+export function BrandHeader({
+  compact = false,
+  note,
+}: {
+  compact?: boolean;
+  note?: string;
+}) {
   const [open, setOpen] = useState(false);
   const path = usePathname();
   const links = [
@@ -41,9 +47,12 @@ export function BrandHeader({ compact = false }: { compact?: boolean }) {
           />
         </Link>
         {compact ? (
-          <Link href="/" className="back-to-site">
-            Back to the site
-          </Link>
+          <>
+            {note && <small className="header-note">{note}</small>}
+            <Link href="/" className="back-to-site">
+              Back to the site
+            </Link>
+          </>
         ) : (
           <>
             <button

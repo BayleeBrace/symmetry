@@ -70,11 +70,15 @@ export default async function PricesPage() {
         <p className="price-legend">D Dylan · T Travis · S Sean</p>
         <p className="price-note">Prices in pounds.</p>
         <div className="price-book-links">
-          {(["dylan", "travis", "sean"] as const).map((id) => (
-            <Link className="quiet-button" key={id} href={`/book?barber=${id}`}>
-              Book with {BARBERS[id].name}
-            </Link>
-          ))}
+          <Link className="primary-button" href="/book">
+            Book a trim
+          </Link>
+          <span className="price-book-with">
+            or book with{" "}
+            <Link href="/book?barber=dylan">{BARBERS.dylan.name}</Link>,{" "}
+            <Link href="/book?barber=travis">{BARBERS.travis.name}</Link> or{" "}
+            <Link href="/book?barber=sean">{BARBERS.sean.name}</Link>
+          </span>
         </div>
       </section>
       <SiteFooter />

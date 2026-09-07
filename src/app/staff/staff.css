@@ -191,10 +191,39 @@
   margin: 0 0 16px;
   color: var(--muted);
 }
+.day-sticky {
+  display: contents;
+}
 .chair-pills {
   display: none;
   gap: 8px;
   margin-bottom: 18px;
+}
+.next-up {
+  display: none;
+  width: 100%;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  border: 1px solid var(--black);
+  background: var(--white);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.next-up-label {
+  flex: 0 0 auto;
+  font-size: 0.7rem;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.next-up-body {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .chair-pills button {
   min-height: 44px;
@@ -228,6 +257,7 @@
   font-variant-numeric: tabular-nums;
 }
 .chair {
+  position: relative;
   min-width: 0;
 }
 .chair-head {
@@ -518,6 +548,12 @@
   color: var(--black);
   font: inherit;
 }
+.move-live {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
 .sheet-fee {
   margin-top: 1rem;
   padding-top: 1rem;
@@ -772,6 +808,136 @@
   font-weight: 400;
 }
 
+/* Chair view, running behind, customer history */
+.view-toggle {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 16px;
+}
+.view-toggle button {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  background: var(--white);
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+.view-toggle button[aria-pressed="true"] {
+  border-color: var(--black);
+  background: var(--black);
+  color: var(--white);
+}
+.chair-head span:first-child {
+  margin-right: auto;
+}
+.chair-behind-toggle {
+  font-size: 0.78rem;
+}
+.chair-behind {
+  position: absolute;
+  z-index: 4;
+  top: 48px;
+  left: 0;
+  right: 0;
+  padding: 12px 14px 14px;
+  border: 1px solid var(--black);
+  background: var(--white);
+  box-shadow: 0 10px 24px rgba(22, 22, 22, 0.08);
+}
+.chair-behind p {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+.chair-behind-options {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.chair-behind-options .button-secondary {
+  min-height: 36px;
+  padding: 0 12px;
+}
+.day-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  background: var(--bone);
+  font-size: 0.9rem;
+}
+.sheet-history {
+  margin: 0 0 1rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+.sheet-history .no-shows {
+  color: var(--oxblood);
+}
+
+/* Team */
+.team h2 {
+  margin: 0 0 0.35rem;
+  font-family: var(--font-sans), sans-serif;
+  font-size: 1.4rem;
+  font-weight: 400;
+}
+.team > .staff-muted {
+  max-width: 640px;
+  margin: 0 0 1rem;
+}
+.team-list {
+  border-top: 1px solid var(--black);
+}
+.team-row {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.4fr) auto;
+  gap: 8px 20px;
+  align-items: center;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+}
+.team-name strong,
+.team-name span,
+.team-account span,
+.team-account small {
+  display: block;
+}
+.team-name strong {
+  font-weight: 400;
+  font-size: 1.05rem;
+}
+.team-name span,
+.team-account small {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+.team-account span {
+  overflow-wrap: anywhere;
+}
+.team-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px 16px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.team-form {
+  grid-column: 1 / -1;
+  margin-top: 4px;
+}
+.by-barber {
+  max-width: 760px;
+  margin: 0 0 1.6rem;
+}
+.by-barber td {
+  font-variant-numeric: tabular-nums;
+}
+
 /* Launch checks */
 .readiness {
   display: grid;
@@ -947,16 +1113,24 @@
   .day {
     --row: 26px;
   }
-  .chair-pills {
+  .day-sticky {
+    display: block;
     position: sticky;
     top: 0;
     z-index: 3;
-    display: flex;
-    flex-wrap: wrap;
     margin: 0 -20px 12px;
-    padding: 10px 20px;
+    padding: 10px 20px 0;
     background: var(--white);
     border-bottom: 1px solid var(--line);
+  }
+  .chair-pills {
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0 0 10px;
+  }
+  .next-up {
+    display: flex;
+    margin-bottom: 10px;
   }
   .day-grid {
     grid-template-columns: 44px minmax(0, 1fr);
@@ -980,6 +1154,12 @@
     padding: 26px 22px calc(36px + env(safe-area-inset-bottom));
     border-top: 1px solid var(--line);
     border-left: 0;
+  }
+  .team-row {
+    grid-template-columns: 1fr;
+  }
+  .team-actions {
+    justify-content: flex-start;
   }
   .readiness-header {
     grid-template-columns: 1fr;

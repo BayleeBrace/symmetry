@@ -114,9 +114,6 @@ export default async function Home() {
               <div className="barber-copy">
                 <h3>{barber.name}</h3>
                 <p>{barber.role}</p>
-                <small>
-                  Portrait and a few words from {barber.name} coming soon.
-                </small>
               </div>
               <Link className="text-link" href={`/book?barber=${id}`}>
                 Book

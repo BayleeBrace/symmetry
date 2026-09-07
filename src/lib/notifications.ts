@@ -61,16 +61,18 @@ export async function processNotifications() {
         const { data: b } = await db
           .from("bookings")
           .select(
-            "local_date,start_minute,status,late_minutes,services(name),barbers(name)",
+            "local_date,start_minute,status,late_minutes,services(name,slug),barbers(name,slug)",
           )
           .eq("id", job.booking_id)
           .single();
         if (!b) throw new Error("Trim not found");
         if (
-          (["reminder", "confirmed", "moved"].includes(job.kind) &&
+          (["reminder", "confirmed", "moved", "delayed"].includes(job.kind) &&
             b.status !== "booked") ||
           (job.kind === "reminder" &&
-            shopInstant(b.local_date, b.start_minute).getTime() <= Date.now())
+            shopInstant(b.local_date, b.start_minute).getTime() <=
+              Date.now()) ||
+          (job.kind === "thanks" && b.status !== "done")
         ) {
           await db
             .from("notification_jobs")
@@ -78,27 +80,51 @@ export async function processNotifications() {
             .eq("id", job.id);
           continue;
         }
-        const service = b.services as unknown as { name: string };
-        const barber = b.barbers as unknown as { name: string };
+        const service = b.services as unknown as { name: string; slug: string };
+        const barber = b.barbers as unknown as { name: string; slug: string };
         subject =
-          job.kind === "reminder"
-            ? "Your upcoming trim"
-            : job.kind === "cancelled"
-              ? "Your trim has been cancelled"
-              : job.kind === "moved"
-                ? "Your trim has moved"
-                : job.kind === "no_show"
-                  ? "We missed you at Symmetry"
-                  : job.kind === "running_late"
-                    ? "Running-late update"
-                    : "Your Symmetry booking";
-        text = `${subject}. ${fullDate(b.local_date)} at ${clock(b.start_minute)}: ${service.name} with ${barber.name}. ${job.kind === "running_late" ? `The shop has been notified you expect to be ${b.late_minutes} minutes late.` : "View your booking and cancellation policy using your secure link."}`;
+          job.kind === "thanks"
+            ? "Thanks for coming in"
+            : job.kind === "reminder"
+              ? "Your upcoming trim"
+              : job.kind === "cancelled"
+                ? "Your trim has been cancelled"
+                : job.kind === "moved"
+                  ? "Your trim has moved"
+                  : job.kind === "no_show"
+                    ? "We missed you at Symmetry"
+                    : job.kind === "running_late"
+                      ? "Running-late update"
+                      : job.kind === "delayed"
+                        ? "Running a little behind"
+                        : "Your Symmetry booking";
+        if (job.kind === "thanks") {
+          const review = process.env.GOOGLE_REVIEW_URL;
+          const first = customer.name.split(" ")[0];
+          url =
+            review ||
+            `${siteUrl()}/book?barber=${barber.slug}&service=${service.slug}`;
+          text = `Thanks for coming in, ${first}. ${service.name} with ${barber.name} on ${fullDate(b.local_date)}. ${review ? "If you have a minute, a Google review helps a small shop more than you would think." : "Book your next one whenever suits."} See you in a few weeks.`;
+        } else if (job.kind === "delayed") {
+          text = `${barber.name} is running about ${job.payload.minutes} minutes behind for your ${clock(b.start_minute)} trim today. Sorry for the wait; there is nothing you need to do.`;
+        } else {
+          text = `${subject}. ${fullDate(b.local_date)} at ${clock(b.start_minute)}: ${service.name} with ${barber.name}. ${job.kind === "running_late" ? `The shop has been notified you expect to be ${b.late_minutes} minutes late.` : "View your booking and cancellation policy using your secure link."}`;
+        }
         if (
           ["confirmed", "moved", "reminder"].includes(job.kind) &&
           g.policy_snapshot
         ) {
           text += ` Free cancellation until ${deadlineLabel(b.local_date, b.start_minute, g.policy_snapshot.cancellation_hours)}. Late cancellation: ${g.policy_snapshot.late_percent}%; no-show: ${g.policy_snapshot.no_show_percent}%. Move or cancel using your booking link.`;
         }
+      } else if (job.kind === "nudge") {
+        const p = job.payload as {
+          name: string;
+          barber: string;
+          service: string;
+          weeks: number;
+        };
+        subject = "Time for a trim?";
+        text = `Hi ${p.name.split(" ")[0]}. It has been about ${p.weeks} week${p.weeks === 1 ? "" : "s"} since your ${p.service.toLowerCase()} with ${p.barber}. Book your usual in a minute, or pick whatever time suits.`;
       } else if (job.kind === "recovery") {
         const { data } = await db
           .from("customers")
@@ -135,7 +161,7 @@ export async function processNotifications() {
         }
         if (!process.env.RESEND_API_KEY || !process.env.EMAIL_FROM)
           throw new Error("Email provider not configured");
-        const html = `<div style="background:#efebe3;color:#161616;padding:36px;font:16px Arial,sans-serif"><img src="${escape(siteUrl())}/wordmark-email.png" width="320" height="112" alt="Symmetry" style="display:block;width:320px;max-width:100%;height:auto" /><h1 style="font:normal 28px Arial,sans-serif">${escape(subject)}.</h1><p>${escape(text)}</p><p><a href="${escape(url!)}" style="display:inline-block;background:#161616;color:#fff;padding:14px 20px;text-decoration:none">${job.kind === "waitlist_verify" ? "Confirm request" : "View details"}</a></p><p>4 Brewery Terrace, Saundersfoot</p></div>`;
+        const html = `<div style="background:#efebe3;color:#161616;padding:36px;font:16px Arial,sans-serif"><img src="${escape(siteUrl())}/wordmark-email.png" width="320" height="112" alt="Symmetry" style="display:block;width:320px;max-width:100%;height:auto" /><h1 style="font:normal 28px Arial,sans-serif">${escape(subject)}.</h1><p>${escape(text)}</p><p><a href="${escape(url!)}" style="display:inline-block;background:#161616;color:#fff;padding:14px 20px;text-decoration:none">${job.kind === "waitlist_verify" ? "Confirm request" : job.kind === "thanks" ? (process.env.GOOGLE_REVIEW_URL ? "Leave a review" : "Book again") : job.kind === "nudge" ? "Book my usual" : "View details"}</a></p><p>4 Brewery Terrace, Saundersfoot</p>${job.kind === "nudge" ? `<p style="font-size:13px;color:#5a5650">You asked us to remind you when you are due. <a href="${escape(job.payload.stop)}" style="color:#5a5650">Stop these reminders</a>.</p>` : ""}</div>`;
         const response = await fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: {
@@ -150,7 +176,17 @@ export async function processNotifications() {
             to: [email],
             subject,
             html,
-            text: text + "\n" + url,
+            text:
+              text +
+              "\n" +
+              url +
+              (job.kind === "nudge"
+                ? "\n\nStop these reminders: " + job.payload.stop
+                : ""),
+            headers:
+              job.kind === "nudge"
+                ? { "List-Unsubscribe": "<" + job.payload.stop + ">" }
+                : undefined,
           }),
           signal: AbortSignal.timeout(15000),
         });
@@ -255,7 +291,10 @@ export async function processNotifications() {
             await webpush.sendNotification(
               sub.subscription,
               JSON.stringify({
-                body: "Your diary has an update.",
+                body:
+                  job.kind === "running_late"
+                    ? "A customer is running late."
+                    : "Your diary has an update.",
                 url: "/staff",
               }),
               { timeout: 10000 },

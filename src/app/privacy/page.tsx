@@ -80,7 +80,9 @@ export default function PrivacyPage() {
         <h2>Messages and the waitlist.</h2>
         <p>
           Booking confirmations, reminders and recovery messages are service
-          messages, separate from marketing. A waitlist request uses your email,
+          messages, separate from marketing. If you tick the reminder box when
+          you book, we also email you when you are due a trim; every one of
+          those has a link to stop them. A waitlist request uses your email,
           preferred date, service and barber to contact you about availability.
           You can leave through your waitlist link. Device notifications are
           optional and can be disabled in your device settings.

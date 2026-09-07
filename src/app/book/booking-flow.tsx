@@ -527,11 +527,11 @@ export function BookingFlow({
             <a href="/bookings">Check my bookings</a>
           </div>
         )}
-        <p className="app-note">
-          {mode === "live"
-            ? "Live availability"
-            : "Development preview · no trims are reserved yet"}
-        </p>
+        {mode !== "live" && (
+          <p className="app-note">
+            Development preview · no trims are reserved yet
+          </p>
+        )}
         <div className="progress" aria-label="Booking progress">
           {["Barber", "Service", "Dates", "Booking"].map((label, index) => (
             <span
@@ -1002,8 +1002,8 @@ export function BookingFlow({
                     }
                   />
                   <span>
-                    Email me occasional news, offers and product launches from
-                    Symmetry. Optional—you can unsubscribe any time.
+                    Remind me when I’m due a trim, plus occasional news from
+                    Symmetry. Optional, and you can stop any time.
                   </span>
                 </label>
                 <button type="submit" hidden>

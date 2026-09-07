@@ -4,6 +4,7 @@ import { brandSans, brandSerif } from "./fonts";
 import "./globals.css";
 import { shopContact } from "@/lib/shop-contact";
 import { AppRegistration } from "@/components/app-registration";
+import { Analytics } from "@vercel/analytics/next";
 
 export const dynamic = "force-dynamic";
 
@@ -125,6 +126,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           Skip to content
         </a>
         <AppRegistration />
+        <Analytics />
         {children}
       </body>
     </html>

@@ -26,6 +26,12 @@ test("database rejects blocked moves, enforces fees and keeps rejected batches a
       "utf8",
     ),
   );
+  await db.exec(
+    await readFile(
+      "supabase/migrations/20260908000000_rebook_reminders.sql",
+      "utf8",
+    ),
+  );
   const pricesBefore = (
     await db.query(
       "select barber_id,service_id,price_pence,duration from service_prices order by barber_id,service_id",
@@ -223,5 +229,27 @@ test("database rejects blocked moves, enforces fees and keeps rejected batches a
     ).rows[0].allowed,
     false,
   );
+  // Ticking the reminder box records the wording the customer saw.
+  const { rows: laterDays } = await db.query<{ d: string }>(
+    `select ((now() at time zone 'Europe/London')::date+n)::text d from generate_series(15,28) n where extract(isodow from (now() at time zone 'Europe/London')::date+n)=2 limit 1`,
+  );
+  const consented = await db.query<{ id: string }>(
+    `select public.create_booking_group('Consent Client','consent@example.com','GB','+447700900124',true,$1,$2::jsonb) id`,
+    [
+      "z".repeat(64),
+      JSON.stringify([
+        { date: laterDays[0].d, time: 600, barber: "sean", service: "cut" },
+      ]),
+    ],
+  );
+  const { rows: consent } = await db.query<{ copy: string; nudged: null }>(
+    `select c.consent_copy as copy, cu.last_nudged_at as nudged from public.email_marketing_consents c join public.customers cu on cu.id=c.customer_id where c.customer_id=(select customer_id from public.booking_groups where id=$1)`,
+    [consented.rows[0].id],
+  );
+  assert.equal(
+    consent[0].copy,
+    "Remind me when I'm due a trim, plus occasional news from Symmetry.",
+  );
+  assert.equal(consent[0].nudged, null);
   await db.close();
 });

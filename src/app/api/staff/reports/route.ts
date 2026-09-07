@@ -16,8 +16,26 @@ export async function GET() {
     if (staff.role !== "owner") query = query.eq("barber_id", staff.barber_id);
     const { data, error } = await query;
     if (error) throw new Error("Reports could not load");
+    const { data: barbers } =
+      staff.role === "owner"
+        ? await db.from("barbers").select("id,name").order("display_order")
+        : { data: null };
+    const byBarber = barbers?.map((barber) => {
+      const rows = data.filter((x) => x.barber_id === barber.id);
+      return {
+        name: barber.name,
+        trims: rows.length,
+        completed: rows.filter((x) => x.status === "done").length,
+        noShows: rows.filter((x) => x.status === "no_show").length,
+        cancelled: rows.filter((x) => x.status === "cancelled").length,
+        completedValue: rows
+          .filter((x) => x.status === "done")
+          .reduce((s, x) => s + x.price_pence, 0),
+      };
+    });
     return privateJson({
       period: "Last 30 days",
+      byBarber,
       trims: data.length,
       completed: data.filter((x) => x.status === "done").length,
       noShows: data.filter((x) => x.status === "no_show").length,

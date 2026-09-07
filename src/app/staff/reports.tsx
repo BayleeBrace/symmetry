@@ -12,6 +12,14 @@ type Report = {
   completedValue: number;
   fees: number;
   days?: Record<string, number>;
+  byBarber?: {
+    name: string;
+    trims: number;
+    completed: number;
+    noShows: number;
+    cancelled: number;
+    completedValue: number;
+  }[];
 };
 
 export function Reports() {
@@ -52,6 +60,35 @@ export function Reports() {
           </div>
         ))}
       </div>
+      {report.byBarber && report.byBarber.length > 0 && (
+        <div className="grid-wrap">
+          <table className="grid-table by-barber">
+            <caption className="sr-only">Figures per chair</caption>
+            <thead>
+              <tr>
+                <th scope="col">Chair</th>
+                <th scope="col">Trims</th>
+                <th scope="col">Completed</th>
+                <th scope="col">No shows</th>
+                <th scope="col">Cancelled</th>
+                <th scope="col">Value (pounds)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {report.byBarber.map((row) => (
+                <tr key={row.name}>
+                  <th scope="row">{row.name}</th>
+                  <td>{row.trims}</td>
+                  <td>{row.completed}</td>
+                  <td>{row.noShows}</td>
+                  <td>{row.cancelled}</td>
+                  <td>{pounds(row.completedValue)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
       {days.length > 0 && (
         <table className="day-table">
           <caption className="sr-only">Trims per day</caption>

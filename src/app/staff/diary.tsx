@@ -18,14 +18,18 @@ import { BreakForm, WalkInForm, type WalkInPrefill } from "./forms";
 import { Reports } from "./reports";
 import { Settings } from "./settings";
 import { DeliveryAlert, Readiness } from "./readiness";
+import { Team } from "./team";
+import { Account } from "./account";
 
 const TABS = [
   "diary",
   "walk-in",
   "breaks",
   "reports",
+  "team",
   "settings",
   "launch checks",
+  "account",
 ] as const;
 type Tab = (typeof TABS)[number];
 const TAB_LABEL: Record<Tab, string> = {
@@ -33,9 +37,12 @@ const TAB_LABEL: Record<Tab, string> = {
   "walk-in": "Walk-in",
   breaks: "Breaks",
   reports: "Reports",
+  team: "Team",
   settings: "Settings",
   "launch checks": "Launch checks",
+  account: "Account",
 };
+const VIEW_KEY = "symmetry-staff-view";
 
 export function Diary() {
   const [date, setDate] = useState(shopToday());
@@ -46,6 +53,19 @@ export function Diary() {
   const [tab, setTab] = useState<Tab>("diary");
   const [walkIn, setWalkIn] = useState<WalkInPrefill>(null);
   const dateInput = useRef<HTMLInputElement>(null);
+  const [mine, setMineState] = useState(() => {
+    try {
+      return localStorage.getItem(VIEW_KEY) === "mine";
+    } catch {
+      return false;
+    }
+  });
+  const setMine = (value: boolean) => {
+    setMineState(value);
+    try {
+      localStorage.setItem(VIEW_KEY, value ? "mine" : "all");
+    } catch {}
+  };
 
   const load = useCallback(async () => {
     try {
@@ -82,8 +102,9 @@ export function Diary() {
     setBusy(true);
     setError("");
     try {
-      await api(url, data);
+      const result = await api(url, data);
       await load();
+      return result;
     } catch (e) {
       if (e instanceof StaffSignInRequired) setDiary(null);
       setError((e as Error).message);
@@ -160,12 +181,17 @@ export function Diary() {
     );
 
   const owner = diary.staff.role === "owner";
-  const barbers: Barber[] = diary.barbers.filter(
-    (b) => b.active !== false && (owner || b.id === diary.staff.barber_id),
+  const chairs = diary.barbers.filter((b) => b.active !== false);
+  const ownChair = chairs.some((b) => b.id === diary.staff.barber_id);
+  // The owner can narrow the diary to their own chair; a barber only ever sees theirs.
+  const justMine = owner ? mine && ownChair : true;
+  const barbers: Barber[] = chairs.filter(
+    (b) => !justMine || b.id === diary.staff.barber_id,
   );
+  const canToggle = owner && ownChair && chairs.length > 1;
   const today = shopToday();
   const tabs = TABS.filter(
-    (t) => owner || !["settings", "launch checks"].includes(t),
+    (t) => owner || !["team", "settings", "launch checks"].includes(t),
   );
   const showDate = ["diary", "walk-in", "breaks"].includes(tab);
 
@@ -215,6 +241,29 @@ export function Diary() {
           </button>
         ))}
       </nav>
+
+      {canToggle && showDate && (
+        <div
+          className="view-toggle"
+          role="group"
+          aria-label="Which chairs to show"
+        >
+          <button
+            type="button"
+            aria-pressed={mine}
+            onClick={() => setMine(true)}
+          >
+            Just my chair
+          </button>
+          <button
+            type="button"
+            aria-pressed={!mine}
+            onClick={() => setMine(false)}
+          >
+            Whole shop
+          </button>
+        </div>
+      )}
 
       {showDate && (
         <div className="day-nav">
@@ -321,6 +370,13 @@ export function Diary() {
         <Settings diary={diary} act={act} busy={busy} />
       )}
       {tab === "launch checks" && owner && <Readiness />}
+      {tab === "team" && owner && <Team />}
+      {tab === "account" && (
+        <Account
+          owner={owner}
+          name={barbers.map((b) => b.name).join(", ") || "staff"}
+        />
+      )}
     </section>
   );
 }

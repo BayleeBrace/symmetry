@@ -1,6 +1,7 @@
 "use client";
 import { type CSSProperties, useEffect, useRef, useState } from "react";
 import { clock, inputTime, shopMinute, shopToday } from "@/lib/booking-data";
+import { staffApi as api } from "@/lib/staff-client";
 import {
   type Act,
   type Barber,
@@ -12,9 +13,11 @@ import {
   canonicalServiceName,
   customerOf,
   pounds,
-  timeOptions,
+  shortDay,
   timeRange,
 } from "./types";
+
+type HistoryView = { visits: number; noShows: number; last: string | null };
 
 type Selection = { kind: "booking" | "block"; id: string } | null;
 
@@ -34,6 +37,8 @@ export function DayTimeline({
   onWalkIn: (barber: Barber, minute: number) => void;
 }) {
   const [selected, setSelected] = useState<Selection>(null);
+  const [behind, setBehind] = useState<string | null>(null);
+  const [notice, setNotice] = useState("");
   const [chosen, setCurrent] = useState(barbers[0]?.id ?? "");
   const current = barbers.some((b) => b.id === chosen)
     ? chosen
@@ -101,21 +106,76 @@ export function DayTimeline({
       booking.services?.name ?? "Trim",
     );
 
+  const historyOf = (booking: Booking): HistoryView | undefined => {
+    const id = booking.booking_groups?.customer_id;
+    const h = id ? diary.history?.[id] : undefined;
+    if (!h) return undefined;
+    const last = h.last
+      ? `${canonicalServiceName(
+          diary.services.find((s) => s.id === h.last?.service_id)?.slug,
+          "Trim",
+        )} with ${
+          diary.barbers.find((b) => b.id === h.last?.barber_id)?.name ?? "us"
+        }, ${shortDay(h.last.date)}`
+      : null;
+    return { visits: h.visits, noShows: h.noShows, last };
+  };
+
+  const nextUp = isToday
+    ? diary.bookings
+        .filter(
+          (b) =>
+            b.barber_id === current &&
+            OPEN_STATUSES.includes(b.status) &&
+            b.start_minute + b.duration > nowMinute,
+        )
+        .sort((a, b) => a.start_minute - b.start_minute)[0]
+    : undefined;
+
   return (
     <div className="day">
-      {barbers.length > 1 && (
-        <div className="chair-pills" aria-label="Choose a chair">
-          {barbers.map((barber) => (
-            <button
-              key={barber.id}
-              type="button"
-              aria-pressed={current === barber.id}
-              onClick={() => setCurrent(barber.id)}
-            >
-              {barber.name}
-            </button>
-          ))}
-        </div>
+      <div className="day-sticky">
+        {barbers.length > 1 && (
+          <div className="chair-pills" aria-label="Choose a chair">
+            {barbers.map((barber) => (
+              <button
+                key={barber.id}
+                type="button"
+                aria-pressed={current === barber.id}
+                onClick={() => setCurrent(barber.id)}
+              >
+                {barber.name}
+              </button>
+            ))}
+          </div>
+        )}
+        {nextUp && (
+          <button
+            type="button"
+            className="next-up"
+            onClick={() => setSelected({ kind: "booking", id: nextUp.id })}
+          >
+            <span className="next-up-label">
+              {nextUp.status === "arrived" ? "In the chair" : "Next"}
+            </span>
+            <span className="next-up-body">
+              {clock(nextUp.start_minute)} · {customerOf(nextUp).name} ·{" "}
+              {serviceLabel(nextUp)}
+            </span>
+          </button>
+        )}
+      </div>
+      {notice && (
+        <p className="day-notice" role="status">
+          <span>{notice}</span>
+          <button
+            type="button"
+            className="text-button"
+            onClick={() => setNotice("")}
+          >
+            OK
+          </button>
+        </p>
       )}
       {!diary.hours && (
         <p className="day-closed">
@@ -140,6 +200,13 @@ export function DayTimeline({
           );
           const blocks = diary.blocks.filter((b) => b.barber_id === barber.id);
           const dayOff = blocks.find((b) => b.duration >= 1440);
+          const upcoming = isToday
+            ? active.filter(
+                (b) =>
+                  b.status === "booked" &&
+                  b.start_minute + b.duration > nowMinute,
+              )
+            : [];
           return (
             <section
               key={barber.id}
@@ -148,12 +215,63 @@ export function DayTimeline({
             >
               <header className="chair-head">
                 <span>{barber.name}</span>
+                {upcoming.length > 0 && (
+                  <button
+                    type="button"
+                    className="text-button chair-behind-toggle"
+                    aria-expanded={behind === barber.id}
+                    onClick={() =>
+                      setBehind(behind === barber.id ? null : barber.id)
+                    }
+                  >
+                    Running behind?
+                  </button>
+                )}
                 <small>
                   {active.length
                     ? `${active.length} trim${active.length === 1 ? "" : "s"}`
                     : "Nothing booked"}
                 </small>
               </header>
+              {behind === barber.id && (
+                <div className="chair-behind">
+                  <p>
+                    Tell the next{" "}
+                    {upcoming.length === 1 ? "customer" : "two customers"} how
+                    far behind {barber.name} is running.
+                  </p>
+                  <div className="chair-behind-options">
+                    {[10, 15, 20, 30].map((minutes) => (
+                      <button
+                        key={minutes}
+                        type="button"
+                        className="button-secondary"
+                        disabled={busy}
+                        onClick={async () => {
+                          const result = (await act("/api/staff/diary", {
+                            action: "running_behind",
+                            barber: barber.id,
+                            minutes,
+                          })) as { told?: number } | undefined;
+                          setBehind(null);
+                          if (!result) return;
+                          setNotice(
+                            result.told
+                              ? `Told ${
+                                  result.told === 1
+                                    ? "the next customer"
+                                    : `the next ${result.told} customers`
+                                } that ${barber.name} is running about ${minutes} minutes behind.`
+                              : "No one to tell: the next customers have no phone or email on file.",
+                          );
+                        }}
+                      >
+                        {minutes} min
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div
                 className="chair-day"
                 onClick={(event) => {
@@ -251,6 +369,7 @@ export function DayTimeline({
             <BookingSheet
               booking={selectedBooking}
               serviceName={serviceLabel(selectedBooking)}
+              history={historyOf(selectedBooking)}
               owner={diary.staff.role === "owner"}
               busy={busy}
               act={act}
@@ -276,6 +395,7 @@ export function DayTimeline({
 function BookingSheet({
   booking,
   serviceName,
+  history,
   owner,
   busy,
   act,
@@ -284,6 +404,7 @@ function BookingSheet({
 }: {
   booking: Booking;
   serviceName: string;
+  history?: HistoryView;
   owner: boolean;
   busy: boolean;
   act: Act;
@@ -340,6 +461,20 @@ function BookingSheet({
           <span className="status-chip is-quiet">Walk-in</span>
         )}
       </p>
+      {history && (
+        <p className="sheet-history">
+          {history.visits === 0
+            ? "First visit."
+            : `${history.visits} previous visit${history.visits === 1 ? "" : "s"}.`}
+          {history.last ? ` Last time: ${history.last}.` : ""}
+          {history.noShows > 0 && (
+            <span className="no-shows">
+              {" "}
+              {history.noShows} no show{history.noShows === 1 ? "" : "s"}.
+            </span>
+          )}
+        </p>
+      )}
       {customer.preferences && (
         <p className="sheet-notes">{customer.preferences}</p>
       )}
@@ -407,49 +542,7 @@ function BookingSheet({
               Cancel trim
             </button>
           </div>
-          <details className="sheet-move">
-            <summary>Move this trim</summary>
-            <form
-              onSubmit={(event) => {
-                event.preventDefault();
-                const form = new FormData(event.currentTarget);
-                void act("/api/staff/diary", {
-                  action: "move",
-                  id: booking.id,
-                  date: form.get("date"),
-                  time: Number(form.get("time")),
-                  version: booking.updated_at,
-                });
-              }}
-            >
-              <label>
-                New date
-                <input
-                  name="date"
-                  type="date"
-                  required
-                  defaultValue={booking.local_date}
-                />
-              </label>
-              <label>
-                New time
-                <select name="time" defaultValue={booking.start_minute}>
-                  {timeOptions(420, 1260).map((minute) => (
-                    <option key={minute} value={minute}>
-                      {clock(minute)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <button
-                type="submit"
-                className="button-secondary"
-                disabled={busy}
-              >
-                Save move
-              </button>
-            </form>
-          </details>
+          <MoveForm booking={booking} busy={busy} act={act} />
         </>
       )}
       {booking.fee_pence > 0 && (
@@ -501,6 +594,150 @@ function BookingSheet({
         Booked for {inputTime(booking.start_minute)} on {booking.local_date}
       </p>
     </aside>
+  );
+}
+
+type FreeTimes = { date: string; free: number[]; closed: boolean; at: string };
+
+/**
+ * Move a trim to a free time on the same chair. The free times come from the
+ * live diary for that day and refresh every half minute while the form is open,
+ * so two people cannot be offered the same gap. The database refuses an overlap
+ * regardless.
+ */
+function MoveForm({
+  booking,
+  busy,
+  act,
+}: {
+  booking: Booking;
+  busy: boolean;
+  act: Act;
+}) {
+  const [open, setOpen] = useState(false);
+  const [date, setDate] = useState(booking.local_date);
+  const [time, setTime] = useState(booking.start_minute);
+  const [result, setResult] = useState<FreeTimes | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    let live = true;
+    const check = async () => {
+      try {
+        const day = (await api("/api/staff/diary?date=" + date)) as Diary;
+        if (!live) return;
+        const mine = (b: { barber_id: string }) =>
+          b.barber_id === booking.barber_id;
+        const dayOff = day.blocks.some((b) => mine(b) && b.duration >= 1440);
+        const taken = [
+          ...day.bookings.filter(
+            (b) =>
+              mine(b) &&
+              b.id !== booking.id &&
+              OPEN_STATUSES.includes(b.status),
+          ),
+          ...day.blocks.filter((b) => mine(b) && b.duration < 1440),
+        ].map((b) => [b.start_minute, b.start_minute + b.duration]);
+        const free: number[] = [];
+        if (day.hours && !dayOff)
+          for (
+            let m = day.hours[0];
+            m + booking.duration <= day.hours[1];
+            m += 15
+          )
+            if (!taken.some(([s, e]) => m < e && m + booking.duration > s))
+              free.push(m);
+        setResult({
+          date,
+          free,
+          closed: !day.hours || dayOff,
+          at: clock(shopMinute()),
+        });
+      } catch {
+        if (live)
+          setResult({ date, free: [], closed: false, at: clock(shopMinute()) });
+      }
+    };
+    void check();
+    const timer = setInterval(check, 30000);
+    return () => {
+      live = false;
+      clearInterval(timer);
+    };
+  }, [open, date, booking.id, booking.barber_id, booking.duration]);
+  const current = result && result.date === date ? result : null;
+  const value = current
+    ? current.free.includes(time)
+      ? time
+      : current.free[0]
+    : undefined;
+  const chair = booking.barbers?.name ?? "this chair";
+  return (
+    <details
+      className="sheet-move"
+      onToggle={(event) => setOpen(event.currentTarget.open)}
+    >
+      <summary>Move this trim</summary>
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (value === undefined) return;
+          void act("/api/staff/diary", {
+            action: "move",
+            id: booking.id,
+            date,
+            time: value,
+            version: booking.updated_at,
+          });
+        }}
+      >
+        <label>
+          New date
+          <input
+            type="date"
+            required
+            value={date}
+            onChange={(event) =>
+              event.target.value && setDate(event.target.value)
+            }
+          />
+        </label>
+        <label>
+          New time
+          <select
+            value={value ?? ""}
+            disabled={!current || current.free.length === 0}
+            onChange={(event) => setTime(Number(event.target.value))}
+          >
+            {!current && <option value="">Checking the diary…</option>}
+            {current && current.free.length === 0 && (
+              <option value="">
+                {current.closed ? "Closed that day" : "No free times that day"}
+              </option>
+            )}
+            {current?.free.map((minute) => (
+              <option key={minute} value={minute}>
+                {clock(minute)}
+                {date === booking.local_date && minute === booking.start_minute
+                  ? " (current time)"
+                  : ""}
+              </option>
+            ))}
+          </select>
+        </label>
+        <p className="move-live" role="status">
+          {current
+            ? `Free times for ${chair} at ${current.at}, from the live diary. Updates every half minute.`
+            : `Checking ${chair}’s diary…`}
+        </p>
+        <button
+          type="submit"
+          className="button-secondary"
+          disabled={busy || value === undefined}
+        >
+          Save move
+        </button>
+      </form>
+    </details>
   );
 }
 

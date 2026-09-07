@@ -74,9 +74,17 @@ export type Diary = {
   events: { id: string; kind: string; created_at: string }[];
   hours: [number, number] | null;
   date: string;
+  history?: Record<string, CustomerHistory>;
 };
 
-export type Act = (url: string, data: unknown) => Promise<void>;
+/** What the sheet shows about a customer: past visits, no shows, last trim. */
+export type CustomerHistory = {
+  visits: number;
+  noShows: number;
+  last: { date: string; barber_id: string; service_id: string } | null;
+};
+
+export type Act = (url: string, data: unknown) => Promise<unknown>;
 
 export const STATUS_LABEL: Record<BookingStatus, string> = {
   booked: "Booked",

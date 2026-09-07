@@ -33,7 +33,8 @@ export function ManageBookings({ token }: { token: string }) {
     [service, setService] = useState(""),
     [slots, setSlots] = useState<Slot[]>([]),
     [preferences, setPreferences] = useState(""),
-    [notice, setNotice] = useState("");
+    [notice, setNotice] = useState(""),
+    [late, setLate] = useState("");
   const [now, setNow] = useState(0);
   useEffect(() => {
     const tick = () => setNow(Date.now());
@@ -63,7 +64,7 @@ export function ManageBookings({ token }: { token: string }) {
     );
     return () => clearTimeout(t);
   }, [load]);
-  async function change(data: Record<string, unknown>) {
+  async function change(data: Record<string, unknown>, done = "All updated.") {
     setBusy(true);
     setError("");
     try {
@@ -75,7 +76,8 @@ export function ManageBookings({ token }: { token: string }) {
       const d = await r.json();
       if (!r.ok) throw new Error(d.error);
       setMove("");
-      setNotice("All updated.");
+      setLate("");
+      setNotice(done);
       await load();
     } catch (e) {
       setError((e as Error).message);
@@ -217,21 +219,40 @@ export function ManageBookings({ token }: { token: string }) {
                     {a.date === shopToday() && (
                       <button
                         disabled={busy}
-                        onClick={() =>
-                          void change({
-                            action: "late",
-                            bookingId: a.id,
-                            minutes: 10,
-                          })
-                        }
+                        aria-expanded={late === a.id}
+                        onClick={() => setLate(late === a.id ? "" : a.id)}
                       >
-                        Running 10 min late
+                        Running late?
                       </button>
                     )}
                   </>
                 )}
               </div>
               {active && <WalletLinks token={token} booking={a.id} />}
+              {late === a.id && (
+                <div className="move-panel late-panel">
+                  <p>How late will you be? We will let {a.barber.name} know.</p>
+                  <div className="move-times">
+                    {[10, 15, 20, 30].map((minutes) => (
+                      <button
+                        key={minutes}
+                        disabled={busy}
+                        onClick={() =>
+                          void change(
+                            { action: "late", bookingId: a.id, minutes },
+                            `Thanks. ${a.barber.name} knows you are running about ${minutes} minutes late.`,
+                          )
+                        }
+                      >
+                        {minutes} min
+                      </button>
+                    ))}
+                  </div>
+                  <button disabled={busy} onClick={() => setLate("")}>
+                    Never mind
+                  </button>
+                </div>
+              )}
               {move === a.id && (
                 <div className="move-panel">
                   <label>
