@@ -1,11 +1,21 @@
 import Image from "next/image";
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { BrandHeader } from "@/components/brand-header";
 import { Reveal } from "@/components/reveal";
 import { SiteFooter } from "@/components/site-footer";
+import { TeaserLanding } from "@/components/teaser-landing";
 import { BARBERS } from "@/lib/booking-data";
+import { hasSiteAccess, SITE_ACCESS_COOKIE } from "@/lib/site-access";
 
-export default function Home() {
+export default async function Home() {
+  const cookieStore = await cookies();
+  const isUnlocked = await hasSiteAccess(cookieStore.get(SITE_ACCESS_COOKIE)?.value);
+
+  if (!isUnlocked) {
+    return <TeaserLanding />;
+  }
+
   return (
     <main className="marketing-home">
       <BrandHeader />

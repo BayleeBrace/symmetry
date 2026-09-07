@@ -272,3 +272,58 @@ h1, h2 { font-family: var(--font-serif), serif; font-weight: 300; }
 @media (prefers-reduced-motion: reduce) {
   .reveal { opacity: 1; transform: none; transition: none; }
 }
+
+/* Pre-launch teaser. */
+.teaser-page {
+  position: relative;
+  isolation: isolate;
+  min-height: 100svh;
+  overflow: hidden;
+  background: var(--black);
+  color: var(--white);
+}
+.teaser-background { z-index: -2; object-fit: cover; object-position: center 55%; }
+.teaser-overlay {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(22,22,22,.96) 0%, rgba(22,22,22,.8) 44%, rgba(22,22,22,.32) 100%),
+    linear-gradient(0deg, rgba(22,22,22,.82) 0%, transparent 56%);
+}
+.teaser-content {
+  display: flex;
+  width: min(100%, 1200px);
+  min-height: 100svh;
+  margin: auto;
+  padding: clamp(2rem, 5vw, 4rem);
+  flex-direction: column;
+  justify-content: space-between;
+}
+.teaser-brand { width: fit-content; }
+.teaser-brand img { display: block; width: clamp(13rem, 25vw, 19rem); height: auto; }
+.teaser-brand p { margin: .8rem 0 0; font-size: .62rem; letter-spacing: .25em; text-transform: uppercase; }
+.teaser-message { margin: auto 0; padding: clamp(3rem, 7vh, 6rem) 0; }
+.teaser-message .eyebrow { color: #d4b9bd; }
+.teaser-message h1 { margin: .8rem 0 0; font-size: clamp(4.2rem, 8vw, 8rem); line-height: .82; letter-spacing: -.035em; }
+.teaser-form { width: min(100%, 440px); }
+.teaser-form > label { display: block; margin-bottom: .65rem; color: rgba(255,255,255,.7); font-size: .72rem; letter-spacing: .08em; text-transform: lowercase; }
+.teaser-form > div { display: grid; grid-template-columns: 1fr auto; border-bottom: 1px solid rgba(255,255,255,.65); }
+.teaser-form input { min-width: 0; height: 48px; padding: 0; border: 0; outline: 0; background: transparent; color: var(--white); }
+.teaser-form input::placeholder { color: rgba(255,255,255,.4); }
+.teaser-form button { min-width: 86px; border: 0; background: transparent; color: var(--white); font-size: .72rem; letter-spacing: .15em; text-transform: uppercase; }
+.teaser-form button:disabled { opacity: .55; }
+.teaser-form-message { min-height: 1.25rem; margin: .6rem 0 0; color: #d4b9bd; font-size: .72rem; }
+
+@media (max-width: 600px) {
+  .teaser-background { object-position: 57% center; }
+  .teaser-overlay {
+    background:
+      linear-gradient(0deg, rgba(22,22,22,.97) 0%, rgba(22,22,22,.75) 52%, rgba(22,22,22,.42) 100%);
+  }
+  .teaser-content { padding: 2rem 1.5rem calc(1.5rem + env(safe-area-inset-bottom)); }
+  .teaser-brand img { width: 13.5rem; }
+  .teaser-message { padding: 2.5rem 0; }
+  .teaser-message h1 { max-width: 360px; font-size: clamp(4rem, 18vw, 5.2rem); }
+  .teaser-form { width: 100%; }
+}
