@@ -61,7 +61,7 @@ export async function GET(req: Request) {
     // One day by default; up to seven for the week view.
     const days = Math.min(7, Math.max(1, Number(params.get("days")) || 1));
     const to = addDays(date, days - 1);
-    let q = db
+    const q = db
       .from("bookings")
       .select(
         "*,barbers(name,slug),services(name),booking_groups(customer_id,customers(name,email,phone,preferences),policy_snapshot)",
@@ -70,15 +70,12 @@ export async function GET(req: Request) {
       .lte("local_date", to)
       .order("local_date")
       .order("start_minute");
-    let blocks = db
+    const blocks = db
       .from("diary_blocks")
       .select("*")
       .gte("local_date", date)
       .lte("local_date", to);
-    if (staff.role !== "owner") {
-      q = q.eq("barber_id", staff.barber_id);
-      blocks = blocks.eq("barber_id", staff.barber_id);
-    }
+    // Every chair for everyone: the team reference each other's days.
     const [rows, br, bl, sv, pr, catalog] = await Promise.all([
       q,
       db.from("barbers").select("*"),
@@ -181,8 +178,7 @@ export async function POST(req: Request) {
         .select("id")
         .eq("slug", p.barber)
         .single();
-      if (!b || (staff.role !== "owner" && staff.barber_id !== b.id))
-        throw new Error("Choose your own chair");
+      if (!b) throw new Error("Choose a chair");
       const token = createHash("sha256").update(randomBytes(32)).digest("hex");
       const { data: g, error } = await db.rpc("create_booking_group", {
         p_customer_name: p.name,
@@ -203,8 +199,6 @@ export async function POST(req: Request) {
       return privateJson({ ok: true });
     }
     if (p.action === "block") {
-      if (staff.role !== "owner" && staff.barber_id !== p.barber)
-        throw new Error("Choose your own chair");
       const { error } = await db.from("diary_blocks").insert({
         barber_id: p.barber,
         local_date: p.date,
@@ -217,16 +211,12 @@ export async function POST(req: Request) {
       return privateJson({ ok: true });
     }
     if (p.action === "unblock") {
-      let q = db.from("diary_blocks").delete().eq("id", p.id);
-      if (staff.role !== "owner") q = q.eq("barber_id", staff.barber_id);
-      const { error } = await q;
+      const { error } = await db.from("diary_blocks").delete().eq("id", p.id);
       if (error) throw new Error("Block could not be removed");
       return privateJson({ ok: true });
     }
     if (p.action === "running_behind") {
       // Tell the next two customers this chair is running late, by text where we can, else email.
-      if (staff.role !== "owner" && staff.barber_id !== p.barber)
-        throw new Error("Choose your own chair");
       const now = shopMinute();
       const { data: rows, error } = await db
         .from("bookings")
@@ -288,8 +278,7 @@ export async function POST(req: Request) {
       .select("*,booking_groups(policy_snapshot)")
       .eq("id", p.id)
       .single();
-    if (!b || (staff.role !== "owner" && staff.barber_id !== b.barber_id))
-      throw new Error("This trim is not in your diary");
+    if (!b) throw new Error("This trim is not in the diary");
     if (!["booked", "arrived"].includes(b.status))
       throw new Error("This trim is already closed");
     let update: Record<string, unknown> = {

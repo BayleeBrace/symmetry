@@ -6,6 +6,7 @@ The staff side now works the way Fresha does, in Symmetry's colours. Base: the b
 
 ### Layout
 - **Left rail on desktop, bottom tabs on phones.** Calendar, Clients, Sales, Catalogue, Team, Reports, Marketing, Settings. Barbers see Calendar, Clients, Sales, Reports and Settings (their account). On a phone the bottom bar has Calendar, Clients, Sales and More.
+- **Everyone sees every chair.** Travis and Dylan get the whole shop in the calendar, the same as Sean, and can add appointments or blocked time for any chair. The chair filter narrows it to one chair and "me" is remembered on the device. Sales and Reports still show a barber only their own figures.
 - **Sign-in** is a centred card with the monogram.
 
 ### Calendar
@@ -36,6 +37,9 @@ The staff side now works the way Fresha does, in Symmetry's colours. Base: the b
 - **Marketing:** the automated messages (confirmation, reminder, running-behind texts, thank-you and review link, "Time for a trim?", waitlist alerts) with On or Needs setup, how many went out in the last 30 days, and how many clients opted in to reminders.
 - **Settings:** Your account (password), Cancellation policy (owner), Launch checks (owner).
 
+### Test data
+- `handover/TEST-DATA.sql` puts ten test clients with visit history and a few upcoming trims into the database (blank emails and mobiles, so no messages can go out). `handover/TEST-DATA-REMOVE.sql` takes them all out again before launch.
+
 ### Database
 - `20260910120000_clients_and_checkout.sql`: the customer directory (groups identical guest records, reuses a client on later bookings when name, email and mobile match) plus `bookings.paid_by`. Safe to run on the live database even though this morning's `20260910072152_customer_directory.sql` is already applied: every step skips what exists, and it puts the reminder consent wording back. Also apply `20260907230000_sentence_case_service_names.sql` if you have not yet. Without this migration every online booking creates a new customer row, so visit history and rebook reminders cannot see a regular's past trims.
 
@@ -45,4 +49,4 @@ The staff side now works the way Fresha does, in Symmetry's colours. Base: the b
 3. Tap a trim that has started, Checkout, Cash. The chip should read "Done · Cash" and the trim appear in Sales for today under Cash.
 4. Clients: search "Tom", open the profile, check the figures, tap New appointment and save one.
 5. Team, Shifts: change Dylan's Monday to Off and back.
-6. As Travis (barber sign-in): only his chair, his sales, no Catalogue, Team or Marketing.
+6. As Travis (barber sign-in): every chair in the calendar, only his own sales and reports, no Catalogue, Team or Marketing.

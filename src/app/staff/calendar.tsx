@@ -73,13 +73,12 @@ export function Calendar({
   onPrefillUsed: () => void;
 }) {
   const today = shopToday();
-  const owner = ctx.staff.role === "owner";
   const chairs = [...ctx.barbers]
     .filter((b) => b.active !== false)
     .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
   const ownChair = chairs.find((b) => b.id === ctx.staff.barber_id);
   const { date, view } = state;
-  const team = owner ? state.team : ctx.staff.barber_id;
+  const team = state.team;
   const teamId =
     team === "all" ? null : team === "mine" ? (ownChair?.id ?? null) : team;
   const barbers = teamId ? chairs.filter((b) => b.id === teamId) : chairs;
@@ -218,7 +217,7 @@ export function Calendar({
           />
         </div>
         <div className="cal-tools">
-          {owner && chairs.length > 1 && (
+          {chairs.length > 1 && (
             <label className="cal-select">
               <span className="sr-only">Team</span>
               <select

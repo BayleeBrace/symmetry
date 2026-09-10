@@ -123,8 +123,9 @@ function Members() {
   return (
     <div className="members">
       <p className="staff-muted">
-        The owner’s sign-in sees every chair. A barber’s sign-in shows only
-        their own diary, sales and figures. One sign-in per chair.
+        Everyone sees every chair in the calendar and can book for any of them.
+        Sales and reports are each barber’s own; the owner sees all of it, plus
+        the catalogue, team and marketing. One sign-in per chair.
       </p>
       {error && (
         <p className="staff-error" role="alert">
