@@ -789,12 +789,31 @@ html[data-staff-page][data-staff-theme="dark"] body {
   font-size: 0.72rem;
   white-space: nowrap;
 }
+/* A small pill in the corner of the header, clear of the avatar */
 .chair-behind-toggle {
   position: absolute;
-  top: 4px;
+  top: 6px;
   right: 6px;
+  z-index: 3;
   min-height: 0;
-  font-size: 0.72rem;
+  padding: 3px 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--white);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.66rem;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.chair-behind-toggle:hover,
+.chair-behind-toggle[aria-expanded="true"] {
+  border-color: var(--black);
+  color: var(--black);
+}
+.behind-short {
+  display: none;
 }
 .chair-behind {
   position: absolute;
@@ -2674,9 +2693,17 @@ html[data-staff-page][data-staff-theme="dark"] body {
     display: none;
   }
   .chair-behind-toggle {
-    top: 2px;
-    right: 2px;
-    font-size: 0.6rem;
+    top: 3px;
+    right: 1px;
+    padding: 1px 5px;
+    font-size: 0.56rem;
+    letter-spacing: 0;
+  }
+  .behind-long {
+    display: none;
+  }
+  .behind-short {
+    display: inline;
   }
   .now-bar span {
     font-size: 0.58rem;

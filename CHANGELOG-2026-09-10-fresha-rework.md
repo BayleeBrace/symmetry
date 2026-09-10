@@ -185,3 +185,7 @@ From Sean's screen recording of Fresha. Four things the Symmetry app now does th
 
 - The Notifications page now checks the VAPID keys in Vercel and says exactly what is wrong with them (the failed queue showed "Vapid private key should be 32 bytes long when decoded", so the private key was pasted wrongly). A fresh pair is in `vercel-env.txt`.
 - Enabling a phone after the keys change now starts the phone's registration afresh instead of failing on the old one.
+
+## Running behind pill
+
+- The "Running behind?" link in each chair header was drawn full size across the avatar once every chair had a trim coming up. It is now a small pill in the top corner of the column, reading "Late?" on phones and "Running behind?" on desktop, and never touches the avatar.

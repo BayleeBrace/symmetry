@@ -389,13 +389,15 @@ export function DayTimeline({
                 {upcoming.length > 0 && (
                   <button
                     type="button"
-                    className="text-button chair-behind-toggle"
+                    className="chair-behind-toggle"
                     aria-expanded={behind === barber.id}
+                    aria-label={`${barber.name} running behind?`}
                     onClick={() =>
                       setBehind(behind === barber.id ? null : barber.id)
                     }
                   >
-                    Running behind?
+                    <span className="behind-long">Running behind?</span>
+                    <span className="behind-short">Late?</span>
                   </button>
                 )}
               </header>
