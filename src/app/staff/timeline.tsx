@@ -146,6 +146,7 @@ export function DayTimeline({
   date,
   busy,
   act,
+  onMove,
   onWalkIn,
 }: {
   diary: Diary;
@@ -153,6 +154,7 @@ export function DayTimeline({
   date: string;
   busy: boolean;
   act: Act;
+  onMove: (drop: DragDrop) => void;
   onWalkIn: (barber: Barber, minute: number) => void;
 }) {
   const [selected, setSelected] = useState<Selection>(null);
@@ -205,16 +207,7 @@ export function DayTimeline({
   const dropRef = useRef<(drop: DragDrop) => void>(() => {});
   const busyRef = useRef(busy);
   useEffect(() => {
-    dropRef.current = (drop) => {
-      void act("/api/staff/diary", {
-        action: "move",
-        id: drop.id,
-        date,
-        time: drop.minute,
-        barber: drop.column,
-        version: drop.version,
-      });
-    };
+    dropRef.current = onMove;
     busyRef.current = busy;
   });
   useEffect(() => {

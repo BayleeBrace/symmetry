@@ -77,3 +77,5 @@ The staff side now works the way Fresha does, in Symmetry's colours. Base: the b
 2. Drag a trim from Sean's column into Travis's. The sheet should then say "with Travis".
 3. Drag one onto a slot that is already taken: it should bounce back with the "diary changed or that time is unavailable" message.
 4. Switch to Week, drag a trim from Thursday to Friday.
+
+- **Dropped trims stay put.** A dragged trim shows in its new place the moment you let go, while the save happens in the background. If the diary refuses the move, it slides back and the reason shows at the top.

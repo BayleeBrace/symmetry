@@ -127,11 +127,50 @@ export function Calendar({
   }, [load]);
 
   const run: Act = async (url, payload) => {
-    const result = await act(url, payload);
-    await load();
-    return result;
+    try {
+      return await act(url, payload);
+    } finally {
+      // Always refresh, so a refused move puts the card back where it was.
+      await load();
+    }
   };
   const quiet: Act = (url, payload) => run(url, payload).catch(() => undefined);
+
+  /** A dropped trim shows in its new place at once, then saves. If the diary refuses, the refresh puts it back. */
+  const moveTrim = (drop: DragDrop, by: "chair" | "day") => {
+    const chair = chairs.find((c) => c.id === drop.column);
+    setData(
+      (current) =>
+        current && {
+          ...current,
+          bookings: current.bookings.map((b) =>
+            b.id !== drop.id
+              ? b
+              : {
+                  ...b,
+                  start_minute: drop.minute,
+                  ...(by === "chair"
+                    ? {
+                        barber_id: drop.column,
+                        barbers: {
+                          name: chair?.name ?? b.barbers?.name ?? "",
+                          slug: chair?.slug ?? b.barbers?.slug ?? "",
+                        },
+                      }
+                    : { local_date: drop.column }),
+                },
+          ),
+        },
+    );
+    void quiet("/api/staff/diary", {
+      action: "move",
+      id: drop.id,
+      date: by === "day" ? drop.column : date,
+      time: drop.minute,
+      ...(by === "chair" ? { barber: drop.column } : {}),
+      version: drop.version,
+    });
+  };
 
   const step = (direction: 1 | -1) =>
     onState({ date: addDays(date, direction * (view === "week" ? 7 : 1)) });
@@ -353,6 +392,7 @@ export function Calendar({
           date={date}
           busy={busy}
           act={quiet}
+          onMove={(drop) => moveTrim(drop, "chair")}
           onWalkIn={(barber, minute) =>
             openNew({ barberId: barber.id, minute, date })
           }
@@ -364,6 +404,7 @@ export function Calendar({
           days={weekDays(date)}
           busy={busy}
           act={quiet}
+          onMove={(drop) => moveTrim(drop, "day")}
           onGap={(day, minute) =>
             openNew({ barberId: weekBarber.id, date: day, minute })
           }
@@ -428,6 +469,7 @@ function WeekGrid({
   days,
   busy,
   act,
+  onMove,
   onGap,
 }: {
   diary: Diary;
@@ -435,6 +477,7 @@ function WeekGrid({
   days: string[];
   busy: boolean;
   act: Act;
+  onMove: (drop: DragDrop) => void;
   onGap: (date: string, minute: number) => void;
 }) {
   const [selected, setSelected] = useState<Selection>(null);
@@ -488,15 +531,7 @@ function WeekGrid({
   const dropRef = useRef<(drop: DragDrop) => void>(() => {});
   const busyRef = useRef(busy);
   useEffect(() => {
-    dropRef.current = (drop) => {
-      void act("/api/staff/diary", {
-        action: "move",
-        id: drop.id,
-        date: drop.column,
-        time: drop.minute,
-        version: drop.version,
-      });
-    };
+    dropRef.current = onMove;
     busyRef.current = busy;
   });
   useEffect(() => {
