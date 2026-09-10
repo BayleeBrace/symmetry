@@ -16,19 +16,19 @@ test("preview limiter limits each scope/IP and releases expired windows", () => 
 test("next open uses London time and handles closing time and closed days", () => {
   assert.equal(
     openingStatus(OPENING_HOURS, new Date("2026-09-08T08:00:00Z")),
-    "Open today until 18:00.",
+    "Open today until 6pm.",
   );
   assert.equal(
     openingStatus(OPENING_HOURS, new Date("2026-09-08T17:00:00Z")),
-    "Next open tomorrow at 11:00.",
+    "Next open tomorrow at 11am.",
   );
   assert.equal(
     openingStatus(OPENING_HOURS, new Date("2026-09-06T20:00:00Z")),
-    "Next open Tuesday at 9:00.",
+    "Next open Tuesday at 9am.",
   );
   assert.equal(
     openingStatus(OPENING_HOURS, new Date("2026-12-08T08:30:00Z")),
-    "Next open today at 9:00.",
+    "Next open today at 9am.",
   );
 });
 

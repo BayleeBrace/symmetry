@@ -14,19 +14,19 @@ export function SiteFooter() {
           height={38}
           alt="Symmetry"
         />
-        <h2>diolch.</h2>
-        <p>thank you.</p>
+        <h2>Diolch.</h2>
+        <p>Thank you.</p>
       </div>
       <div className="footer-links">
         <Link className="primary-button light" href="/book">
-          book a trim
+          Book a trim
         </Link>
         <p>
-          symmetry, saundersfoot
+          Symmetry, Saundersfoot
           {showFormerly() && (
             <>
               <br />
-              formerly studio 4 barbers.
+              Formerly Studio 4 Barbers.
             </>
           )}
         </p>
@@ -38,9 +38,9 @@ export function SiteFooter() {
           @symmetry.wales
         </a>
         <ContactLinks />
-        <Link href="/privacy">privacy</Link>
-        <Link href="/cancellation-policy">cancellation policy</Link>
-        <Link href="/staff">staff sign in</Link>
+        <Link href="/privacy">Privacy</Link>
+        <Link href="/cancellation-policy">Cancellation policy</Link>
+        <Link href="/staff">Staff sign in</Link>
       </div>
     </footer>
   );

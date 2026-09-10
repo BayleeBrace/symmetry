@@ -1,13 +1,8 @@
 "use client";
 import { useState } from "react";
-export function PushButton({
-  token,
-  label = "enable notifications",
-}: {
-  token?: string;
-  label?: string;
-}) {
+export function PushButton({ token }: { token?: string }) {
   const [message, setMessage] = useState("");
+  const [failed, setFailed] = useState(false);
   return (
     <>
       <button
@@ -39,14 +34,23 @@ export function PushButton({
             });
             if (!save.ok) throw new Error("Notifications could not be saved");
             setMessage("Notifications enabled.");
+            setFailed(false);
           } catch (e) {
             setMessage((e as Error).message);
+            setFailed(true);
           }
         }}
       >
-        {label}
+        Enable notifications
       </button>
-      {message && <span role="status">{message}</span>}
+      {message && (
+        <span
+          role={failed ? "alert" : "status"}
+          className={failed ? "form-error" : ""}
+        >
+          {message}
+        </span>
+      )}
     </>
   );
 }

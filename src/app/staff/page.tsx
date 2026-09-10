@@ -1,14 +1,13 @@
-import { BrandHeader } from "@/components/brand-header";
-import { Diary } from "./diary";
+import "./staff.css";
+import { StaffApp } from "./app";
 export const metadata = {
-  title: "Staff diary",
+  title: "Staff",
   robots: { index: false, follow: false },
 };
 export default function Page() {
   return (
     <main className="staff-page">
-      <BrandHeader compact />
-      <Diary />
+      <StaffApp />
     </main>
   );
 }

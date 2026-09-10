@@ -58,10 +58,10 @@ export default async function BookPage({
     firstDate = addDays(firstDate, 1);
   return (
     <main className="app-shell">
-      <BrandHeader compact />
-      {showFormerly() && (
-        <p className="booking-rename">formerly studio 4 barbers.</p>
-      )}
+      <BrandHeader
+        compact
+        note={showFormerly() ? "Formerly Studio 4 Barbers." : undefined}
+      />
       <BookingFlow
         initialDate={firstDate}
         initialBarber={initialBarber}

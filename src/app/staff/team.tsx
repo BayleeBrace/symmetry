@@ -1,6 +1,14 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { staffApi as api } from "@/lib/staff-client";
+import { hourWord, inputTime } from "@/lib/booking-data";
+import {
+  type Act,
+  type Barber,
+  type Context,
+  WEEKDAYS,
+  initials,
+} from "./types";
 
 type Row = {
   barber: {
@@ -18,8 +26,60 @@ type Row = {
     last_sign_in: string | null;
   } | null;
 };
+type Schedule = {
+  barber_id: string;
+  iso_weekday: number;
+  open_minute: number | null;
+  close_minute: number | null;
+};
 
-export function Team() {
+const minuteOf = (value: FormDataEntryValue | null) => {
+  if (!value) return null;
+  const [h, m] = String(value).split(":").map(Number);
+  return h * 60 + m;
+};
+
+export function Team({
+  ctx,
+  act,
+  busy,
+}: {
+  ctx: Context;
+  act: Act;
+  busy: boolean;
+}) {
+  const [tab, setTab] = useState<"members" | "shifts">("members");
+  return (
+    <section className="team" aria-label="Team">
+      <header className="sec-head">
+        <h1>Team</h1>
+        <div className="seg" role="group" aria-label="Team pages">
+          <button
+            type="button"
+            aria-pressed={tab === "members"}
+            onClick={() => setTab("members")}
+          >
+            Team members
+          </button>
+          <button
+            type="button"
+            aria-pressed={tab === "shifts"}
+            onClick={() => setTab("shifts")}
+          >
+            Shifts
+          </button>
+        </div>
+      </header>
+      {tab === "members" ? (
+        <Members />
+      ) : (
+        <Shifts ctx={ctx} act={act} busy={busy} />
+      )}
+    </section>
+  );
+}
+
+function Members() {
   const [team, setTeam] = useState<Row[] | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -61,11 +121,10 @@ export function Team() {
       </p>
     );
   return (
-    <div className="team">
-      <h2>Team.</h2>
+    <div className="members">
       <p className="staff-muted">
         The owner’s sign-in sees every chair. A barber’s sign-in shows only
-        their own diary, walk-ins, breaks and figures. One sign-in per chair.
+        their own diary, sales and figures. One sign-in per chair.
       </p>
       {error && (
         <p className="staff-error" role="alert">
@@ -80,6 +139,7 @@ export function Team() {
       <div className="team-list">
         {team.map(({ barber, account }) => (
           <article className="team-row" key={barber.id}>
+            <span className="avatar">{initials(barber.name)}</span>
             <div className="team-name">
               <strong>{barber.name}</strong>
               <span>{barber.role_label}</span>
@@ -168,7 +228,7 @@ export function Team() {
                       email: form.get("email"),
                       password: form.get("password"),
                     },
-                    `${barber.name} can now sign in. Tell them the email and temporary password; they can change it in their Account tab.`,
+                    `${barber.name} can now sign in. Tell them the email and temporary password; they can change it in Settings.`,
                   );
                 }}
               >
@@ -260,6 +320,171 @@ export function Team() {
           </article>
         ))}
       </div>
+    </div>
+  );
+}
+
+function Shifts({ ctx, act, busy }: { ctx: Context; act: Act; busy: boolean }) {
+  const [schedules, setSchedules] = useState<Schedule[] | null>(null);
+  const [error, setError] = useState("");
+  const [edit, setEdit] = useState<{ barber: Barber; day: number } | null>(
+    null,
+  );
+  const reload = useCallback(() => {
+    api("/api/staff/settings")
+      .then((d) => {
+        setSchedules(d.schedules);
+        setError("");
+      })
+      .catch((e) => setError((e as Error).message));
+  }, []);
+  useEffect(() => {
+    const t = setTimeout(reload, 0);
+    return () => clearTimeout(t);
+  }, [reload]);
+  if (!schedules)
+    return (
+      <p role="status" className="staff-muted">
+        {error || "Loading shifts…"}
+      </p>
+    );
+  const barbers = [...ctx.barbers]
+    .filter((b) => b.active !== false)
+    .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
+  const scheduleFor = (barber: Barber, day: number) =>
+    schedules.find((s) => s.barber_id === barber.id && s.iso_weekday === day);
+  const editing = edit ? scheduleFor(edit.barber, edit.day) : undefined;
+  return (
+    <div className="shifts">
+      <p className="staff-muted">
+        Each chair’s usual week. A chair without its own hours follows the shop
+        hours. Use blocked time in the calendar for holidays and one-off
+        changes; shifts cannot change while future bookings exist for that
+        chair.
+      </p>
+      {error && (
+        <p className="staff-error" role="alert">
+          {error}
+        </p>
+      )}
+      <div className="grid-wrap">
+        <table className="grid-table shifts-table">
+          <thead>
+            <tr>
+              <th scope="col">Chair</th>
+              {WEEKDAYS.map((day) => (
+                <th scope="col" key={day}>
+                  {day.slice(0, 3)}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {barbers.map((barber) => (
+              <tr key={barber.id}>
+                <th scope="row">
+                  <span className="avatar">{initials(barber.name)}</span>
+                  {barber.name}
+                </th>
+                {WEEKDAYS.map((day, index) => {
+                  const schedule = scheduleFor(barber, index + 1);
+                  const on =
+                    edit?.barber.id === barber.id && edit?.day === index + 1;
+                  const off =
+                    schedule &&
+                    (schedule.open_minute === null ||
+                      schedule.close_minute === null);
+                  return (
+                    <td key={day}>
+                      <button
+                        type="button"
+                        className={`${on ? "is-editing" : ""} ${off ? "is-off" : ""}`}
+                        onClick={() => setEdit({ barber, day: index + 1 })}
+                      >
+                        {!schedule
+                          ? "Shop hours"
+                          : off
+                            ? "Off"
+                            : `${hourWord(schedule.open_minute!)} to ${hourWord(schedule.close_minute!)}`}
+                      </button>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {edit && (
+        <form
+          key={`${edit.barber.id}-${edit.day}`}
+          className="staff-form inline-editor"
+          onSubmit={async (event) => {
+            event.preventDefault();
+            const form = new FormData(event.currentTarget);
+            const off = form.get("off") === "on";
+            await act("/api/staff/settings", {
+              action: "schedule",
+              barber_id: edit.barber.id,
+              iso_weekday: edit.day,
+              open_minute: off ? null : minuteOf(form.get("open")),
+              close_minute: off ? null : minuteOf(form.get("close")),
+            });
+            setEdit(null);
+            reload();
+          }}
+        >
+          <p className="wide editor-title">
+            {edit.barber.name} on {WEEKDAYS[edit.day - 1]}s
+          </p>
+          <label>
+            Start
+            <input
+              name="open"
+              type="time"
+              step="900"
+              defaultValue={
+                editing?.open_minute != null
+                  ? inputTime(editing.open_minute)
+                  : "09:00"
+              }
+            />
+          </label>
+          <label>
+            Finish
+            <input
+              name="close"
+              type="time"
+              step="900"
+              defaultValue={
+                editing?.close_minute != null
+                  ? inputTime(editing.close_minute)
+                  : "18:00"
+              }
+            />
+          </label>
+          <label className="check wide">
+            <input
+              type="checkbox"
+              name="off"
+              defaultChecked={Boolean(editing) && editing?.open_minute === null}
+            />
+            <span>Day off</span>
+          </label>
+          <div className="form-actions">
+            <button type="submit" className="button-primary" disabled={busy}>
+              Save shift
+            </button>
+            <button
+              type="button"
+              className="text-button"
+              onClick={() => setEdit(null)}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { requireStaff } from "@/lib/staff";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sameOrigin, privateJson, publicError } from "@/lib/security";
 import { shopToday, shopMinute } from "@/lib/booking-data";
+
 const profile = z.object({
   name: z.string().trim().min(2).max(100),
   email: z
@@ -22,9 +23,11 @@ const profile = z.object({
   preferences: z.string().max(1000),
 });
 const fields = "id,name,email,phone,phone_country,preferences,created_at";
+
+// Every signed-in barber can look clients up and see their history; only the owner can edit details.
 export async function GET(req: Request) {
   try {
-    await requireStaff(true);
+    await requireStaff();
     const db = createAdminClient();
     const params = new URL(req.url).searchParams;
     const page = z.coerce
@@ -42,14 +45,14 @@ export async function GET(req: Request) {
         .eq("id", id)
         .single();
       if (customer.error)
-        return privateJson({ error: "Customer not found" }, 404);
+        return privateJson({ error: "Client not found" }, 404);
       const past = params.get("period") === "past";
       const today = shopToday(),
         minute = shopMinute();
       let query = db
         .from("bookings")
         .select(
-          "id,local_date,start_minute,duration,price_pence,status,barbers(name),services(name),booking_groups!inner(customer_id)",
+          "id,local_date,start_minute,duration,price_pence,status,paid_by,barbers(name),services(name),booking_groups!inner(customer_id)",
           { count: "exact" },
         )
         .eq("booking_groups.customer_id", id);
@@ -60,16 +63,39 @@ export async function GET(req: Request) {
         : query.or(
             `local_date.gt.${today},and(local_date.eq.${today},start_minute.gte.${minute})`,
           );
-      const bookings = await query
-        .order("local_date", { ascending: !past })
-        .order("start_minute", { ascending: !past })
-        .order("id")
-        .range(page * 20, page * 20 + 19);
-      if (bookings.error) throw new Error("Booking history could not load");
+      const [bookings, all] = await Promise.all([
+        query
+          .order("local_date", { ascending: !past })
+          .order("start_minute", { ascending: !past })
+          .order("id")
+          .range(page * 20, page * 20 + 19),
+        db
+          .from("bookings")
+          .select(
+            "status,price_pence,local_date,booking_groups!inner(customer_id)",
+          )
+          .eq("booking_groups.customer_id", id)
+          .limit(2000),
+      ]);
+      if (bookings.error || all.error)
+        throw new Error("Booking history could not load");
+      const rows = all.data;
       return privateJson({
         customer: customer.data,
         bookings: bookings.data,
         count: bookings.count,
+        stats: {
+          visits: rows.filter((b) => b.status === "done").length,
+          noShows: rows.filter((b) => b.status === "no_show").length,
+          cancelled: rows.filter((b) => b.status === "cancelled").length,
+          spent: rows
+            .filter((b) => b.status === "done")
+            .reduce((s, b) => s + b.price_pence, 0),
+          upcoming: rows.filter(
+            (b) =>
+              ["booked", "arrived"].includes(b.status) && b.local_date >= today,
+          ).length,
+        },
       });
     }
     const term = (params.get("q") || "")
@@ -89,12 +115,13 @@ export async function GET(req: Request) {
       .order("name")
       .order("id")
       .range(page * 20, page * 20 + 19);
-    if (result.error) throw new Error("Customers could not load");
+    if (result.error) throw new Error("Clients could not load");
     return privateJson({ customers: result.data, count: result.count });
   } catch (e) {
     return publicError(e, 403);
   }
 }
+
 export async function POST(req: Request) {
   try {
     sameOrigin(req);
@@ -111,23 +138,20 @@ export async function POST(req: Request) {
         }),
       })
       .parse(await req.json());
+    const country = parsePhoneNumberFromString(body.changes.phone)?.country;
     let query = createAdminClient()
       .from("customers")
       .update({
         ...body.changes,
-        ...(parsePhoneNumberFromString(body.changes.phone)?.country
-          ? {
-              phone_country: parsePhoneNumberFromString(body.changes.phone)!
-                .country,
-            }
-          : {}),
+        ...(country ? { phone_country: country } : {}),
       })
       .eq("id", body.id)
       .is("directory_parent_id", null);
+    // Only save over the values the screen was showing, so two people cannot overwrite each other.
     for (const key of ["name", "email", "phone", "preferences"] as const)
       query = query.eq(key, body.original[key]);
     const result = await query.select(fields).maybeSingle();
-    if (result.error) throw new Error("Customer details could not be saved");
+    if (result.error) throw new Error("Client details could not be saved");
     if (!result.data)
       return privateJson(
         { error: "This profile changed elsewhere. Reopen it before saving." },

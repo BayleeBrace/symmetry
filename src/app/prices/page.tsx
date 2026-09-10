@@ -31,9 +31,9 @@ export default async function PricesPage() {
     <main className="information-page">
       <BrandHeader />
       <section className="information-hero">
-        <p className="eyebrow">cuts, fades and beards</p>
-        <h1>prices.</h1>
-        <p>Choose your barber to see their prices.</p>
+        <p className="eyebrow">Cuts, fades and beards</p>
+        <h1>Prices.</h1>
+        <p>Each barber sets their own prices.</p>
       </section>
       <section className="price-panel">
         <table className="brand-price-table">
@@ -42,10 +42,10 @@ export default async function PricesPage() {
           </caption>
           <thead>
             <tr>
-              <th scope="col">service</th>
+              <th scope="col">Service</th>
               {(["dylan", "travis", "sean"] as const).map((id) => (
                 <th key={id} scope="col" aria-label={BARBERS[id].name}>
-                  {id[0]}
+                  {id[0].toUpperCase()}
                 </th>
               ))}
             </tr>
@@ -67,14 +67,18 @@ export default async function PricesPage() {
             ))}
           </tbody>
         </table>
-        <p className="price-legend">d dylan · t travis · s sean</p>
-        <p className="price-note">prices in pounds.</p>
+        <p className="price-legend">D Dylan · T Travis · S Sean</p>
+        <p className="price-note">Prices in pounds.</p>
         <div className="price-book-links">
-          {(["dylan", "travis", "sean"] as const).map((id) => (
-            <Link className="quiet-button" key={id} href={`/book?barber=${id}`}>
-              book with {BARBERS[id].name}
-            </Link>
-          ))}
+          <Link className="primary-button" href="/book">
+            Book a trim
+          </Link>
+          <span className="price-book-with">
+            or book with{" "}
+            <Link href="/book?barber=dylan">{BARBERS.dylan.name}</Link>,{" "}
+            <Link href="/book?barber=travis">{BARBERS.travis.name}</Link> or{" "}
+            <Link href="/book?barber=sean">{BARBERS.sean.name}</Link>
+          </span>
         </div>
       </section>
       <SiteFooter />

@@ -1,7 +1,7 @@
 export const BARBERS = {
-  sean: { name: "sean", role: "owner, barber" },
-  travis: { name: "travis", role: "senior barber" },
-  dylan: { name: "dylan", role: "junior barber" },
+  sean: { name: "Sean", role: "Owner, barber" },
+  travis: { name: "Travis", role: "Senior barber" },
+  dylan: { name: "Dylan", role: "Junior barber" },
 } as const;
 
 export type BarberId = keyof typeof BARBERS;
@@ -23,47 +23,47 @@ const prices = (
 export const SERVICES: Service[] = [
   {
     id: "fade",
-    name: "fade",
+    name: "Fade",
     barbers: prices([17, 50], [22, 45], [24, 40]),
   },
   {
     id: "fade-beard",
-    name: "fade and beard",
+    name: "Fade and beard",
     barbers: prices([20, 60], [25, 50], [27, 45]),
   },
   {
     id: "cut",
-    name: "cut",
+    name: "Cut",
     barbers: prices([14, 35], [17, 30], [18, 30]),
   },
   {
     id: "cut-beard",
-    name: "cut and beard",
+    name: "Cut and beard",
     barbers: prices([17, 45], [20, 35], [21, 30]),
   },
   {
     id: "under-16",
-    name: "under sixteens",
+    name: "Under sixteens",
     barbers: prices([15, 45], [18, 40], [18.5, 35]),
   },
   {
     id: "under-13",
-    name: "under thirteens",
+    name: "Under thirteens",
     barbers: prices([10, 40], [15, 30], [15.5, 25]),
   },
   {
     id: "over-60",
-    name: "over sixties",
+    name: "Over sixties",
     barbers: prices([10, 40], [12, 25], [12, 25]),
   },
   {
     id: "one-length",
-    name: "one length",
+    name: "One length",
     barbers: prices([10, 20], [12, 15], [12, 15]),
   },
   {
     id: "line-beard",
-    name: "line up and beard",
+    name: "Line up and beard",
     barbers: prices([8, 20], [10, 15], [10, 15]),
   },
 ];

@@ -15,7 +15,7 @@ export default async function Page({
     <main className="information-page">
       <BrandHeader compact />
       <section className="information-hero customer-content">
-        <h1>next in line.</h1>
+        <h1>Next in line.</h1>
         <p>
           Tell us when you’d like a trim. We’ll email if space opens up. A
           waitlist alert doesn’t reserve a time.

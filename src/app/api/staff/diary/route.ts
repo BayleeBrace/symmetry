@@ -2,7 +2,14 @@ import { z } from "zod";
 import { randomBytes, createHash } from "node:crypto";
 import { requireStaff } from "@/lib/staff";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { validDate, shopToday, shopMinute } from "@/lib/booking-data";
+import {
+  addDays,
+  validDate,
+  shopToday,
+  shopMinute,
+  parseDate,
+} from "@/lib/booking-data";
+import { getCatalog } from "@/lib/catalog";
 import { sameOrigin, privateJson, publicError } from "@/lib/security";
 const actions = z.discriminatedUnion("action", [
   z.object({
@@ -10,6 +17,7 @@ const actions = z.discriminatedUnion("action", [
     id: z.uuid(),
     status: z.enum(["arrived", "done", "no_show", "cancelled"]),
     version: z.string(),
+    paid_by: z.enum(["card", "cash", "other"]).optional(),
   }),
   z.object({
     action: z.literal("move"),
@@ -28,6 +36,11 @@ const actions = z.discriminatedUnion("action", [
   }),
   z.object({ action: z.literal("unblock"), id: z.uuid() }),
   z.object({
+    action: z.literal("running_behind"),
+    barber: z.uuid(),
+    minutes: z.number().int().min(5).max(60),
+  }),
+  z.object({
     action: z.literal("walkin"),
     barber: z.string(),
     service: z.string(),
@@ -42,26 +55,37 @@ export async function GET(req: Request) {
   try {
     const staff = await requireStaff();
     const db = createAdminClient();
-    const date = new URL(req.url).searchParams.get("date") || shopToday();
+    const params = new URL(req.url).searchParams;
+    const date = params.get("date") || shopToday();
     if (!validDate(date)) throw new Error("Choose a date");
+    // One day by default; up to seven for the week view.
+    const days = Math.min(7, Math.max(1, Number(params.get("days")) || 1));
+    const to = addDays(date, days - 1);
     let q = db
       .from("bookings")
       .select(
         "*,barbers(name,slug),services(name),booking_groups(customer_id,customers(name,email,phone,preferences),policy_snapshot)",
       )
-      .eq("local_date", date)
+      .gte("local_date", date)
+      .lte("local_date", to)
+      .order("local_date")
       .order("start_minute");
-    let blocks = db.from("diary_blocks").select("*").eq("local_date", date);
+    let blocks = db
+      .from("diary_blocks")
+      .select("*")
+      .gte("local_date", date)
+      .lte("local_date", to);
     if (staff.role !== "owner") {
       q = q.eq("barber_id", staff.barber_id);
       blocks = blocks.eq("barber_id", staff.barber_id);
     }
-    const [rows, br, bl, sv, pr] = await Promise.all([
+    const [rows, br, bl, sv, pr, catalog] = await Promise.all([
       q,
       db.from("barbers").select("*"),
       blocks,
       db.from("services").select("*").eq("active", true),
       db.from("service_prices").select("*"),
+      getCatalog(),
     ]);
     if (rows.error || br.error || bl.error || sv.error || pr.error)
       throw new Error("The diary could not load");
@@ -72,14 +96,74 @@ export async function GET(req: Request) {
       .in("booking_id", ids)
       .order("created_at", { ascending: false })
       .limit(30);
+    // What each customer on the page has done before: visits, no shows, last trim.
+    const customerIds = [
+      ...new Set(
+        rows.data
+          .map(
+            (b) =>
+              (b.booking_groups as unknown as { customer_id?: string } | null)
+                ?.customer_id,
+          )
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ];
+    const history: Record<
+      string,
+      {
+        visits: number;
+        noShows: number;
+        last: { date: string; barber_id: string; service_id: string } | null;
+      }
+    > = {};
+    for (const id of customerIds)
+      history[id] = { visits: 0, noShows: 0, last: null };
+    if (customerIds.length) {
+      const { data: past } = await db
+        .from("bookings")
+        .select(
+          "local_date,status,barber_id,service_id,booking_groups!inner(customer_id)",
+        )
+        .in("booking_groups.customer_id", customerIds)
+        .in("status", ["done", "no_show"])
+        .lt("local_date", date)
+        .order("local_date", { ascending: false })
+        .limit(3000);
+      for (const b of past || []) {
+        const h =
+          history[
+            (b.booking_groups as unknown as { customer_id: string }).customer_id
+          ];
+        if (!h) continue;
+        if (b.status === "no_show") h.noShows++;
+        else {
+          h.visits++;
+          h.last ??= {
+            date: b.local_date,
+            barber_id: b.barber_id,
+            service_id: b.service_id,
+          };
+        }
+      }
+    }
     return privateJson({
       staff,
+      date,
+      to,
+      hours: catalog.hours[parseDate(date).getUTCDay()] ?? null,
+      hoursByDay: Object.fromEntries(
+        Array.from({ length: days }, (_, i) => addDays(date, i)).map((d) => [
+          d,
+          catalog.hours[parseDate(d).getUTCDay()] ?? null,
+        ]),
+      ),
       bookings: rows.data,
       barbers: br.data,
       blocks: bl.data,
       services: sv.data,
       prices: pr.data,
       events: events || [],
+      history,
     });
   } catch (e) {
     return publicError(e, 403);
@@ -139,6 +223,66 @@ export async function POST(req: Request) {
       if (error) throw new Error("Block could not be removed");
       return privateJson({ ok: true });
     }
+    if (p.action === "running_behind") {
+      // Tell the next two customers this chair is running late, by text where we can, else email.
+      if (staff.role !== "owner" && staff.barber_id !== p.barber)
+        throw new Error("Choose your own chair");
+      const now = shopMinute();
+      const { data: rows, error } = await db
+        .from("bookings")
+        .select(
+          "id,group_id,start_minute,duration,booking_groups(customers(email,phone))",
+        )
+        .eq("barber_id", p.barber)
+        .eq("local_date", shopToday())
+        .eq("status", "booked")
+        .order("start_minute");
+      if (error) throw new Error("The diary could not load");
+      const next = (rows || [])
+        .filter((b) => b.start_minute + b.duration > now)
+        .slice(0, 2);
+      const bucket = Math.floor(Date.now() / 600000);
+      const smsReady = Boolean(
+        process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_FROM,
+      );
+      let told = 0;
+      for (const b of next) {
+        const customer = (
+          b.booking_groups as unknown as {
+            customers: { email: string | null; phone: string | null } | null;
+          } | null
+        )?.customers;
+        const phone = customer?.phone || "";
+        const channel =
+          smsReady && phone.startsWith("+")
+            ? "sms"
+            : customer?.email
+              ? "email"
+              : null;
+        if (!channel) continue;
+        const { error: queue } = await db.from("notification_jobs").upsert(
+          {
+            dedupe_key: `delayed-${b.id}-${bucket}`,
+            group_id: b.group_id,
+            booking_id: b.id,
+            kind: "delayed",
+            channel,
+            payload: { minutes: p.minutes },
+          },
+          { onConflict: "dedupe_key", ignoreDuplicates: true },
+        );
+        if (queue) continue;
+        await db.from("booking_events").insert({
+          booking_id: b.id,
+          group_id: b.group_id,
+          kind: "staff_action",
+          actor: staff.user_id,
+          detail: { action: "running_behind", minutes: p.minutes },
+        });
+        told++;
+      }
+      return privateJson({ ok: true, told });
+    }
     const { data: b } = await db
       .from("bookings")
       .select("*,booking_groups(policy_snapshot)")
@@ -161,6 +305,7 @@ export async function POST(req: Request) {
       )
         throw new Error("This trim has not started yet");
       update.status = p.status;
+      if (p.status === "done" && p.paid_by) update.paid_by = p.paid_by;
       if (p.status === "no_show") {
         const percent = b.booking_groups?.policy_snapshot?.no_show_percent || 0;
         update.fee_pence = Math.round((b.price_pence * percent) / 100);
@@ -185,6 +330,20 @@ export async function POST(req: Request) {
       actor: staff.user_id,
       detail: { action: p.action },
     });
+    if (p.action === "status" && p.status === "done") {
+      // One thank-you per trim, two hours later, with the review link when one is configured.
+      await db.from("notification_jobs").upsert(
+        {
+          dedupe_key: "thanks-" + b.id,
+          group_id: b.group_id,
+          booking_id: b.id,
+          kind: "thanks",
+          channel: "email",
+          due_at: new Date(Date.now() + 2 * 3600000).toISOString(),
+        },
+        { onConflict: "dedupe_key", ignoreDuplicates: true },
+      );
+    }
     return privateJson({ ok: true });
   } catch (e) {
     return publicError(e, 409);

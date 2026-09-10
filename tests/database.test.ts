@@ -26,33 +26,20 @@ test("database rejects blocked moves, enforces fees and keeps rejected batches a
       "utf8",
     ),
   );
-  await db.exec(`insert into customers(id,name,email,phone_country,phone) values
-  ('00000000-0000-4000-8000-000000000001','Repeat','repeat@example.com','GB','+447700900111'),
-  ('00000000-0000-4000-8000-000000000002','Repeat','repeat@example.com','GB','+447700900111'),
-  ('00000000-0000-4000-8000-000000000003','Repeat','repeat@example.com','GB','+447700900222');
-  insert into booking_groups(customer_id,manage_token_hash) values ('00000000-0000-4000-8000-000000000002',repeat('x',64));`);
   await db.exec(
     await readFile(
-      "supabase/migrations/20260910072152_customer_directory.sql",
+      "supabase/migrations/20260908000000_rebook_reminders.sql",
       "utf8",
     ),
   );
-  const consolidated = await db.query<{ n: number }>(
-    "select count(*)::int n from customers where email='repeat@example.com' and directory_parent_id is null",
-  );
-  assert.equal(
-    consolidated.rows[0].n,
-    2,
-    "Distinct mobile numbers must not be merged",
-  );
-  const historicalGroup = await db.query<{ parent: string | null }>(
-    "select c.directory_parent_id parent from booking_groups g join customers c on c.id=g.customer_id where manage_token_hash=repeat('x',64)",
-  );
-  assert.equal(
-    historicalGroup.rows[0].parent,
-    null,
-    "History points to the canonical profile",
-  );
+  // Runs cleanly twice: the live database may already have the directory columns.
+  for (let i = 0; i < 2; i++)
+    await db.exec(
+      await readFile(
+        "supabase/migrations/20260910120000_clients_and_checkout.sql",
+        "utf8",
+      ),
+    );
   const pricesBefore = (
     await db.query(
       "select barber_id,service_id,price_pence,duration from service_prices order by barber_id,service_id",
@@ -101,16 +88,6 @@ test("database rejects blocked moves, enforces fees and keeps rejected batches a
     { date: day, time: 600, barber: "sean", service: "cut" },
   ]);
   const group = first.rows[0].id;
-  await call("z", [{ date: day, time: 660, barber: "travis", service: "cut" }]);
-  const customers = await db.query<{ n: number }>(
-    "select count(*)::int n from customers where email='test@example.com'",
-  );
-  assert.equal(
-    customers.rows[0].n,
-    1,
-    "Returning bookings reuse the customer record",
-  );
-
   await db.query(
     `update public.booking_groups set policy_snapshot='{"cancellation_hours":168,"late_percent":50,"no_show_percent":100}',policy_accepted_at=now() where id=$1`,
     [group],
@@ -259,6 +236,52 @@ test("database rejects blocked moves, enforces fees and keeps rejected batches a
       )
     ).rows[0].allowed,
     false,
+  );
+  // Ticking the reminder box records the wording the customer saw.
+  const { rows: laterDays } = await db.query<{ d: string }>(
+    `select ((now() at time zone 'Europe/London')::date+n)::text d from generate_series(15,28) n where extract(isodow from (now() at time zone 'Europe/London')::date+n)=2 limit 1`,
+  );
+  const consented = await db.query<{ id: string }>(
+    `select public.create_booking_group('Consent Client','consent@example.com','GB','+447700900124',true,$1,$2::jsonb) id`,
+    [
+      "z".repeat(64),
+      JSON.stringify([
+        { date: laterDays[0].d, time: 600, barber: "sean", service: "cut" },
+      ]),
+    ],
+  );
+  const { rows: consent } = await db.query<{ copy: string; nudged: null }>(
+    `select c.consent_copy as copy, cu.last_nudged_at as nudged from public.email_marketing_consents c join public.customers cu on cu.id=c.customer_id where c.customer_id=(select customer_id from public.booking_groups where id=$1)`,
+    [consented.rows[0].id],
+  );
+  assert.equal(
+    consent[0].copy,
+    "Remind me when I'm due a trim, plus occasional news from Symmetry.",
+  );
+  assert.equal(consent[0].nudged, null);
+  // The same person booking again is the same client, so history and reminders line up.
+  const again = await db.query<{ id: string }>(
+    `select public.create_booking_group('Consent Client','consent@example.com','GB','+447700900124',false,$1,$2::jsonb) id`,
+    [
+      "y".repeat(64),
+      JSON.stringify([
+        { date: laterDays[0].d, time: 720, barber: "sean", service: "cut" },
+      ]),
+    ],
+  );
+  const { rows: owners } = await db.query<{ n: number }>(
+    `select count(distinct customer_id)::int n from public.booking_groups where id in ($1,$2)`,
+    [consented.rows[0].id, again.rows[0].id],
+  );
+  assert.equal(owners[0].n, 1);
+  await db.query(
+    `update public.bookings set status='done', paid_by='card' where group_id=$1`,
+    [again.rows[0].id],
+  );
+  await assert.rejects(
+    db.query(`update public.bookings set paid_by='cheque' where group_id=$1`, [
+      again.rows[0].id,
+    ]),
   );
   await db.close();
 });

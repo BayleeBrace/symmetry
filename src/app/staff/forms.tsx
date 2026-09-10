@@ -1,110 +1,260 @@
 "use client";
-import { useState } from "react";
-import { clock } from "@/lib/booking-data";
+import { useEffect, useState } from "react";
+import { staffApi as api } from "@/lib/staff-client";
+import { clock, shopToday } from "@/lib/booking-data";
 import {
   type Act,
   type Barber,
+  type Context,
   type Diary,
   canonicalServiceName,
   dayLabel,
+  freeTimes,
+  hoursFor,
+  initials,
   pounds,
   timeOptions,
 } from "./types";
+import type { BookPrefill } from "./calendar";
 
-export type WalkInPrefill = { barberId: string; minute: number } | null;
+type Client = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+};
 
-export function WalkInForm({
-  diary,
-  barbers,
-  date,
+/** The diary for one day: the calendar's copy when it covers the day, else fetched. */
+function useDay(date: string, cached: Diary | null) {
+  const covered =
+    cached &&
+    date >= cached.date &&
+    date <= (cached.to ?? cached.date) &&
+    (cached.hoursByDay ? date in cached.hoursByDay : cached.date === date);
+  const [fetched, setFetched] = useState<Diary | null>(null);
+  useEffect(() => {
+    if (covered) return;
+    let live = true;
+    api("/api/staff/diary?date=" + date)
+      .then((d) => {
+        if (live) setFetched(d as Diary);
+      })
+      .catch(() => {
+        if (live) setFetched(null);
+      });
+    return () => {
+      live = false;
+    };
+  }, [date, covered]);
+  if (covered) return cached;
+  return fetched && fetched.date === date ? fetched : null;
+}
+
+export function NewAppointment({
+  ctx,
+  chairs,
+  allChairs,
+  cached,
   prefill,
   busy,
   act,
+  onClose,
+  onSaved,
 }: {
-  diary: Diary;
-  barbers: Barber[];
-  date: string;
-  prefill: WalkInPrefill;
+  ctx: Context;
+  chairs: Barber[];
+  allChairs: Barber[];
+  cached: Diary | null;
+  prefill: BookPrefill;
   busy: boolean;
   act: Act;
+  onClose: () => void;
+  onSaved: (message: string) => void;
 }) {
-  const [open, close] = diary.hours ?? [540, 1080];
+  const options = chairs.length ? chairs : allChairs;
   const [barberId, setBarberId] = useState(
-    prefill?.barberId ?? barbers[0]?.id ?? "",
+    prefill.barberId ?? options[0]?.id ?? "",
   );
-  const [serviceId, setServiceId] = useState(diary.services[0]?.id ?? "");
-  const [time, setTime] = useState(prefill?.minute ?? open);
-  const [saved, setSaved] = useState("");
-  const barber = barbers.find((b) => b.id === barberId);
-  const service = diary.services.find((s) => s.id === serviceId);
-  const price = diary.prices.find(
+  const [serviceId, setServiceId] = useState(ctx.services[0]?.id ?? "");
+  const [date, setDate] = useState(prefill.date ?? shopToday());
+  const [time, setTime] = useState<number | null>(prefill.minute ?? null);
+  const [name, setName] = useState(prefill.client?.name ?? "");
+  const [email, setEmail] = useState(prefill.client?.email ?? "");
+  const [phone, setPhone] = useState(prefill.client?.phone ?? "");
+  const [picked, setPicked] = useState<Client | null>(
+    prefill.client ? { id: "", ...prefill.client } : null,
+  );
+  const [results, setResults] = useState<Client[]>([]);
+  const [error, setError] = useState("");
+  const day = useDay(date, cached);
+
+  // Look up existing clients as the name is typed, so regulars are reused rather than duplicated.
+  useEffect(() => {
+    const term = name.trim();
+    if (picked || term.length < 2) return;
+    let live = true;
+    const t = setTimeout(() => {
+      api("/api/staff/customers?q=" + encodeURIComponent(term))
+        .then((d) => {
+          if (live) setResults((d.customers as Client[]).slice(0, 6));
+        })
+        .catch(() => {
+          if (live) setResults([]);
+        });
+    }, 250);
+    return () => {
+      live = false;
+      clearTimeout(t);
+    };
+  }, [name, picked]);
+
+  const barber = allChairs.find((b) => b.id === barberId);
+  const service = ctx.services.find((s) => s.id === serviceId);
+  const price = ctx.prices.find(
     (p) => p.barber_id === barberId && p.service_id === serviceId,
   );
-  const options = timeOptions(
-    Math.min(open, time),
-    Math.max(close - (price?.duration ?? 15), time),
-  );
+  const duration = price?.duration ?? 30;
+  const slots = day ? freeTimes(day, date, barberId, duration) : null;
+  const hours = day ? hoursFor(day, date) : null;
+  const choices = slots
+    ? slots.free.includes(time ?? -1) || time === null
+      ? slots.free
+      : [...slots.free, time].sort((a, b) => a - b)
+    : time !== null
+      ? [time]
+      : [];
+  const value =
+    time !== null && choices.includes(time) ? time : (choices[0] ?? null);
+
   return (
-    <section className="staff-panel">
-      <h2>Add a trim.</h2>
-      <p>
-        A walk-in for {dayLabel(date)}. It goes straight into the diary, so
-        online bookings cannot take the same time.
+    <aside
+      className="sheet drawer"
+      role="dialog"
+      aria-modal="true"
+      aria-label="New appointment"
+    >
+      <button
+        type="button"
+        className="sheet-close"
+        onClick={onClose}
+        aria-label="Close"
+      >
+        ×
+      </button>
+      <h2>New appointment.</h2>
+      <p className="sheet-line">
+        Goes straight into the diary, so online bookings cannot take the same
+        time.
       </p>
       <form
         className="staff-form"
         onSubmit={async (event) => {
           event.preventDefault();
-          const form = event.currentTarget;
-          const data = new FormData(form);
-          if (!barber || !service) return;
-          setSaved("");
-          await act("/api/staff/diary", {
-            action: "walkin",
-            date,
-            time,
-            name: data.get("name"),
-            email: data.get("email") || "",
-            phone: data.get("phone") || "",
-            barber: barber.slug,
-            service: service.slug,
-          });
-          form.reset();
-          setSaved(`Added ${data.get("name")} at ${clock(time)}.`);
+          if (!barber || !service || value === null) return;
+          setError("");
+          try {
+            await act("/api/staff/diary", {
+              action: "walkin",
+              date,
+              time: value,
+              name: name.trim(),
+              email: email.trim(),
+              phone: phone.trim(),
+              barber: barber.slug,
+              service: service.slug,
+            });
+            onSaved(
+              `Added ${name.trim()} with ${barber.name} at ${clock(value)} on ${dayLabel(date)}.`,
+            );
+          } catch (e) {
+            setError((e as Error).message);
+          }
         }}
       >
-        <label className="wide">
-          Customer
-          <input name="name" required minLength={2} autoComplete="off" />
+        <label className="wide client-field">
+          Client
+          <input
+            value={name}
+            required
+            minLength={2}
+            autoComplete="off"
+            placeholder="Start typing a name"
+            onChange={(e) => {
+              setName(e.target.value);
+              setPicked(null);
+            }}
+          />
+          {picked && (
+            <span className="client-picked">
+              <span className="avatar">{initials(picked.name)}</span>
+              Existing client
+              <button
+                type="button"
+                className="text-button"
+                onClick={() => {
+                  setPicked(null);
+                  setName("");
+                  setEmail("");
+                  setPhone("");
+                }}
+              >
+                Clear
+              </button>
+            </span>
+          )}
+          {!picked && name.trim().length >= 2 && results.length > 0 && (
+            <ul className="client-results" role="listbox">
+              {results.map((c) => (
+                <li key={c.id}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPicked(c);
+                      setName(c.name);
+                      setEmail(c.email);
+                      setPhone(c.phone);
+                      setResults([]);
+                    }}
+                  >
+                    <span className="avatar">{initials(c.name)}</span>
+                    <span>
+                      <strong>{c.name}</strong>
+                      <small>
+                        {c.phone || c.email || "No contact details"}
+                      </small>
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </label>
         <label>
           Mobile (optional)
-          <input name="phone" type="tel" inputMode="tel" autoComplete="off" />
+          <input
+            type="tel"
+            inputMode="tel"
+            autoComplete="off"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+          />
         </label>
         <label>
           Email (optional)
-          <input name="email" type="email" autoComplete="off" />
-        </label>
-        <label>
-          Barber
-          <select
-            value={barberId}
-            onChange={(event) => setBarberId(event.target.value)}
-          >
-            {barbers.map((b) => (
-              <option value={b.id} key={b.id}>
-                {b.name}
-              </option>
-            ))}
-          </select>
+          <input
+            type="email"
+            autoComplete="off"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
         </label>
         <label>
           Service
           <select
             value={serviceId}
-            onChange={(event) => setServiceId(event.target.value)}
+            onChange={(e) => setServiceId(e.target.value)}
           >
-            {diary.services.map((s) => (
+            {ctx.services.map((s) => (
               <option value={s.id} key={s.id}>
                 {canonicalServiceName(s.slug, s.name)}
               </option>
@@ -112,87 +262,156 @@ export function WalkInForm({
           </select>
         </label>
         <label>
+          Chair
+          <select
+            value={barberId}
+            onChange={(e) => setBarberId(e.target.value)}
+          >
+            {options.map((b) => (
+              <option value={b.id} key={b.id}>
+                {b.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Date
+          <input
+            type="date"
+            required
+            value={date}
+            onChange={(e) => e.target.value && setDate(e.target.value)}
+          />
+        </label>
+        <label>
           Time
           <select
-            value={time}
-            onChange={(event) => setTime(Number(event.target.value))}
+            value={value ?? ""}
+            disabled={!slots || choices.length === 0}
+            onChange={(e) => setTime(Number(e.target.value))}
           >
-            {options.map((minute) => (
+            {!slots && <option value="">Checking the diary…</option>}
+            {slots && choices.length === 0 && (
+              <option value="">
+                {slots.closed ? "Closed that day" : "No free times"}
+              </option>
+            )}
+            {choices.map((minute) => (
               <option key={minute} value={minute}>
                 {clock(minute)}
+                {slots && !slots.free.includes(minute) ? " (taken)" : ""}
               </option>
             ))}
           </select>
         </label>
         <p className="price-hint">
           {price
-            ? `${pounds(price.price_pence)} pounds · ${price.duration} min with ${barber?.name ?? ""}`
-            : "No price is set for this barber and service."}
+            ? `${pounds(price.price_pence)} pounds · ${duration} min with ${barber?.name ?? ""}`
+            : "No price is set for this chair and service."}
+          {hours ? "" : slots ? " The shop is closed that day." : ""}
         </p>
+        {error && (
+          <p className="staff-error wide" role="alert">
+            {error}
+          </p>
+        )}
         <div className="form-actions">
           <button
             type="submit"
             className="button-primary"
-            disabled={busy || !price}
+            disabled={busy || !price || value === null}
           >
-            Add to diary
+            Save appointment
           </button>
-          {saved && <span className="form-note">{saved}</span>}
+          <button type="button" className="text-button" onClick={onClose}>
+            Cancel
+          </button>
         </div>
       </form>
-    </section>
+    </aside>
   );
 }
 
-export function BreakForm({
-  barbers,
-  date,
-  hours,
+export function BlockedTime({
+  chairs,
+  cached,
+  date: initialDate,
   busy,
   act,
+  onClose,
+  onSaved,
 }: {
-  barbers: Barber[];
+  chairs: Barber[];
+  cached: Diary | null;
   date: string;
-  hours: [number, number] | null;
   busy: boolean;
   act: Act;
+  onClose: () => void;
+  onSaved: (message: string) => void;
 }) {
-  const [open, close] = hours ?? [540, 1080];
+  const [date, setDate] = useState(initialDate);
+  const [barberId, setBarberId] = useState(chairs[0]?.id ?? "");
   const [kind, setKind] = useState<"break" | "day">("break");
-  const [from, setFrom] = useState(open);
-  const [until, setUntil] = useState(Math.min(close, open + 60));
-  const [saved, setSaved] = useState("");
-  const untilOptions = timeOptions(from + 15, Math.max(close, from + 15));
+  const [label, setLabel] = useState("Break");
+  const [from, setFrom] = useState<number | null>(null);
+  const [until, setUntil] = useState<number | null>(null);
+  const [error, setError] = useState("");
+  const day = useDay(date, cached);
+  const hours = day ? hoursFor(day, date) : null;
+  const [open, close] = hours ?? [540, 1080];
+  const fromValue = from ?? open;
+  const untilValue = until ?? Math.min(close, fromValue + 60);
   return (
-    <section className="staff-panel">
-      <h2>Make some space.</h2>
-      <p>
-        Block a break on {dayLabel(date)}, or take the whole day off for a
-        holiday. Move any existing bookings first.
+    <aside
+      className="sheet drawer"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Blocked time"
+    >
+      <button
+        type="button"
+        className="sheet-close"
+        onClick={onClose}
+        aria-label="Close"
+      >
+        ×
+      </button>
+      <h2>Blocked time.</h2>
+      <p className="sheet-line">
+        A break, or a whole day off. Move any existing bookings first.
       </p>
       <form
         className="staff-form"
         onSubmit={async (event) => {
           event.preventDefault();
-          const form = event.currentTarget;
-          const data = new FormData(form);
           const wholeDay = kind === "day";
-          setSaved("");
-          await act("/api/staff/diary", {
-            action: "block",
-            date,
-            barber: data.get("barber"),
-            time: wholeDay ? 0 : from,
-            duration: wholeDay ? 1440 : Math.max(15, until - from),
-            label: data.get("label") || (wholeDay ? "Day off" : "Break"),
-          });
-          setSaved(wholeDay ? "Day blocked." : "Break added.");
+          setError("");
+          try {
+            await act("/api/staff/diary", {
+              action: "block",
+              date,
+              barber: barberId,
+              time: wholeDay ? 0 : fromValue,
+              duration: wholeDay ? 1440 : Math.max(15, untilValue - fromValue),
+              label: label.trim() || (wholeDay ? "Day off" : "Break"),
+            });
+            onSaved(
+              wholeDay
+                ? `${dayLabel(date)} blocked for ${chairs.find((b) => b.id === barberId)?.name ?? "the chair"}.`
+                : `Break added on ${dayLabel(date)}.`,
+            );
+          } catch (e) {
+            setError((e as Error).message);
+          }
         }}
       >
         <label>
-          Barber
-          <select name="barber">
-            {barbers.map((b) => (
+          Chair
+          <select
+            value={barberId}
+            onChange={(e) => setBarberId(e.target.value)}
+          >
+            {chairs.map((b) => (
               <option value={b.id} key={b.id}>
                 {b.name}
               </option>
@@ -203,21 +422,31 @@ export function BreakForm({
           What
           <select
             value={kind}
-            onChange={(event) =>
-              setKind(event.target.value === "day" ? "day" : "break")
-            }
+            onChange={(e) => {
+              const next = e.target.value === "day" ? "day" : "break";
+              setKind(next);
+              setLabel(next === "day" ? "Day off" : "Break");
+            }}
           >
             <option value="break">A break</option>
             <option value="day">The whole day</option>
           </select>
         </label>
-        <label className="wide">
+        <label>
+          Date
+          <input
+            type="date"
+            required
+            value={date}
+            onChange={(e) => e.target.value && setDate(e.target.value)}
+          />
+        </label>
+        <label>
           Label
           <input
-            name="label"
-            key={kind}
-            defaultValue={kind === "day" ? "Day off" : "Break"}
+            value={label}
             maxLength={80}
+            onChange={(e) => setLabel(e.target.value)}
           />
         </label>
         {kind === "break" && (
@@ -225,11 +454,11 @@ export function BreakForm({
             <label>
               From
               <select
-                value={from}
-                onChange={(event) => {
-                  const next = Number(event.target.value);
+                value={fromValue}
+                onChange={(e) => {
+                  const next = Number(e.target.value);
                   setFrom(next);
-                  if (until <= next) setUntil(next + 15);
+                  if (untilValue <= next) setUntil(next + 15);
                 }}
               >
                 {timeOptions(open, close - 15).map((minute) => (
@@ -242,10 +471,13 @@ export function BreakForm({
             <label>
               Until
               <select
-                value={until}
-                onChange={(event) => setUntil(Number(event.target.value))}
+                value={untilValue}
+                onChange={(e) => setUntil(Number(e.target.value))}
               >
-                {untilOptions.map((minute) => (
+                {timeOptions(
+                  fromValue + 15,
+                  Math.max(close, fromValue + 15),
+                ).map((minute) => (
                   <option key={minute} value={minute}>
                     {clock(minute)}
                   </option>
@@ -254,13 +486,23 @@ export function BreakForm({
             </label>
           </>
         )}
+        {!hours && day && (
+          <p className="price-hint">The shop is closed on this day already.</p>
+        )}
+        {error && (
+          <p className="staff-error wide" role="alert">
+            {error}
+          </p>
+        )}
         <div className="form-actions">
           <button type="submit" className="button-primary" disabled={busy}>
             {kind === "day" ? "Block the day" : "Add the break"}
           </button>
-          {saved && <span className="form-note">{saved}</span>}
+          <button type="button" className="text-button" onClick={onClose}>
+            Cancel
+          </button>
         </div>
       </form>
-    </section>
+    </aside>
   );
 }

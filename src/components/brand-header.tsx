@@ -3,14 +3,20 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-export function BrandHeader({ compact = false }: { compact?: boolean }) {
+export function BrandHeader({
+  compact = false,
+  note,
+}: {
+  compact?: boolean;
+  note?: string;
+}) {
   const [open, setOpen] = useState(false);
   const path = usePathname();
   const links = [
-    ["prices", "/prices"],
-    ["hours", "/hours"],
-    ["book", "/book"],
-    ["your bookings", "/bookings"],
+    ["Prices", "/prices"],
+    ["Hours", "/hours"],
+    ["Book", "/book"],
+    ["Your bookings", "/bookings"],
   ];
   return (
     <>
@@ -41,9 +47,12 @@ export function BrandHeader({ compact = false }: { compact?: boolean }) {
           />
         </Link>
         {compact ? (
-          <Link href="/" className="back-to-site">
-            back to the site
-          </Link>
+          <>
+            {note && <small className="header-note">{note}</small>}
+            <Link href="/" className="back-to-site">
+              Back to the site
+            </Link>
+          </>
         ) : (
           <>
             <button
@@ -53,7 +62,7 @@ export function BrandHeader({ compact = false }: { compact?: boolean }) {
               aria-controls="main-navigation"
               onClick={() => setOpen((v) => !v)}
             >
-              {open ? "close" : "menu"}
+              {open ? "Close" : "Menu"}
             </button>
             <nav
               id="main-navigation"

@@ -20,8 +20,8 @@ export default function PrivacyPage() {
     <main className="information-page">
       <BrandHeader />
       <section className="information-hero privacy-copy">
-        <p className="eyebrow">your information</p>
-        <h1>your privacy.</h1>
+        <p className="eyebrow">Your information</p>
+        <h1>Your privacy.</h1>
         {!ready && (
           <p className="draft-notice">
             Preview notice. The shop’s legal identity, contact details,
@@ -36,7 +36,7 @@ export default function PrivacyPage() {
           You can write to us at 4 Brewery Terrace, Saundersfoot, SA69 9HG.
         </p>
         <ContactLinks fallback />
-        <h2>what we collect.</h2>
+        <h2>What we collect.</h2>
         <p>
           When you book, we ask for your name, email and mobile number, your
           chosen barber, services and dates. You can optionally add haircut
@@ -50,7 +50,7 @@ export default function PrivacyPage() {
           Stripe collects and stores your card details on its own secure page.
           The shop does not receive your full card number or security code.
         </p>
-        <h2>why we use it.</h2>
+        <h2>Why we use it.</h2>
         <ul>
           <li>
             To arrange and manage the service you request, send booking updates,
@@ -77,15 +77,17 @@ export default function PrivacyPage() {
           fees are reviewed by the owner; the app does not automatically decide
           to charge a no-show fee.
         </p>
-        <h2>messages and the waitlist.</h2>
+        <h2>Messages and the waitlist.</h2>
         <p>
           Booking confirmations, reminders and recovery messages are service
-          messages, separate from marketing. A waitlist request uses your email,
+          messages, separate from marketing. If you tick the reminder box when
+          you book, we also email you when you are due a trim; every one of
+          those has a link to stop them. A waitlist request uses your email,
           preferred date, service and barber to contact you about availability.
           You can leave through your waitlist link. Device notifications are
           optional and can be disabled in your device settings.
         </p>
-        <h2>who helps us.</h2>
+        <h2>Who helps us.</h2>
         <p>
           Authorised shop staff use the information needed to manage your visit.
           The booking service uses Supabase for records and staff
@@ -99,7 +101,7 @@ export default function PrivacyPage() {
           {process.env.PRIVACY_TRANSFERS ||
             "Before launch, the shop will confirm the providers’ processing locations and the safeguards that apply where information is transferred outside the UK."}
         </p>
-        <h2>how long we keep it.</h2>
+        <h2>How long we keep it.</h2>
         <p>
           {process.env.PRIVACY_RETENTION ||
             "The retention schedule is awaiting the shop’s approval. It must cover booking and customer records, notes, waitlist requests, payment and accounting records, message logs, backups and marketing preferences before live bookings begin."}
@@ -111,7 +113,7 @@ export default function PrivacyPage() {
           closing the tab normally clears this storage. Payment providers may
           need to retain their own records separately.
         </p>
-        <h2>cookies and browser storage.</h2>
+        <h2>Cookies and browser storage.</h2>
         <p>
           Essential cookies support preview access and staff sign-in. Browser
           session storage helps recover selected trims. The site does not
@@ -119,7 +121,7 @@ export default function PrivacyPage() {
           passes are copies and may not update when your booking changes; your
           booking link shows the current details.
         </p>
-        <h2>your choices.</h2>
+        <h2>Your choices.</h2>
         <p>
           You can ask to see or correct your information, ask for deletion or
           restriction where applicable, object to uses based on legitimate

@@ -8,18 +8,87 @@ import {
   type Block,
   type Booking,
   type Diary,
+  type PaidBy,
   OPEN_STATUSES,
+  PAID_LABEL,
   STATUS_LABEL,
   canonicalServiceName,
+  chairIndex,
   customerOf,
+  freeTimes,
+  initials,
   pounds,
   shortDay,
   timeRange,
 } from "./types";
 
-type HistoryView = { visits: number; noShows: number; last: string | null };
-
 type Selection = { kind: "booking" | "block"; id: string } | null;
+export type HistoryView = {
+  visits: number;
+  noShows: number;
+  last: string | null;
+};
+
+export function serviceLabel(diary: Diary, booking: Booking) {
+  return canonicalServiceName(
+    diary.services.find((s) => s.id === booking.service_id)?.slug,
+    booking.services?.name ?? "Trim",
+  );
+}
+
+export function historyView(
+  diary: Diary,
+  booking: Booking,
+): HistoryView | undefined {
+  const id = booking.booking_groups?.customer_id;
+  const h = id ? diary.history?.[id] : undefined;
+  if (!h) return undefined;
+  const last = h.last
+    ? `${canonicalServiceName(
+        diary.services.find((s) => s.id === h.last?.service_id)?.slug,
+        "Trim",
+      )} with ${
+        diary.barbers.find((b) => b.id === h.last?.barber_id)?.name ?? "us"
+      }, ${shortDay(h.last.date)}`
+    : null;
+  return { visits: h.visits, noShows: h.noShows, last };
+}
+
+/** One appointment block in the calendar. */
+export function TrimCard({
+  booking,
+  service,
+  selected,
+  top,
+  height,
+  onClick,
+}: {
+  booking: Booking;
+  service: string;
+  selected: boolean;
+  top: string;
+  height: string;
+  onClick: () => void;
+}) {
+  const customer = customerOf(booking);
+  return (
+    <button
+      type="button"
+      className={`trim status-${booking.status} ${booking.duration <= 20 ? "is-short" : booking.duration <= 30 ? "is-compact" : ""} ${selected ? "is-selected" : ""}`}
+      style={{ top, height }}
+      onClick={onClick}
+      aria-label={`${clock(booking.start_minute)} ${customer.name}, ${service}, ${STATUS_LABEL[booking.status]}`}
+    >
+      <span className="trim-time">
+        {clock(booking.start_minute)}
+        {booking.status === "done" ? " ✓" : ""}
+        {booking.late_minutes > 0 ? ` · late ${booking.late_minutes}` : ""}
+      </span>
+      <span className="trim-name">{customer.name}</span>
+      <span className="trim-service">{service}</span>
+    </button>
+  );
+}
 
 export function DayTimeline({
   diary,
@@ -56,16 +125,22 @@ export function DayTimeline({
     if (isToday) nowLine.current?.scrollIntoView({ block: "center" });
   }, [isToday, date]);
 
-  const partBlocks = diary.blocks.filter((b) => b.duration < 1440);
+  const bookingsToday = diary.bookings.filter(
+    (b) => !b.local_date || b.local_date === date,
+  );
+  const blocksToday = diary.blocks.filter(
+    (b) => !b.local_date || b.local_date === date,
+  );
+  const partBlocks = blocksToday.filter((b) => b.duration < 1440);
   const [open, close] = diary.hours ?? [540, 1080];
   const starts = [
     open,
-    ...diary.bookings.map((b) => b.start_minute),
+    ...bookingsToday.map((b) => b.start_minute),
     ...partBlocks.map((b) => b.start_minute),
   ];
   const ends = [
     close,
-    ...diary.bookings.map((b) => b.start_minute + b.duration),
+    ...bookingsToday.map((b) => b.start_minute + b.duration),
     ...partBlocks.map((b) => b.start_minute + b.duration),
   ];
   const start = Math.max(0, Math.floor(Math.min(...starts) / 60) * 60);
@@ -79,11 +154,11 @@ export function DayTimeline({
 
   const selectedBooking =
     selected?.kind === "booking"
-      ? diary.bookings.find((b) => b.id === selected.id)
+      ? bookingsToday.find((b) => b.id === selected.id)
       : undefined;
   const selectedBlock =
     selected?.kind === "block"
-      ? diary.blocks.find((b) => b.id === selected.id)
+      ? blocksToday.find((b) => b.id === selected.id)
       : undefined;
   const sheetOpen = Boolean(selectedBooking || selectedBlock);
 
@@ -100,29 +175,9 @@ export function DayTimeline({
     "--rows": rows,
     "--chairs": barbers.length,
   } as CSSProperties;
-  const serviceLabel = (booking: Booking) =>
-    canonicalServiceName(
-      diary.services.find((s) => s.id === booking.service_id)?.slug,
-      booking.services?.name ?? "Trim",
-    );
-
-  const historyOf = (booking: Booking): HistoryView | undefined => {
-    const id = booking.booking_groups?.customer_id;
-    const h = id ? diary.history?.[id] : undefined;
-    if (!h) return undefined;
-    const last = h.last
-      ? `${canonicalServiceName(
-          diary.services.find((s) => s.id === h.last?.service_id)?.slug,
-          "Trim",
-        )} with ${
-          diary.barbers.find((b) => b.id === h.last?.barber_id)?.name ?? "us"
-        }, ${shortDay(h.last.date)}`
-      : null;
-    return { visits: h.visits, noShows: h.noShows, last };
-  };
 
   const nextUp = isToday
-    ? diary.bookings
+    ? bookingsToday
         .filter(
           (b) =>
             b.barber_id === current &&
@@ -144,6 +199,11 @@ export function DayTimeline({
                 aria-pressed={current === barber.id}
                 onClick={() => setCurrent(barber.id)}
               >
+                <span
+                  className={`avatar tint-${chairIndex(diary.barbers, barber.id)}`}
+                >
+                  {initials(barber.name)}
+                </span>
                 {barber.name}
               </button>
             ))}
@@ -160,7 +220,7 @@ export function DayTimeline({
             </span>
             <span className="next-up-body">
               {clock(nextUp.start_minute)} · {customerOf(nextUp).name} ·{" "}
-              {serviceLabel(nextUp)}
+              {serviceLabel(diary, nextUp)}
             </span>
           </button>
         )}
@@ -192,13 +252,13 @@ export function DayTimeline({
           ))}
         </div>
         {barbers.map((barber) => {
-          const bookings = diary.bookings.filter(
+          const bookings = bookingsToday.filter(
             (b) => b.barber_id === barber.id,
           );
           const active = bookings.filter((b) =>
             OPEN_STATUSES.includes(b.status),
           );
-          const blocks = diary.blocks.filter((b) => b.barber_id === barber.id);
+          const blocks = blocksToday.filter((b) => b.barber_id === barber.id);
           const dayOff = blocks.find((b) => b.duration >= 1440);
           const upcoming = isToday
             ? active.filter(
@@ -207,14 +267,18 @@ export function DayTimeline({
                   b.start_minute + b.duration > nowMinute,
               )
             : [];
+          const tint = chairIndex(diary.barbers, barber.id);
           return (
             <section
               key={barber.id}
-              className={`chair ${current === barber.id ? "is-current" : ""}`}
+              className={`chair tint-${tint} ${current === barber.id ? "is-current" : ""}`}
               aria-label={`${barber.name}: ${active.length} trims`}
             >
               <header className="chair-head">
-                <span>{barber.name}</span>
+                <span className={`avatar tint-${tint}`}>
+                  {initials(barber.name)}
+                </span>
+                <span className="chair-name">{barber.name}</span>
                 {upcoming.length > 0 && (
                   <button
                     type="button"
@@ -287,7 +351,7 @@ export function DayTimeline({
                       15;
                   onWalkIn(barber, Math.min(minute, end - 15));
                 }}
-                title="Tap a gap to add a walk-in"
+                title="Tap a gap to add an appointment"
               >
                 {isToday && nowMinute >= start && nowMinute <= end && (
                   <div
@@ -328,35 +392,19 @@ export function DayTimeline({
                       <span>{block.label}</span>
                     </button>
                   ))}
-                {bookings.map((booking) => {
-                  const customer = customerOf(booking);
-                  return (
-                    <button
-                      type="button"
-                      className={`trim status-${booking.status} ${booking.duration <= 20 ? "is-short" : booking.duration <= 30 ? "is-compact" : ""} ${selected?.id === booking.id ? "is-selected" : ""}`}
-                      key={booking.id}
-                      style={{
-                        top: top(booking.start_minute),
-                        height: height(booking.duration),
-                      }}
-                      onClick={() =>
-                        setSelected({ kind: "booking", id: booking.id })
-                      }
-                      aria-label={`${clock(booking.start_minute)} ${customer.name}, ${serviceLabel(booking)}, ${STATUS_LABEL[booking.status]}`}
-                    >
-                      <span className="trim-time">
-                        {clock(booking.start_minute)}
-                      </span>
-                      <span className="trim-name">{customer.name}</span>
-                      <span className="trim-service">
-                        {serviceLabel(booking)}
-                        {booking.late_minutes > 0
-                          ? ` · late ${booking.late_minutes} min`
-                          : ""}
-                      </span>
-                    </button>
-                  );
-                })}
+                {bookings.map((booking) => (
+                  <TrimCard
+                    key={booking.id}
+                    booking={booking}
+                    service={serviceLabel(diary, booking)}
+                    selected={selected?.id === booking.id}
+                    top={top(booking.start_minute)}
+                    height={height(booking.duration)}
+                    onClick={() =>
+                      setSelected({ kind: "booking", id: booking.id })
+                    }
+                  />
+                ))}
               </div>
             </section>
           );
@@ -368,8 +416,8 @@ export function DayTimeline({
           {selectedBooking && (
             <BookingSheet
               booking={selectedBooking}
-              serviceName={serviceLabel(selectedBooking)}
-              history={historyOf(selectedBooking)}
+              serviceName={serviceLabel(diary, selectedBooking)}
+              history={historyView(diary, selectedBooking)}
               owner={diary.staff.role === "owner"}
               busy={busy}
               act={act}
@@ -392,7 +440,7 @@ export function DayTimeline({
   );
 }
 
-function BookingSheet({
+export function BookingSheet({
   booking,
   serviceName,
   history,
@@ -416,12 +464,14 @@ function BookingSheet({
   const started =
     booking.local_date < today ||
     (booking.local_date === today && booking.start_minute <= shopMinute());
-  const setStatus = (status: Booking["status"]) =>
+  const [checkout, setCheckout] = useState(false);
+  const setStatus = (status: Booking["status"], paid_by?: PaidBy) =>
     act("/api/staff/diary", {
       action: "status",
       id: booking.id,
       status,
       version: booking.updated_at,
+      ...(paid_by ? { paid_by } : {}),
     });
   const feeOpen = owner && ["review", "charging"].includes(booking.fee_status);
   return (
@@ -429,7 +479,7 @@ function BookingSheet({
       className="sheet"
       role="dialog"
       aria-modal="true"
-      aria-label="Booking details"
+      aria-label="Appointment"
     >
       <button
         type="button"
@@ -439,18 +489,23 @@ function BookingSheet({
       >
         ×
       </button>
-      <p className="sheet-kicker">
-        {timeRange(booking.start_minute, booking.duration)} ·{" "}
-        {booking.barbers?.name ?? "chair"}
-      </p>
-      <h2>{customer.name}</h2>
-      <p className="sheet-line">
-        {serviceName} · {booking.duration} min · {pounds(booking.price_pence)}{" "}
-        pounds
-      </p>
+      <div className="sheet-head">
+        <span className="avatar is-large">{initials(customer.name)}</span>
+        <div>
+          <h2>{customer.name}</h2>
+          <p className="sheet-kicker">
+            {shortDay(booking.local_date)} ·{" "}
+            {timeRange(booking.start_minute, booking.duration)} ·{" "}
+            {booking.barbers?.name ?? "chair"}
+          </p>
+        </div>
+      </div>
       <p className="sheet-status">
         <span className={`status-chip status-${booking.status}`}>
           {STATUS_LABEL[booking.status]}
+          {booking.status === "done" && booking.paid_by
+            ? ` · ${PAID_LABEL[booking.paid_by]}`
+            : ""}
         </span>
         {booking.late_minutes > 0 && (
           <span className="status-chip">
@@ -461,6 +516,15 @@ function BookingSheet({
           <span className="status-chip is-quiet">Walk-in</span>
         )}
       </p>
+      <div className="sheet-service">
+        <span>
+          {serviceName}
+          <small>
+            {booking.duration} min with {booking.barbers?.name ?? "chair"}
+          </small>
+        </span>
+        <strong>{pounds(booking.price_pence)}</strong>
+      </div>
       {history && (
         <p className="sheet-history">
           {history.visits === 0
@@ -488,13 +552,13 @@ function BookingSheet({
           )}
         </div>
       )}
-      {isOpen && (
+      {isOpen && !checkout && (
         <>
           <div className="sheet-actions">
             {booking.status === "booked" && (
               <button
                 type="button"
-                className="button-primary"
+                className={started ? "button-secondary" : "button-primary"}
                 disabled={busy}
                 onClick={() => void setStatus("arrived")}
               >
@@ -503,18 +567,14 @@ function BookingSheet({
             )}
             <button
               type="button"
-              className={
-                booking.status === "arrived"
-                  ? "button-primary"
-                  : "button-secondary"
-              }
+              className={started ? "button-primary" : "button-secondary"}
               disabled={busy || !started}
               title={
                 started ? undefined : "Available once the trim has started"
               }
-              onClick={() => void setStatus("done")}
+              onClick={() => setCheckout(true)}
             >
-              Done
+              Checkout
             </button>
             <button
               type="button"
@@ -544,6 +604,45 @@ function BookingSheet({
           </div>
           <MoveForm booking={booking} busy={busy} act={act} />
         </>
+      )}
+      {isOpen && checkout && (
+        <div className="checkout-box">
+          <p className="checkout-total">
+            <span>Total</span>
+            <strong>{pounds(booking.price_pence)} pounds</strong>
+          </p>
+          <p className="staff-muted">How did {customer.name} pay?</p>
+          <div className="checkout-methods">
+            {(["card", "cash", "other"] as PaidBy[]).map((method) => (
+              <button
+                key={method}
+                type="button"
+                className="button-secondary"
+                disabled={busy}
+                onClick={() => void setStatus("done", method)}
+              >
+                {PAID_LABEL[method]}
+              </button>
+            ))}
+          </div>
+          <div className="form-actions">
+            <button
+              type="button"
+              className="text-button"
+              disabled={busy}
+              onClick={() => void setStatus("done")}
+            >
+              Done without recording payment
+            </button>
+            <button
+              type="button"
+              className="text-button"
+              onClick={() => setCheckout(false)}
+            >
+              Back
+            </button>
+          </div>
+        </div>
       )}
       {booking.fee_pence > 0 && (
         <div className="sheet-fee">
@@ -625,33 +724,14 @@ function MoveForm({
       try {
         const day = (await api("/api/staff/diary?date=" + date)) as Diary;
         if (!live) return;
-        const mine = (b: { barber_id: string }) =>
-          b.barber_id === booking.barber_id;
-        const dayOff = day.blocks.some((b) => mine(b) && b.duration >= 1440);
-        const taken = [
-          ...day.bookings.filter(
-            (b) =>
-              mine(b) &&
-              b.id !== booking.id &&
-              OPEN_STATUSES.includes(b.status),
-          ),
-          ...day.blocks.filter((b) => mine(b) && b.duration < 1440),
-        ].map((b) => [b.start_minute, b.start_minute + b.duration]);
-        const free: number[] = [];
-        if (day.hours && !dayOff)
-          for (
-            let m = day.hours[0];
-            m + booking.duration <= day.hours[1];
-            m += 15
-          )
-            if (!taken.some(([s, e]) => m < e && m + booking.duration > s))
-              free.push(m);
-        setResult({
+        const { free, closed } = freeTimes(
+          day,
           date,
-          free,
-          closed: !day.hours || dayOff,
-          at: clock(shopMinute()),
-        });
+          booking.barber_id,
+          booking.duration,
+          booking.id,
+        );
+        setResult({ date, free, closed, at: clock(shopMinute()) });
       } catch {
         if (live)
           setResult({ date, free: [], closed: false, at: clock(shopMinute()) });
@@ -676,7 +756,7 @@ function MoveForm({
       className="sheet-move"
       onToggle={(event) => setOpen(event.currentTarget.open)}
     >
-      <summary>Move this trim</summary>
+      <summary>Reschedule</summary>
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -741,7 +821,7 @@ function MoveForm({
   );
 }
 
-function BlockSheet({
+export function BlockSheet({
   block,
   barber,
   busy,
@@ -773,6 +853,7 @@ function BlockSheet({
       <p className="sheet-kicker">
         {wholeDay ? "Whole day" : timeRange(block.start_minute, block.duration)}{" "}
         · {barber?.name ?? "chair"}
+        {block.local_date ? ` · ${shortDay(block.local_date)}` : ""}
       </p>
       <h2>{block.label}</h2>
       <p className="sheet-line">
@@ -786,11 +867,11 @@ function BlockSheet({
           className="button-secondary"
           disabled={busy}
           onClick={() => {
-            if (confirm("Remove this block?"))
+            if (confirm("Remove this blocked time?"))
               void act("/api/staff/diary", { action: "unblock", id: block.id });
           }}
         >
-          Remove block
+          Remove
         </button>
       </div>
     </aside>

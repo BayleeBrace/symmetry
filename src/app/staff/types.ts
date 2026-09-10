@@ -1,13 +1,16 @@
-import { clock, money, parseDate, SERVICES } from "@/lib/booking-data";
+import { addDays, clock, money, parseDate, SERVICES } from "@/lib/booking-data";
 
 export type BookingStatus =
   "booked" | "arrived" | "done" | "no_show" | "cancelled";
+
+export type PaidBy = "card" | "cash" | "other";
 
 export type Barber = {
   id: string;
   name: string;
   slug: string;
   active?: boolean;
+  display_order?: number;
 };
 
 export type Customer = {
@@ -31,6 +34,7 @@ export type Booking = {
   fee_status: string;
   updated_at: string;
   late_minutes: number;
+  paid_by?: PaidBy | null;
   source?: string;
   barbers: { name: string; slug: string } | null;
   services: { name: string } | null;
@@ -64,6 +68,13 @@ export type Price = {
   active?: boolean;
 };
 
+/** What the sheet shows about a customer: past visits, no shows, last trim. */
+export type CustomerHistory = {
+  visits: number;
+  noShows: number;
+  last: { date: string; barber_id: string; service_id: string } | null;
+};
+
 export type Diary = {
   staff: { user_id: string; role: "owner" | "barber"; barber_id: string };
   bookings: Booking[];
@@ -74,15 +85,13 @@ export type Diary = {
   events: { id: string; kind: string; created_at: string }[];
   hours: [number, number] | null;
   date: string;
+  to?: string;
+  hoursByDay?: Record<string, [number, number] | null>;
   history?: Record<string, CustomerHistory>;
 };
 
-/** What the sheet shows about a customer: past visits, no shows, last trim. */
-export type CustomerHistory = {
-  visits: number;
-  noShows: number;
-  last: { date: string; barber_id: string; service_id: string } | null;
-};
+/** The part of the diary every section needs: who is signed in, the chairs, the menu. */
+export type Context = Pick<Diary, "staff" | "barbers" | "services" | "prices">;
 
 export type Act = (url: string, data: unknown) => Promise<unknown>;
 
@@ -92,6 +101,12 @@ export const STATUS_LABEL: Record<BookingStatus, string> = {
   done: "Done",
   no_show: "No show",
   cancelled: "Cancelled",
+};
+
+export const PAID_LABEL: Record<PaidBy, string> = {
+  card: "Card",
+  cash: "Cash",
+  other: "Other",
 };
 
 export const OPEN_STATUSES: BookingStatus[] = ["booked", "arrived"];
@@ -128,6 +143,49 @@ export function shortDay(date: string) {
   }).format(parseDate(date));
 }
 
+export function dayNumber(date: string) {
+  return parseDate(date).getUTCDate();
+}
+
+export function weekdayShort(date: string) {
+  return new Intl.DateTimeFormat("en-GB", {
+    weekday: "short",
+    timeZone: "UTC",
+  }).format(parseDate(date));
+}
+
+export function monthLabel(date: string) {
+  return new Intl.DateTimeFormat("en-GB", {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(parseDate(date));
+}
+
+/** Monday of the week the date falls in. */
+export function weekStart(date: string) {
+  const dow = (parseDate(date).getUTCDay() + 6) % 7;
+  return addDays(date, -dow);
+}
+
+export function weekDays(date: string) {
+  const start = weekStart(date);
+  return Array.from({ length: 7 }, (_, i) => addDays(start, i));
+}
+
+export function weekLabel(date: string) {
+  const days = weekDays(date);
+  const first = parseDate(days[0]);
+  const last = parseDate(days[6]);
+  const month = (d: Date) =>
+    new Intl.DateTimeFormat("en-GB", { month: "long", timeZone: "UTC" }).format(
+      d,
+    );
+  return first.getUTCMonth() === last.getUTCMonth()
+    ? `${first.getUTCDate()} to ${last.getUTCDate()} ${month(last)}`
+    : `${first.getUTCDate()} ${month(first)} to ${last.getUTCDate()} ${month(last)}`;
+}
+
 export function pounds(pence: number) {
   return money(pence / 100);
 }
@@ -155,4 +213,65 @@ export function customerOf(booking: Booking): Customer {
       preferences: null,
     }
   );
+}
+
+export function initials(name: string) {
+  return (
+    name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((w) => w[0]!.toUpperCase())
+      .join("") || "?"
+  );
+}
+
+/** Which chair is which colour in the calendar: first, second, third chair. */
+export function chairIndex(barbers: Barber[], id: string) {
+  const i = barbers.findIndex((b) => b.id === id);
+  return i < 0 ? 0 : i % 3;
+}
+
+export function hoursFor(diary: Diary, date: string) {
+  return diary.hoursByDay && date in diary.hoursByDay
+    ? diary.hoursByDay[date]
+    : diary.date === date
+      ? diary.hours
+      : null;
+}
+
+/**
+ * Start times a trim of the given length fits into on one chair on one day:
+ * inside the hours, around every other open trim and every break.
+ */
+export function freeTimes(
+  diary: Diary,
+  date: string,
+  barberId: string,
+  duration: number,
+  exceptId?: string,
+) {
+  const hours = hoursFor(diary, date);
+  const onDay = <T extends { local_date?: string }>(x: T) =>
+    !x.local_date || x.local_date === date;
+  const dayOff = diary.blocks.some(
+    (b) => onDay(b) && b.barber_id === barberId && b.duration >= 1440,
+  );
+  const taken = [
+    ...diary.bookings.filter(
+      (b) =>
+        onDay(b) &&
+        b.barber_id === barberId &&
+        b.id !== exceptId &&
+        OPEN_STATUSES.includes(b.status),
+    ),
+    ...diary.blocks.filter(
+      (b) => onDay(b) && b.barber_id === barberId && b.duration < 1440,
+    ),
+  ].map((b) => [b.start_minute, b.start_minute + b.duration]);
+  const free: number[] = [];
+  if (hours && !dayOff)
+    for (let m = hours[0]; m + duration <= hours[1]; m += 15)
+      if (!taken.some(([s, e]) => m < e && m + duration > s)) free.push(m);
+  return { free, closed: !hours || dayOff };
 }

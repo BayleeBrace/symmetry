@@ -33,7 +33,8 @@ export function ManageBookings({ token }: { token: string }) {
     [service, setService] = useState(""),
     [slots, setSlots] = useState<Slot[]>([]),
     [preferences, setPreferences] = useState(""),
-    [notice, setNotice] = useState("");
+    [notice, setNotice] = useState(""),
+    [late, setLate] = useState("");
   const [now, setNow] = useState(0);
   useEffect(() => {
     const tick = () => setNow(Date.now());
@@ -63,7 +64,7 @@ export function ManageBookings({ token }: { token: string }) {
     );
     return () => clearTimeout(t);
   }, [load]);
-  async function change(data: Record<string, unknown>) {
+  async function change(data: Record<string, unknown>, done = "All updated.") {
     setBusy(true);
     setError("");
     try {
@@ -75,7 +76,8 @@ export function ManageBookings({ token }: { token: string }) {
       const d = await r.json();
       if (!r.ok) throw new Error(d.error);
       setMove("");
-      setNotice("All updated.");
+      setLate("");
+      setNotice(done);
       await load();
     } catch (e) {
       setError((e as Error).message);
@@ -110,7 +112,7 @@ export function ManageBookings({ token }: { token: string }) {
       if (current === sequence.current) setBusy(false);
     }
   }
-  if (!group) return <p role="status">{error || "loading your trims…"}</p>;
+  if (!group) return <p role="status">{error || "Loading your trims…"}</p>;
   const policy = group.policy;
   return (
     <>
@@ -127,11 +129,11 @@ export function ManageBookings({ token }: { token: string }) {
       )}
       <div className="manage-links">
         <a href={"/api/calendar?token=" + encodeURIComponent(token)}>
-          add all to calendar
+          Add all to calendar
         </a>
         <PushButton token={token} />
       </div>
-      <p className="price-note">prices in pounds.</p>
+      <p className="price-note">Prices in pounds.</p>
       <div className="managed-booking-list">
         {group.appointments.map((a) => {
           const active =
@@ -156,14 +158,14 @@ export function ManageBookings({ token }: { token: string }) {
                 <a
                   href={`/book?barber=${a.barber.slug}&service=${a.service.slug}`}
                 >
-                  book my usual
+                  Book my usual
                 </a>
                 {active && (
                   <>
                     <a
                       href={`/api/calendar?token=${encodeURIComponent(token)}&booking=${a.id}`}
                     >
-                      add to calendar
+                      Add to calendar
                     </a>
                     <button
                       disabled={busy}
@@ -178,7 +180,7 @@ export function ManageBookings({ token }: { token: string }) {
                         );
                       }}
                     >
-                      change trim
+                      Change trim
                     </button>
                     <button
                       disabled={busy}
@@ -212,30 +214,49 @@ export function ManageBookings({ token }: { token: string }) {
                           });
                       }}
                     >
-                      cancel
+                      Cancel
                     </button>
                     {a.date === shopToday() && (
                       <button
                         disabled={busy}
-                        onClick={() =>
-                          void change({
-                            action: "late",
-                            bookingId: a.id,
-                            minutes: 10,
-                          })
-                        }
+                        aria-expanded={late === a.id}
+                        onClick={() => setLate(late === a.id ? "" : a.id)}
                       >
-                        running 10 min late
+                        Running late?
                       </button>
                     )}
                   </>
                 )}
               </div>
               {active && <WalletLinks token={token} booking={a.id} />}
+              {late === a.id && (
+                <div className="move-panel late-panel">
+                  <p>How late will you be? We will let {a.barber.name} know.</p>
+                  <div className="move-times">
+                    {[10, 15, 20, 30].map((minutes) => (
+                      <button
+                        key={minutes}
+                        disabled={busy}
+                        onClick={() =>
+                          void change(
+                            { action: "late", bookingId: a.id, minutes },
+                            `Thanks. ${a.barber.name} knows you are running about ${minutes} minutes late.`,
+                          )
+                        }
+                      >
+                        {minutes} min
+                      </button>
+                    ))}
+                  </div>
+                  <button disabled={busy} onClick={() => setLate("")}>
+                    Never mind
+                  </button>
+                </div>
+              )}
               {move === a.id && (
                 <div className="move-panel">
                   <label>
-                    barber
+                    Barber
                     <select
                       value={barber}
                       onChange={(e) => {
@@ -255,7 +276,7 @@ export function ManageBookings({ token }: { token: string }) {
                     </select>
                   </label>
                   <label>
-                    trim
+                    Trim
                     <select
                       value={service}
                       onChange={(e) => {
@@ -273,7 +294,7 @@ export function ManageBookings({ token }: { token: string }) {
                     </select>
                   </label>
                   <label>
-                    date
+                    Date
                     <input
                       type="date"
                       min={shopToday()}
@@ -284,7 +305,7 @@ export function ManageBookings({ token }: { token: string }) {
                   </label>
                   <div ref={times} className="move-times">
                     {busy ? (
-                      <p>checking the diary…</p>
+                      <p>Checking the diary…</p>
                     ) : slots.length ? (
                       slots.map((s) => (
                         <button
@@ -308,7 +329,7 @@ export function ManageBookings({ token }: { token: string }) {
                     )}
                   </div>
                   <button disabled={busy} onClick={() => setMove("")}>
-                    keep existing trim
+                    Keep existing trim
                   </button>
                 </div>
               )}
@@ -324,14 +345,14 @@ export function ManageBookings({ token }: { token: string }) {
         }}
       >
         <label>
-          your preferences
+          Your preferences
           <textarea
             maxLength={1000}
             value={preferences}
             onChange={(e) => setPreferences(e.target.value)}
           />
         </label>
-        <button disabled={busy}>save notes</button>
+        <button disabled={busy}>Save notes</button>
       </form>
       <p>
         After moving or cancelling a trim, update any calendar entry you
