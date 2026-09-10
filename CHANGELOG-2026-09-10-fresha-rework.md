@@ -63,3 +63,17 @@ The staff side now works the way Fresha does, in Symmetry's colours. Base: the b
 1. Remove the old home-screen icon, open symmetrywales.com/staff in Safari, Add to Home Screen. It should open straight on the diary as "Symmetry staff".
 2. Sign in with the password, Settings, set up Face ID. Sign out. "Sign in with Face ID" should sign you straight back in.
 3. On a second phone the Face ID button should say the phone is not set up yet until you set it up there too.
+
+## Calendar feel (evening)
+
+- **Hold and drag.** Hold a trim for a moment and drag it to another time or another chair; the card follows your finger, a dashed outline shows where it lands and a label shows the new time. Let go to move it. With a mouse, just drag. The database still refuses a slot that is taken. In week view you can drag between days.
+- **Every chair side by side on the phone**, with the avatar row above, like Fresha. The chair filter at the top still narrows it to one chair.
+- **Colour by service.** Fade, cut, fade and beard and the rest each get their own soft colour, the same in day and week view. In the chair stays black, done is white with a tick, no show and cancelled are dashed.
+- **Hatched time outside hours.** Before opening, after closing, and outside a barber's own shift is hatched, and a chair that is off that day says so.
+- Moving a trim to another chair keeps its price and length.
+
+### What to test
+1. On the phone, hold a trim for half a second, drag it down two slots, let go. It should move, and the diary should refresh with it in the new place.
+2. Drag a trim from Sean's column into Travis's. The sheet should then say "with Travis".
+3. Drag one onto a slot that is already taken: it should bounce back with the "diary changed or that time is unavailable" message.
+4. Switch to Week, drag a trim from Thursday to Friday.

@@ -75,8 +75,16 @@ export type CustomerHistory = {
   last: { date: string; barber_id: string; service_id: string } | null;
 };
 
+export type Shift = {
+  barber_id: string;
+  iso_weekday: number;
+  open_minute: number | null;
+  close_minute: number | null;
+};
+
 export type Diary = {
   staff: { user_id: string; role: "owner" | "barber"; barber_id: string };
+  shifts?: Shift[];
   bookings: Booking[];
   barbers: Barber[];
   services: Service[];
@@ -232,6 +240,42 @@ export function chairIndex(barbers: Barber[], id: string) {
   return i < 0 ? 0 : i % 3;
 }
 
+export function isoWeekday(date: string) {
+  return ((parseDate(date).getUTCDay() + 6) % 7) + 1;
+}
+
+/** The colour a service gets in the calendar: stable by its position in the menu. */
+export function serviceTint(diary: Diary, serviceId: string) {
+  const ordered = [...diary.services].sort(
+    (a, b) => (a.display_order ?? 0) - (b.display_order ?? 0),
+  );
+  const i = ordered.findIndex((s) => s.id === serviceId);
+  return i < 0 ? 0 : i % 7;
+}
+
+/**
+ * When a chair is working on a date: the shop's hours, narrowed by the
+ * barber's own shift if one is set, the same way the diary trigger decides.
+ */
+export function chairHours(
+  diary: Diary,
+  date: string,
+  barberId: string,
+): [number, number] | null {
+  const shop = hoursFor(diary, date);
+  if (!shop) return null;
+  const shift = diary.shifts?.find(
+    (s) => s.barber_id === barberId && s.iso_weekday === isoWeekday(date),
+  );
+  if (!shift) return shop;
+  if (shift.open_minute === null || shift.close_minute === null) return null;
+  const hours: [number, number] = [
+    Math.max(shop[0], shift.open_minute),
+    Math.min(shop[1], shift.close_minute),
+  ];
+  return hours[0] < hours[1] ? hours : null;
+}
+
 export function hoursFor(diary: Diary, date: string) {
   return diary.hoursByDay && date in diary.hoursByDay
     ? diary.hoursByDay[date]
@@ -251,7 +295,7 @@ export function freeTimes(
   duration: number,
   exceptId?: string,
 ) {
-  const hours = hoursFor(diary, date);
+  const hours = chairHours(diary, date, barberId);
   const onDay = <T extends { local_date?: string }>(x: T) =>
     !x.local_date || x.local_date === date;
   const dayOff = diary.blocks.some(

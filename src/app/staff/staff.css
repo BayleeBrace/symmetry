@@ -2,11 +2,16 @@
    in Symmetry's colours. Black, white and bone; Jost for everything;
    oxblood only for the "now" line, no shows and errors. */
 .staff-page {
-  --tint-0: #efebe3;
-  --tint-1: #e4e7ea;
-  --tint-2: #efe3e2;
+  --svc-0: #f6e3c6;
+  --svc-1: #cfe9e4;
+  --svc-2: #d9e4f7;
+  --svc-3: #f4d6df;
+  --svc-4: #e7dcf3;
+  --svc-5: #eee9d2;
+  --svc-6: #dfe9d6;
   --rail: 84px;
   --tabbar: 64px;
+  --head: 52px;
   min-height: 100svh;
   background: var(--white);
   color: var(--black);
@@ -420,7 +425,7 @@
 .hour-rail {
   position: relative;
   height: calc(var(--rows) * var(--row));
-  margin-top: 52px;
+  margin-top: var(--head);
 }
 .hour-rail span {
   position: absolute;
@@ -434,20 +439,32 @@
   position: relative;
   min-width: 0;
 }
-.tint-0 {
-  --tint: var(--tint-0);
+.svc-0 {
+  --tint: var(--svc-0);
 }
-.tint-1 {
-  --tint: var(--tint-1);
+.svc-1 {
+  --tint: var(--svc-1);
 }
-.tint-2 {
-  --tint: var(--tint-2);
+.svc-2 {
+  --tint: var(--svc-2);
+}
+.svc-3 {
+  --tint: var(--svc-3);
+}
+.svc-4 {
+  --tint: var(--svc-4);
+}
+.svc-5 {
+  --tint: var(--svc-5);
+}
+.svc-6 {
+  --tint: var(--svc-6);
 }
 .chair-head {
   display: flex;
   align-items: center;
   gap: 10px;
-  height: 52px;
+  height: var(--head);
   border-bottom: 1px solid var(--black);
 }
 .chair-name {
@@ -464,7 +481,7 @@
 }
 .chair-behind {
   position: absolute;
-  top: 56px;
+  top: calc(var(--head) + 4px);
   right: 0;
   left: 0;
   z-index: 4;
@@ -516,10 +533,62 @@
 }
 .trim {
   z-index: 1;
-  border: 1px solid rgba(22, 22, 22, 0.18);
+  border: 1px solid rgba(22, 22, 22, 0.12);
   border-left: 3px solid var(--black);
   background: var(--tint, var(--bone));
   color: var(--black);
+  touch-action: pan-y;
+  -webkit-touch-callout: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.trim.is-dragging {
+  z-index: 12;
+  opacity: 0.92;
+  box-shadow: 0 14px 34px rgba(22, 22, 22, 0.28);
+  pointer-events: none;
+  transition: none;
+}
+.is-drag-active,
+.is-drag-active * {
+  user-select: none;
+  -webkit-user-select: none;
+}
+.drop-ghost {
+  position: absolute;
+  right: 0;
+  left: 0;
+  z-index: 3;
+  border: 2px dashed var(--black);
+  border-radius: 4px;
+  background: rgba(22, 22, 22, 0.06);
+  pointer-events: none;
+}
+.drag-label {
+  position: fixed;
+  z-index: 60;
+  padding: 5px 9px;
+  border-radius: 4px;
+  background: var(--black);
+  color: var(--white);
+  font-size: 0.78rem;
+  white-space: nowrap;
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+}
+.off-hours {
+  position: absolute;
+  right: 0;
+  left: 0;
+  z-index: 0;
+  background: repeating-linear-gradient(135deg, #f5f2ec 0 6px, #e6e1d8 6px 7px);
+}
+.off-hours.is-whole {
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 0.8rem;
 }
 .trim-time {
   color: var(--muted);
@@ -674,6 +743,9 @@
   color: var(--black);
   font-size: 1.02rem;
   font-weight: 400;
+}
+.week-grid {
+  --head: 52px;
 }
 .week-col.is-today .week-head strong {
   background: var(--black);
@@ -1811,6 +1883,7 @@
   }
   .day {
     --row: 26px;
+    --head: 78px;
   }
   .day-sticky {
     display: block;
@@ -1822,23 +1895,84 @@
     border-bottom: 1px solid var(--line);
     background: var(--white);
   }
-  .chair-pills {
-    display: flex;
-    flex-wrap: wrap;
-    margin: 0 0 8px;
+  .day-sticky:empty {
+    display: none;
   }
   .next-up {
     display: flex;
     margin-bottom: 8px;
   }
+  /* Every chair side by side, the way the team reads it on the counter phone. */
   .day-grid {
-    grid-template-columns: 44px minmax(0, 1fr);
+    grid-template-columns: 34px repeat(var(--chairs, 1), minmax(0, 1fr));
+    gap: 0 4px;
   }
-  .chair:not(.is-current) {
+  .chair-head {
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+    text-align: center;
+  }
+  .chair-head .avatar {
+    width: 32px;
+    height: 32px;
+  }
+  .chair-name {
+    margin: 0;
+    font-size: 0.78rem;
+  }
+  .chair-head small {
     display: none;
   }
+  .chair-behind-toggle {
+    min-height: 0;
+    font-size: 0.62rem;
+  }
+  .chair-behind {
+    right: -60px;
+    left: -60px;
+  }
+  .chair:last-child .chair-behind {
+    right: 0;
+    left: -120px;
+  }
+  .chair:first-child .chair-behind {
+    right: -120px;
+    left: 0;
+  }
   .hour-rail span {
-    right: 4px;
+    right: 3px;
+    font-size: 0.62rem;
+  }
+  .trim,
+  .block {
+    gap: 0;
+    padding: 3px 5px;
+    font-size: 0.68rem;
+    line-height: 1.2;
+  }
+  .trim-time {
+    font-size: 0.58rem;
+    letter-spacing: 0;
+  }
+  .trim-service {
+    font-size: 0.62rem;
+  }
+  .trim.is-short {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+    padding: 1px 5px;
+    font-size: 0.62rem;
+  }
+  .trim.is-short .trim-time {
+    display: none;
+  }
+  .trim-name {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .week-grid {
     --row: 16px;

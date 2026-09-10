@@ -15,11 +15,11 @@ import {
   type Context,
   type Diary,
   OPEN_STATUSES,
-  chairIndex,
+  chairHours,
   dayLabel,
   dayNumber,
-  hoursFor,
   initials,
+  serviceTint,
   timeRange,
   weekDays,
   weekLabel,
@@ -30,10 +30,12 @@ import {
   BlockSheet,
   BookingSheet,
   DayTimeline,
+  OffHours,
   TrimCard,
   historyView,
   serviceLabel,
 } from "./timeline";
+import { attachDrag, type DragDrop } from "./drag";
 import { BlockedTime, NewAppointment } from "./forms";
 
 export type BookPrefill = {
@@ -447,7 +449,7 @@ function WeekGrid({
   const bookings = diary.bookings.filter(mine);
   const blocks = diary.blocks.filter(mine);
   const hours = days
-    .map((d) => hoursFor(diary, d))
+    .map((d) => chairHours(diary, d, barber.id))
     .filter((h): h is [number, number] => Boolean(h));
   const starts = [
     ...hours.map((h) => h[0]),
@@ -481,21 +483,48 @@ function WeekGrid({
     selected?.kind === "block"
       ? blocks.find((b) => b.id === selected.id)
       : undefined;
-  const tint = chairIndex(diary.barbers, barber.id);
+  // Drag a trim to another day or time on this chair. Handlers live in refs so a refresh mid-drag does not tear it down.
+  const gridRef = useRef<HTMLDivElement>(null);
+  const dropRef = useRef<(drop: DragDrop) => void>(() => {});
+  const busyRef = useRef(busy);
+  useEffect(() => {
+    dropRef.current = (drop) => {
+      void act("/api/staff/diary", {
+        action: "move",
+        id: drop.id,
+        date: drop.column,
+        time: drop.minute,
+        version: drop.version,
+      });
+    };
+    busyRef.current = busy;
+  });
+  useEffect(() => {
+    const el = gridRef.current;
+    if (!el) return;
+    return attachDrag(el, {
+      start,
+      end,
+      rows,
+      columns: () =>
+        [...el.querySelectorAll<HTMLElement>(".chair-day[data-key]")].map(
+          (column) => ({ key: column.dataset.key ?? "", el: column }),
+        ),
+      canDrag: (card) => card.dataset.open === "1" && !busyRef.current,
+      onDrop: (drop) => dropRef.current(drop),
+    });
+  }, [start, end, rows]);
   return (
-    <div
-      className={`week tint-${tint}`}
-      style={{ "--rows": rows } as CSSProperties}
-    >
+    <div className="week" style={{ "--rows": rows } as CSSProperties}>
       <p className="week-who">
-        <span className={`avatar tint-${tint}`}>{initials(barber.name)}</span>
+        <span className="avatar">{initials(barber.name)}</span>
         {barber.name}
         <small>
           {bookings.filter((b) => OPEN_STATUSES.includes(b.status)).length}{" "}
           trims this week
         </small>
       </p>
-      <div className="week-grid">
+      <div className="week-grid" ref={gridRef}>
         <div className="hour-rail" aria-hidden="true">
           {hourMarks.map((h) => (
             <span key={h} style={{ top: top(h) }}>
@@ -504,7 +533,7 @@ function WeekGrid({
           ))}
         </div>
         {days.map((day) => {
-          const dayHours = hoursFor(diary, day);
+          const dayHours = chairHours(diary, day, barber.id);
           const dayBookings = bookings.filter((b) => b.local_date === day);
           const dayBlocks = blocks.filter((b) => b.local_date === day);
           const dayOff = dayBlocks.find((b) => b.duration >= 1440);
@@ -521,6 +550,7 @@ function WeekGrid({
               </header>
               <div
                 className="chair-day"
+                data-key={day}
                 onClick={(event) => {
                   if (event.target !== event.currentTarget || closed) return;
                   const rect = event.currentTarget.getBoundingClientRect();
@@ -534,8 +564,21 @@ function WeekGrid({
                       15;
                   onGap(day, Math.min(minute, end - 15));
                 }}
-                title={closed ? undefined : "Tap a gap to add an appointment"}
+                title={
+                  closed
+                    ? undefined
+                    : "Tap a gap to add an appointment. Hold a trim to move it."
+                }
               >
+                {!dayOff && dayHours && (
+                  <OffHours
+                    hours={dayHours}
+                    start={start}
+                    end={end}
+                    top={top}
+                    height={height}
+                  />
+                )}
                 {day === today && nowMinute >= start && nowMinute <= end && (
                   <div className="now-line" style={{ top: top(nowMinute) }} />
                 )}
@@ -578,6 +621,7 @@ function WeekGrid({
                     key={booking.id}
                     booking={booking}
                     service={serviceLabel(diary, booking)}
+                    tint={serviceTint(diary, booking.service_id)}
                     selected={selected?.id === booking.id}
                     top={top(booking.start_minute)}
                     height={height(booking.duration)}

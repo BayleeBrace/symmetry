@@ -24,6 +24,7 @@ const actions = z.discriminatedUnion("action", [
     id: z.uuid(),
     date: z.string().refine(validDate),
     time: z.number().int().min(0).max(1439),
+    barber: z.uuid().optional(),
     version: z.string(),
   }),
   z.object({
@@ -76,15 +77,18 @@ export async function GET(req: Request) {
       .gte("local_date", date)
       .lte("local_date", to);
     // Every chair for everyone: the team reference each other's days.
-    const [rows, br, bl, sv, pr, catalog] = await Promise.all([
+    const [rows, br, bl, sv, pr, sh, catalog] = await Promise.all([
       q,
       db.from("barbers").select("*"),
       blocks,
       db.from("services").select("*").eq("active", true),
       db.from("service_prices").select("*"),
+      db
+        .from("barber_schedules")
+        .select("barber_id,iso_weekday,open_minute,close_minute"),
       getCatalog(),
     ]);
-    if (rows.error || br.error || bl.error || sv.error || pr.error)
+    if (rows.error || br.error || bl.error || sv.error || pr.error || sh.error)
       throw new Error("The diary could not load");
     const ids = rows.data.map((b) => b.id);
     const { data: events } = await db
@@ -156,6 +160,7 @@ export async function GET(req: Request) {
       ),
       bookings: rows.data,
       barbers: br.data,
+      shifts: sh.data,
       blocks: bl.data,
       services: sv.data,
       prices: pr.data,
@@ -286,6 +291,8 @@ export async function POST(req: Request) {
     };
     if (p.action === "move") {
       update = { ...update, local_date: p.date, start_minute: p.time };
+      // Dragged onto another chair: same trim, same price, different barber.
+      if (p.barber && p.barber !== b.barber_id) update.barber_id = p.barber;
     } else {
       if (
         ["done", "no_show"].includes(p.status) &&
@@ -317,7 +324,22 @@ export async function POST(req: Request) {
       group_id: b.group_id,
       kind: "staff_action",
       actor: staff.user_id,
-      detail: { action: p.action },
+      detail:
+        p.action === "move"
+          ? {
+              action: "move",
+              from: {
+                date: b.local_date,
+                time: b.start_minute,
+                barber: b.barber_id,
+              },
+              to: {
+                date: p.date,
+                time: p.time,
+                barber: p.barber ?? b.barber_id,
+              },
+            }
+          : { action: p.action },
     });
     if (p.action === "status" && p.status === "done") {
       // One thank-you per trim, two hours later, with the review link when one is configured.

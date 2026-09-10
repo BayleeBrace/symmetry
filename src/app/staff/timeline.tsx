@@ -13,14 +13,16 @@ import {
   PAID_LABEL,
   STATUS_LABEL,
   canonicalServiceName,
-  chairIndex,
+  chairHours,
   customerOf,
   freeTimes,
   initials,
   pounds,
+  serviceTint,
   shortDay,
   timeRange,
 } from "./types";
+import { attachDrag, type DragDrop } from "./drag";
 
 type Selection = { kind: "booking" | "block"; id: string } | null;
 export type HistoryView = {
@@ -54,10 +56,11 @@ export function historyView(
   return { visits: h.visits, noShows: h.noShows, last };
 }
 
-/** One appointment block in the calendar. */
+/** One appointment block in the calendar, coloured by service. Draggable while open. */
 export function TrimCard({
   booking,
   service,
+  tint,
   selected,
   top,
   height,
@@ -65,28 +68,75 @@ export function TrimCard({
 }: {
   booking: Booking;
   service: string;
+  tint: number;
   selected: boolean;
   top: string;
   height: string;
   onClick: () => void;
 }) {
   const customer = customerOf(booking);
+  const open = OPEN_STATUSES.includes(booking.status);
   return (
     <button
       type="button"
-      className={`trim status-${booking.status} ${booking.duration <= 20 ? "is-short" : booking.duration <= 30 ? "is-compact" : ""} ${selected ? "is-selected" : ""}`}
+      className={`trim svc-${tint} status-${booking.status} ${booking.duration <= 20 ? "is-short" : booking.duration <= 30 ? "is-compact" : ""} ${selected ? "is-selected" : ""}`}
       style={{ top, height }}
+      data-id={booking.id}
+      data-version={booking.updated_at}
+      data-start={booking.start_minute}
+      data-duration={booking.duration}
+      data-open={open ? "1" : "0"}
       onClick={onClick}
       aria-label={`${clock(booking.start_minute)} ${customer.name}, ${service}, ${STATUS_LABEL[booking.status]}`}
     >
       <span className="trim-time">
-        {clock(booking.start_minute)}
+        {timeRange(booking.start_minute, booking.duration)}
         {booking.status === "done" ? " ✓" : ""}
         {booking.late_minutes > 0 ? ` · late ${booking.late_minutes}` : ""}
       </span>
       <span className="trim-name">{customer.name}</span>
       <span className="trim-service">{service}</span>
     </button>
+  );
+}
+
+/** Hatched time a chair is not working, so nobody books into it by mistake. */
+export function OffHours({
+  hours,
+  start,
+  end,
+  top,
+  height,
+}: {
+  hours: [number, number] | null;
+  start: number;
+  end: number;
+  top: (minute: number) => string;
+  height: (duration: number) => string;
+}) {
+  if (!hours)
+    return (
+      <div className="off-hours is-whole" aria-hidden="true">
+        Off today
+      </div>
+    );
+  return (
+    <>
+      {hours[0] > start && (
+        <div
+          className="off-hours"
+          aria-hidden="true"
+          style={{ top: top(start), height: height(hours[0] - start) }}
+        />
+      )}
+      {hours[1] < end && (
+        <div
+          className="off-hours"
+          aria-hidden="true"
+          style={{ top: top(hours[1]), height: height(end - hours[1]) }}
+        />
+      )}
+    </>
   );
 }
 
@@ -108,10 +158,6 @@ export function DayTimeline({
   const [selected, setSelected] = useState<Selection>(null);
   const [behind, setBehind] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
-  const [chosen, setCurrent] = useState(barbers[0]?.id ?? "");
-  const current = barbers.some((b) => b.id === chosen)
-    ? chosen
-    : (barbers[0]?.id ?? "");
   const [nowMinute, setNowMinute] = useState(() => shopMinute());
   useEffect(() => {
     const timer = setInterval(() => setNowMinute(shopMinute()), 60000);
@@ -119,6 +165,8 @@ export function DayTimeline({
   }, []);
   const today = shopToday();
   const isToday = date === today;
+  const own =
+    barbers.find((b) => b.id === diary.staff.barber_id)?.id ?? barbers[0]?.id;
   const nowLine = useRef<HTMLDivElement>(null);
   useEffect(() => {
     // Open today's diary at the current time, the way a barber reaches for it.
@@ -152,6 +200,39 @@ export function DayTimeline({
   const hourMarks: number[] = [];
   for (let h = start; h <= end; h += 60) hourMarks.push(h);
 
+  // Drag a trim to another time or chair. Handlers live in refs so a refresh mid-drag does not tear it down.
+  const gridRef = useRef<HTMLDivElement>(null);
+  const dropRef = useRef<(drop: DragDrop) => void>(() => {});
+  const busyRef = useRef(busy);
+  useEffect(() => {
+    dropRef.current = (drop) => {
+      void act("/api/staff/diary", {
+        action: "move",
+        id: drop.id,
+        date,
+        time: drop.minute,
+        barber: drop.column,
+        version: drop.version,
+      });
+    };
+    busyRef.current = busy;
+  });
+  useEffect(() => {
+    const el = gridRef.current;
+    if (!el) return;
+    return attachDrag(el, {
+      start,
+      end,
+      rows,
+      columns: () =>
+        [...el.querySelectorAll<HTMLElement>(".chair-day[data-key]")].map(
+          (column) => ({ key: column.dataset.key ?? "", el: column }),
+        ),
+      canDrag: (card) => card.dataset.open === "1" && !busyRef.current,
+      onDrop: (drop) => dropRef.current(drop),
+    });
+  }, [start, end, rows]);
+
   const selectedBooking =
     selected?.kind === "booking"
       ? bookingsToday.find((b) => b.id === selected.id)
@@ -180,7 +261,7 @@ export function DayTimeline({
     ? bookingsToday
         .filter(
           (b) =>
-            b.barber_id === current &&
+            b.barber_id === own &&
             OPEN_STATUSES.includes(b.status) &&
             b.start_minute + b.duration > nowMinute,
         )
@@ -190,25 +271,6 @@ export function DayTimeline({
   return (
     <div className="day">
       <div className="day-sticky">
-        {barbers.length > 1 && (
-          <div className="chair-pills" aria-label="Choose a chair">
-            {barbers.map((barber) => (
-              <button
-                key={barber.id}
-                type="button"
-                aria-pressed={current === barber.id}
-                onClick={() => setCurrent(barber.id)}
-              >
-                <span
-                  className={`avatar tint-${chairIndex(diary.barbers, barber.id)}`}
-                >
-                  {initials(barber.name)}
-                </span>
-                {barber.name}
-              </button>
-            ))}
-          </div>
-        )}
         {nextUp && (
           <button
             type="button"
@@ -243,7 +305,7 @@ export function DayTimeline({
           staff.
         </p>
       )}
-      <div className="day-grid" style={gridStyle}>
+      <div className="day-grid" style={gridStyle} ref={gridRef}>
         <div className="hour-rail" aria-hidden="true">
           {hourMarks.map((h) => (
             <span key={h} style={{ top: top(h) }}>
@@ -260,6 +322,7 @@ export function DayTimeline({
           );
           const blocks = blocksToday.filter((b) => b.barber_id === barber.id);
           const dayOff = blocks.find((b) => b.duration >= 1440);
+          const hours = chairHours(diary, date, barber.id);
           const upcoming = isToday
             ? active.filter(
                 (b) =>
@@ -267,18 +330,20 @@ export function DayTimeline({
                   b.start_minute + b.duration > nowMinute,
               )
             : [];
-          const tint = chairIndex(diary.barbers, barber.id);
           return (
             <section
               key={barber.id}
-              className={`chair tint-${tint} ${current === barber.id ? "is-current" : ""}`}
+              className={`chair ${own === barber.id ? "is-own" : ""}`}
               aria-label={`${barber.name}: ${active.length} trims`}
             >
               <header className="chair-head">
-                <span className={`avatar tint-${tint}`}>
-                  {initials(barber.name)}
-                </span>
+                <span className="avatar">{initials(barber.name)}</span>
                 <span className="chair-name">{barber.name}</span>
+                <small>
+                  {active.length
+                    ? `${active.length} trim${active.length === 1 ? "" : "s"}`
+                    : "Nothing booked"}
+                </small>
                 {upcoming.length > 0 && (
                   <button
                     type="button"
@@ -291,11 +356,6 @@ export function DayTimeline({
                     Running behind?
                   </button>
                 )}
-                <small>
-                  {active.length
-                    ? `${active.length} trim${active.length === 1 ? "" : "s"}`
-                    : "Nothing booked"}
-                </small>
               </header>
               {behind === barber.id && (
                 <div className="chair-behind">
@@ -338,8 +398,10 @@ export function DayTimeline({
               )}
               <div
                 className="chair-day"
+                data-key={barber.id}
                 onClick={(event) => {
-                  if (event.target !== event.currentTarget || dayOff) return;
+                  if (event.target !== event.currentTarget || dayOff || !hours)
+                    return;
                   const rect = event.currentTarget.getBoundingClientRect();
                   const rowPx = rect.height / rows;
                   const minute =
@@ -351,12 +413,21 @@ export function DayTimeline({
                       15;
                   onWalkIn(barber, Math.min(minute, end - 15));
                 }}
-                title="Tap a gap to add an appointment"
+                title="Tap a gap to add an appointment. Hold a trim to move it."
               >
+                {!dayOff && (
+                  <OffHours
+                    hours={hours}
+                    start={start}
+                    end={end}
+                    top={top}
+                    height={height}
+                  />
+                )}
                 {isToday && nowMinute >= start && nowMinute <= end && (
                   <div
                     className="now-line"
-                    ref={barber.id === current ? nowLine : undefined}
+                    ref={barber.id === own ? nowLine : undefined}
                     style={{ top: top(nowMinute) }}
                   />
                 )}
@@ -397,6 +468,7 @@ export function DayTimeline({
                     key={booking.id}
                     booking={booking}
                     service={serviceLabel(diary, booking)}
+                    tint={serviceTint(diary, booking.service_id)}
                     selected={selected?.id === booking.id}
                     top={top(booking.start_minute)}
                     height={height(booking.duration)}
@@ -690,7 +762,8 @@ export function BookingSheet({
         </div>
       )}
       <p className="sheet-foot">
-        Booked for {inputTime(booking.start_minute)} on {booking.local_date}
+        Booked for {inputTime(booking.start_minute)} on {booking.local_date}.
+        Hold the card in the calendar to drag it to another time or chair.
       </p>
     </aside>
   );
