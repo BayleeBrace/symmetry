@@ -9,7 +9,6 @@ export function WaitlistForm({
   leave?: boolean;
 }) {
   const [message, setMessage] = useState("");
-  const [failed, setFailed] = useState(false);
   return (
     <form
       className="details-form"
@@ -28,7 +27,6 @@ export function WaitlistForm({
           });
           const d = await r.json();
           setMessage(d.message || d.error);
-          setFailed(!r.ok);
         } catch {
           setMessage("Please try again later.");
         }
@@ -37,11 +35,11 @@ export function WaitlistForm({
       {!token && (
         <>
           <label>
-            Email
+            email
             <input name="email" type="email" required />
           </label>
           <label>
-            Preferred date
+            preferred date
             <input
               name="date"
               type="date"
@@ -51,9 +49,9 @@ export function WaitlistForm({
             />
           </label>
           <label>
-            Barber
+            barber
             <select name="barber">
-              <option value="any">Any barber</option>
+              <option value="any">any barber</option>
               {Object.entries(BARBERS).map(([id, b]) => (
                 <option key={id} value={id}>
                   {b.name}
@@ -62,7 +60,7 @@ export function WaitlistForm({
             </select>
           </label>
           <label>
-            Trim
+            trim
             <select name="service">
               {SERVICES.map((s) => (
                 <option value={s.id} key={s.id}>
@@ -80,16 +78,11 @@ export function WaitlistForm({
       <button>
         {token
           ? leave
-            ? "Leave the waitlist"
-            : "Confirm waitlist request"
-          : "Join the waitlist"}
+            ? "leave waitlist"
+            : "confirm waitlist request"
+          : "join the waitlist"}
       </button>
-      <p
-        role={failed ? "alert" : "status"}
-        className={failed ? "form-error" : ""}
-      >
-        {message}
-      </p>
+      <p role="status">{message}</p>
     </form>
   );
 }

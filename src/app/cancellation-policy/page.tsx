@@ -13,7 +13,7 @@ export default async function Page() {
     <main className="information-page">
       <BrandHeader />
       <section className="information-hero">
-        <h1>Plans change.</h1>
+        <h1>plans change.</h1>
         <p>No deposit is taken. Your card is saved securely when you book.</p>
         <p>
           Cancel at least {p.cancellation_hours} hours before your trim for

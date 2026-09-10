@@ -14,7 +14,7 @@ export function MobileBookCta() {
   }, []);
   return show ? (
     <Link className="mobile-book-cta" href="/book">
-      Book a trim
+      book a trim
     </Link>
   ) : null;
 }

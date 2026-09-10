@@ -1,4 +1,3 @@
-import "./staff.css";
 import { BrandHeader } from "@/components/brand-header";
 import { Diary } from "./diary";
 export const metadata = {

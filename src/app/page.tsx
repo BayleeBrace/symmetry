@@ -53,16 +53,16 @@ export default async function Home() {
       <BrandHeader />
       <section className="marketing-hero">
         <div className="marketing-hero-copy">
-          <p className="eyebrow">Barbers in Saundersfoot</p>
+          <p className="eyebrow">barbers in saundersfoot</p>
           <h1>
-            Same chairs.
+            same chairs.
             <br />
-            New name.
+            new name.
           </h1>
           <p className="hero-intro subhead">
-            Cuts, fades and beards.
+            cuts, fades and beards.
             {showFormerly() && (
-              <span className="former-line">Formerly Studio 4 Barbers.</span>
+              <span className="former-line">formerly studio 4 barbers.</span>
             )}
           </p>
           <div className="hero-actions">
@@ -71,13 +71,13 @@ export default async function Home() {
               className="primary-button light"
               href="/book"
             >
-              Book a trim
+              book a trim
             </Link>
             <Link className="text-link light-link" href="/prices">
-              View prices
+              view prices
             </Link>
           </div>
-          <p className="hero-address">4 Brewery Terrace, Saundersfoot.</p>
+          <p className="hero-address">4 brewery terrace, saundersfoot.</p>
         </div>
         <figure className="marketing-hero-image cut-photo">
           <Image
@@ -104,9 +104,9 @@ export default async function Home() {
 
       <section className="barbers-section">
         <Reveal className="section-heading">
-          <p className="eyebrow">The shop</p>
-          <h2>Your chair.</h2>
-          <p>Three barbers. Choose yours.</p>
+          <p className="eyebrow">the shop</p>
+          <h2>your chair.</h2>
+          <p>three barbers. choose yours.</p>
         </Reveal>
         <div className="barber-list">
           {Object.entries(BARBERS).map(([id, barber]) => (
@@ -114,16 +114,19 @@ export default async function Home() {
               <div className="barber-copy">
                 <h3>{barber.name}</h3>
                 <p>{barber.role}</p>
+                <small>
+                  portrait and a few words from {barber.name} coming soon.
+                </small>
               </div>
               <Link className="text-link" href={`/book?barber=${id}`}>
-                Book
+                book
               </Link>
             </Reveal>
           ))}
           <Reveal className="services-row">
-            <span>Cuts, fades and beards.</span>
+            <span>cuts, fades and beards.</span>
             <Link className="text-link" href="/prices">
-              View prices
+              view prices
             </Link>
           </Reveal>
         </div>
@@ -131,9 +134,9 @@ export default async function Home() {
 
       <section className="visit-section">
         <Reveal>
-          <p className="eyebrow">Saundersfoot, Pembrokeshire</p>
-          <h2>Croeso.</h2>
-          <p>4 Brewery Terrace, Saundersfoot, SA69 9HG.</p>
+          <p className="eyebrow">saundersfoot, pembrokeshire</p>
+          <h2>croeso.</h2>
+          <p>4 brewery terrace, saundersfoot, SA69 9HG.</p>
           <p>Use the shared entrance and look for Symmetry inside.</p>
           <ContactLinks />
           <a
@@ -142,13 +145,13 @@ export default async function Home() {
             target="_blank"
             rel="noreferrer"
           >
-            Open in maps
+            open in maps
           </a>
         </Reveal>
         <Reveal className="hours-list">
           <OpeningHours hours={catalog.hours} />
           <Link className="text-link" href="/hours">
-            Opening hours
+            opening hours
           </Link>
         </Reveal>
       </section>

@@ -7,8 +7,8 @@ export const contentType = "image/jpeg";
 
 export default function OpenGraphImage() {
   return createBrandedOgImage({
-    eyebrow: "Book online",
-    title: "Book a trim.",
+    eyebrow: "book online",
+    title: "book a trim.",
     detail: "Choose your barber, service and time.",
   });
 }

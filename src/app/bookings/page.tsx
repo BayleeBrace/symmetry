@@ -39,7 +39,7 @@ export default async function Page({
     <main className="information-page">
       <BrandHeader compact />
       <section className="staff-content">
-        <h1>Your trims.</h1>
+        <h1>your trims.</h1>
         {p.setup ? (
           <SetupComplete session={p.setup} />
         ) : p.token ? (
@@ -53,7 +53,7 @@ export default async function Page({
                   className="primary-button"
                   href={"/bookings?token=" + signLink("manage", g.id)}
                 >
-                  Booking made{" "}
+                  booking made{" "}
                   {new Date(g.created_at).toLocaleDateString("en-GB")}
                 </a>
               </p>

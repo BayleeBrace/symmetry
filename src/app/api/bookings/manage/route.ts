@@ -72,16 +72,6 @@ export async function PATCH(req: Request) {
         .eq("id", b.id)
         .eq("group_id", group.id);
       if (error) throw new Error("Could not let the shop know");
-      await db.from("notification_jobs").upsert(
-        {
-          dedupe_key: `late-${b.id}-${p.minutes || 10}`,
-          group_id: group.id,
-          booking_id: b.id,
-          kind: "running_late",
-          channel: "push",
-        },
-        { onConflict: "dedupe_key", ignoreDuplicates: true },
-      );
       return privateJson({ ok: true });
     }
     if (

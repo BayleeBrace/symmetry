@@ -73,29 +73,29 @@ export function TeaserLanding() {
         </header>
 
         <div className="teaser-message">
-          <p className="eyebrow">Coming soon</p>
+          <p className="eyebrow">coming soon</p>
           <h1>
-            Same chairs.
+            same chairs.
             <br />
-            New name.
+            new name.
           </h1>
         </div>
 
         <form className="teaser-form" onSubmit={unlock}>
-          <label htmlFor="site-password">Preview the new site</label>
+          <label htmlFor="site-password">preview the new site</label>
           <div>
             <input
               id="site-password"
               name="password"
               type="password"
               autoComplete="current-password"
-              placeholder="Password"
+              placeholder="password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               required
             />
             <button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Opening…" : "Enter"}
+              {isSubmitting ? "opening…" : "enter"}
             </button>
           </div>
           <p className="teaser-form-message" aria-live="polite">

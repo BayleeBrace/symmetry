@@ -15,7 +15,6 @@
   "dependencies": {
     "@supabase/ssr": "0.12.6",
     "@supabase/supabase-js": "2.115.0",
-    "@vercel/analytics": "^2.0.1",
     "jose": "6.2.12",
     "libphonenumber-js": "1.13.12",
     "next": "16.3.4",

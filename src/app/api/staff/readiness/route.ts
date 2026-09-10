@@ -74,10 +74,6 @@ export async function GET() {
         },
         { label: "Staff accounts active", ready: Boolean(staff.data.length) },
         {
-          label: "Google review link for thank-you emails (optional)",
-          ready: configured(["GOOGLE_REVIEW_URL"]),
-        },
-        {
           label: "Online bookings enabled",
           ready: process.env.BOOKINGS_ENABLED === "true",
         },

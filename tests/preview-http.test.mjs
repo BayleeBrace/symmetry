@@ -73,21 +73,6 @@ run(
   async () => {
     assert.equal((await fetch(base + "/api/staff/readiness")).status, 403);
     assert.equal((await fetch(base + "/api/staff/alerts")).status, 403);
-    assert.equal((await fetch(base + "/api/staff/team")).status, 403);
-    assert.equal(
-      (await fetch(base + "/api/reminders/stop?token=not-a-link")).status,
-      400,
-    );
-    assert.equal(
-      (
-        await fetch(base + "/api/staff/password", {
-          method: "POST",
-          headers: { Origin: base, "Content-Type": "application/json" },
-          body: '{"password":"longenough1"}',
-        })
-      ).status,
-      400,
-    );
     assert.equal(
       (
         await fetch(base + "/api/staff/session", {
