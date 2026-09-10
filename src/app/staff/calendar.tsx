@@ -41,7 +41,12 @@ import {
   serviceLabel,
 } from "./timeline";
 import { attachDrag, type DragDrop } from "./drag";
-import { type BlockPrefill, BlockedTime, NewAppointment } from "./forms";
+import {
+  type BlockPrefill,
+  BlockedTime,
+  NewAppointment,
+  WaitlistForm,
+} from "./forms";
 
 export type BookPrefill = {
   client?: { name: string; email: string; phone: string };
@@ -60,6 +65,7 @@ export type CalendarState = {
 type Drawer =
   | { kind: "new"; prefill: BookPrefill }
   | { kind: "block"; prefill: BlockPrefill }
+  | { kind: "waitlist"; date: string }
   | null;
 
 /** How long the "select time" placeholder is drawn before a service is chosen. */
@@ -456,6 +462,17 @@ export function Calendar({
             <button type="button" role="menuitem" onClick={() => openBlock()}>
               Blocked time
             </button>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setAddOpen(false);
+                setPlacing(null);
+                setDrawer({ kind: "waitlist", date });
+              }}
+            >
+              Waitlist
+            </button>
           </div>
         </div>
       )}
@@ -495,9 +512,33 @@ export function Calendar({
             >
               <span>{weekdayShort(d).slice(0, 1)}</span>
               <strong>{dayNumber(d)}</strong>
+              {(data?.waiting?.[d] ?? 0) > 0 && (
+                <em
+                  className="strip-waiting"
+                  aria-label={`${data?.waiting?.[d]} waiting`}
+                >
+                  {data?.waiting?.[d]}
+                </em>
+              )}
             </button>
           ))}
         </div>
+      )}
+
+      {view === "day" && (dayData?.waiting?.[date] ?? 0) > 0 && (
+        <button
+          type="button"
+          className="waiting-pill"
+          onClick={() => {
+            setPlacing(null);
+            setDrawer({ kind: "waitlist", date });
+          }}
+        >
+          {dayData?.waiting?.[date]}{" "}
+          {dayData?.waiting?.[date] === 1 ? "person is" : "people are"} waiting
+          for this day
+          <span aria-hidden="true">›</span>
+        </button>
       )}
 
       {loadError && (
@@ -567,6 +608,20 @@ export function Calendar({
               closeDrawer();
               setNotice(message);
             }}
+          />
+        </>
+      )}
+      {drawer?.kind === "waitlist" && (
+        <>
+          <div className="sheet-backdrop" onClick={closeDrawer} />
+          <WaitlistForm
+            ctx={ctx}
+            chairs={chairs}
+            date={drawer.date}
+            busy={busy}
+            act={run}
+            onClose={closeDrawer}
+            onSaved={(message) => setNotice(message)}
           />
         </>
       )}

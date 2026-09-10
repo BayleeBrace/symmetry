@@ -23,10 +23,15 @@ export async function POST(req: Request) {
         barber: z.enum(["sean", "travis", "dylan", "any"]),
         service: z.string().max(40),
         date: z.string().refine(validDate),
+        // Optional: any day from date up to this one (two weeks at most).
+        until: z.string().refine(validDate).or(z.literal("")).optional(),
       })
       .parse(await req.json());
     if (p.date < shopToday() || p.date > addDays(shopToday(), 120))
       throw new Error("Choose a date within the next 120 days");
+    const until = p.until && p.until > p.date ? p.until : null;
+    if (until && until > addDays(p.date, 14))
+      throw new Error("Choose a run of up to two weeks");
     const db = createAdminClient();
     const { data: s } = await db
       .from("services")
@@ -49,6 +54,7 @@ export async function POST(req: Request) {
         barber_id: b?.id || null,
         service_id: s.id,
         preferred_date: p.date,
+        ...(until ? { until_date: until } : {}),
         token_hash: createHash("sha256").update(randomBytes(32)).digest("hex"),
       })
       .select("id")

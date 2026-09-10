@@ -202,3 +202,26 @@ From Sean's screen recording of Fresha. Four things the Symmetry app now does th
 2. Cancel a trim on that day from its manage link. The chair's phone and Sean's: "A slot freed ... 1 person is waiting".
 3. On a booking page, edit the notes and save. The chair's phone: "Notes updated".
 4. As Travis, mark a no-show on a booking with a saved card and a no-show percentage set. Sean's phone: "Fee to review".
+
+## Waitlist from the staff app
+
+- **Plus, Waitlist.** When the day is full and someone rings, put them on the list: name (regulars come up as you type), mobile, optional email, day, chair or any chair, trim. No confirm email for entries the team adds. The same drawer shows everyone waiting for that day with a Remove link.
+- Someone added with a mobile is offered a freed slot by text once Twilio is set up; with an email, by email. With only a mobile and no Twilio yet, they stay on the list so the team can ring them, and the "slot freed" push tells you.
+- Details in `handover/WAITLIST.md`.
+
+### What to test
+1. Plus, Waitlist, on a full day: add a name and mobile. They appear in "Waiting for" below. Add the same person again: "already on the list".
+2. Cancel a trim on that day: the chair and Sean get "A slot freed…". Remove them from the drawer.
+
+## Waitlist: demand in the diary, one offer at a time, texts, runs of days
+
+- **See the demand.** A red count on a day in the week strip when people are waiting for it, and a "2 people are waiting for this day" pill above the diary that opens the list. Under Clients, a Waitlist button lists everyone waiting, day by day, with Remove.
+- **One person at a time.** When a slot frees, the first person waiting for that day is offered it. If it is still free five minutes later, the next person is offered it. Nobody is offered the same day more than twice, and a request stays open until they book or the day passes. Before, everyone got the same email at once and raced.
+- **Text first.** The offer goes by text when there is a mobile and Twilio is on, else by email. Someone with only a mobile and no Twilio yet stays on the list for the team to ring.
+- **A run of days.** On the website and in the staff drawer, "any day until" lets someone wait for a stretch of up to two weeks rather than one date. The diary counts them on every day in the run.
+- Needs migration `20260911180000_waitlist_range_hold.sql` (four columns on the waitlist table).
+
+### What to test
+1. Add two people to the waitlist for a full day from the staff app. The week strip shows a red 2 on that day; the pill above the diary says "2 people are waiting".
+2. Cancel a trim on that day. Within a minute (once the sender runs) the first person gets the offer, and the drawer shows "offered a slot" against them. Five minutes later, if nobody booked, the second person gets it.
+3. On the website, join with "any day until" a week ahead. The count shows on every day of that run.

@@ -39,7 +39,7 @@ export async function processNotifications() {
   for (const job of jobs || []) {
     try {
       let email = job.payload.email as string | undefined,
-        phone: string | undefined,
+        phone = job.payload.phone as string | undefined,
         url = job.payload.url as string | undefined,
         text = "",
         subject = "Your Symmetry trim";
@@ -288,53 +288,106 @@ export async function processNotifications() {
   }
   return { sent, failed };
 }
+/** Five minutes: how long one person has first refusal on a freed slot. */
+const OFFER_MS = 5 * 60000;
+
+/**
+ * Offer freed slots to the people waiting, one at a time per day. The first
+ * person waiting gets the offer; if the slot is still free five minutes
+ * later it goes to the next. Nobody is offered the same day more than twice.
+ * A request covers one day or a run of days. Text where we have a mobile
+ * and Twilio, else email; with neither, they stay on the list for the team
+ * to ring.
+ */
 export async function checkWaitlist() {
   const db = createAdminClient();
+  const today = shopToday();
   const { data, error } = await db
     .from("waitlist_requests")
     .select("*,barbers(slug),services(slug)")
     .eq("active", true)
     .eq("verified", true)
-    .gte("preferred_date", shopToday())
-    .lte("preferred_date", addDays(shopToday(), 120))
-    .limit(25);
+    .lte("preferred_date", addDays(today, 120))
+    .or(
+      `until_date.gte.${today},and(until_date.is.null,preferred_date.gte.${today})`,
+    )
+    .order("created_at")
+    .limit(100);
   if (error) throw new Error("Waitlist could not load");
   const catalog = await getCatalog();
+  const smsReady = Boolean(
+    process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_FROM,
+  );
+  const now = Date.now();
+  // One live offer per day at a time: a day with an offer made in the last five minutes is skipped.
+  const offeredDays = new Set(
+    (data || [])
+      .filter(
+        (w) =>
+          w.offered_at && now - new Date(w.offered_at).getTime() < OFFER_MS,
+      )
+      .map((w) => (w.offered_slot as string | null)?.split(" ")[0] ?? ""),
+  );
   let alerted = 0;
-  for (const w of data) {
+  for (const w of data || []) {
     const barber = (w.barbers?.slug || "any") as BarberChoice;
     const service = w.services?.slug;
     if (!service) continue;
-    const slots = makeSlots(
-      w.preferred_date,
-      barber,
-      service,
-      await busyFor(w.preferred_date, barber),
-      catalog,
-    );
-    if (slots.length) {
-      const { error } = await db.from("notification_jobs").upsert(
+    if ((w.offer_count ?? 0) >= 2) continue;
+    if (w.offered_at && now - new Date(w.offered_at).getTime() < OFFER_MS)
+      continue;
+    const channel = w.phone && smsReady ? "sms" : w.email ? "email" : null;
+    if (!channel) continue;
+    const first =
+      (w.preferred_date as string) < today ? today : w.preferred_date;
+    const last = (w.until_date as string | null) ?? w.preferred_date;
+    for (let day = first; day <= last; day = addDays(day, 1)) {
+      if (offeredDays.has(day)) continue;
+      const slots = makeSlots(
+        day,
+        barber,
+        service,
+        await busyFor(day, barber),
+        catalog,
+      );
+      if (!slots.length) continue;
+      const slot = `${day} ${slots[0].time ?? ""}`.trim();
+      const { error: queue } = await db.from("notification_jobs").upsert(
         {
-          dedupe_key: "waitlist-alert-" + w.id,
+          dedupe_key: `waitlist-offer-${w.id}-${(w.offer_count ?? 0) + 1}`,
           kind: "waitlist_alert",
-          channel: "email",
+          channel,
           payload: {
             email: w.email,
+            phone: w.phone,
+            day,
             url:
               siteUrl() +
-              `/book?barber=${barber}&service=${service}&date=${w.preferred_date}`,
+              `/book?barber=${barber}&service=${service}&date=${day}`,
           },
         },
         { onConflict: "dedupe_key", ignoreDuplicates: true },
       );
-      if (!error) {
-        await db
-          .from("waitlist_requests")
-          .update({ active: false })
-          .eq("id", w.id);
-        alerted++;
-      }
+      if (queue) break;
+      await db
+        .from("waitlist_requests")
+        .update({
+          offered_at: new Date().toISOString(),
+          offered_slot: slot,
+          offer_count: (w.offer_count ?? 0) + 1,
+        })
+        .eq("id", w.id);
+      offeredDays.add(day);
+      alerted++;
+      break;
     }
   }
+  // Anyone whose last day has passed comes off the list.
+  await db
+    .from("waitlist_requests")
+    .update({ active: false })
+    .eq("active", true)
+    .lt("preferred_date", today)
+    .or(`until_date.is.null,until_date.lt.${today}`);
   return alerted;
 }

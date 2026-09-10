@@ -687,3 +687,319 @@ export function BlockedTime({
     </aside>
   );
 }
+
+export type Waiting = {
+  id: string;
+  date: string;
+  until: string | null;
+  barber_id: string | null;
+  barber: string | null;
+  service: string;
+  name: string;
+  phone: string;
+  email: string;
+  offered: boolean;
+};
+
+/** One person waiting, with a Remove link. Used in the drawer and under Clients. */
+export function WaitingRow({
+  w,
+  busy,
+  onRemove,
+  showDay,
+}: {
+  w: Waiting;
+  busy: boolean;
+  onRemove: (id: string) => void;
+  showDay?: boolean;
+}) {
+  return (
+    <li>
+      <span className="avatar">{initials(w.name)}</span>
+      <span className="wait-body">
+        <strong>{w.name}</strong>
+        <small>
+          {showDay
+            ? `${shortDay(w.date)}${w.until ? ` to ${shortDay(w.until)}` : ""} · `
+            : w.until
+              ? `Any day to ${shortDay(w.until)} · `
+              : ""}
+          {w.service} with {w.barber ?? "any chair"}
+          {w.phone ? ` · ${w.phone}` : w.email ? ` · ${w.email}` : ""}
+          {w.offered ? " · offered a slot" : ""}
+        </small>
+      </span>
+      <button
+        type="button"
+        className="text-button"
+        disabled={busy}
+        onClick={() => onRemove(w.id)}
+      >
+        Remove
+      </button>
+    </li>
+  );
+}
+
+/** Put someone on the waitlist for a day (or a run of days), and see who is already waiting. */
+export function WaitlistForm({
+  ctx,
+  chairs,
+  date: initialDate,
+  busy,
+  act,
+  onClose,
+  onSaved,
+}: {
+  ctx: Context;
+  chairs: Barber[];
+  date: string;
+  busy: boolean;
+  act: Act;
+  onClose: () => void;
+  onSaved: (message: string) => void;
+}) {
+  const [date, setDate] = useState(initialDate);
+  const [until, setUntil] = useState("");
+  const [barberId, setBarberId] = useState("");
+  const [serviceId, setServiceId] = useState(ctx.services[0]?.id ?? "");
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [picked, setPicked] = useState<Client | null>(null);
+  const [results, setResults] = useState<Client[]>([]);
+  const [waiting, setWaiting] = useState<Waiting[] | null>(null);
+  const [error, setError] = useState("");
+  const [tick, setTick] = useState(0);
+
+  useEffect(() => {
+    let live = true;
+    api("/api/staff/waitlist?date=" + date)
+      .then((d) => {
+        if (live) setWaiting(d.waiting as Waiting[]);
+      })
+      .catch(() => {
+        if (live) setWaiting([]);
+      });
+    return () => {
+      live = false;
+    };
+  }, [date, tick]);
+
+  useEffect(() => {
+    const term = name.trim();
+    if (picked || term.length < 2) return;
+    let live = true;
+    const t = setTimeout(() => {
+      api("/api/staff/customers?q=" + encodeURIComponent(term))
+        .then((d) => {
+          if (live) setResults((d.customers as Client[]).slice(0, 6));
+        })
+        .catch(() => {
+          if (live) setResults([]);
+        });
+    }, 250);
+    return () => {
+      live = false;
+      clearTimeout(t);
+    };
+  }, [name, picked]);
+
+  const remove = async (id: string) => {
+    try {
+      await act("/api/staff/waitlist", { action: "remove", id });
+      setTick((t) => t + 1);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+
+  return (
+    <aside
+      className="sheet drawer"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Waitlist"
+    >
+      <button
+        type="button"
+        className="sheet-close"
+        onClick={onClose}
+        aria-label="Close"
+      >
+        ×
+      </button>
+      <h2>Waitlist.</h2>
+      <p className="sheet-line">
+        For when the day is full. When a slot frees up they are offered it, one
+        person at a time, by text where we have a mobile.
+      </p>
+      <form
+        className="staff-form"
+        onSubmit={async (event) => {
+          event.preventDefault();
+          setError("");
+          try {
+            await act("/api/staff/waitlist", {
+              action: "add",
+              date,
+              ...(until > date ? { until } : {}),
+              barber: barberId || null,
+              service: serviceId,
+              name: name.trim(),
+              phone: phone.trim(),
+              email: email.trim(),
+            });
+            setName("");
+            setPhone("");
+            setEmail("");
+            setPicked(null);
+            setTick((t) => t + 1);
+            onSaved(
+              `${name.trim()} is on the list for ${dayLabel(date)}${until > date ? ` to ${shortDay(until)}` : ""}.`,
+            );
+          } catch (e) {
+            setError((e as Error).message);
+          }
+        }}
+      >
+        <label className="wide client-field">
+          Client
+          <input
+            value={name}
+            required
+            minLength={2}
+            autoComplete="off"
+            placeholder="Start typing a name"
+            onChange={(e) => {
+              setName(e.target.value);
+              setPicked(null);
+            }}
+          />
+          {!picked && name.trim().length >= 2 && results.length > 0 && (
+            <ul className="client-results" role="listbox">
+              {results.map((c) => (
+                <li key={c.id}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPicked(c);
+                      setName(c.name);
+                      setEmail(c.email);
+                      setPhone(c.phone);
+                      setResults([]);
+                    }}
+                  >
+                    <span className="avatar">{initials(c.name)}</span>
+                    <span>
+                      <strong>{c.name}</strong>
+                      <small>
+                        {c.phone || c.email || "No contact details"}
+                      </small>
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </label>
+        <label>
+          Mobile
+          <input
+            type="tel"
+            inputMode="tel"
+            autoComplete="off"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+          />
+        </label>
+        <label>
+          Email (optional)
+          <input
+            type="email"
+            autoComplete="off"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </label>
+        <label>
+          From
+          <input
+            type="date"
+            required
+            value={date}
+            onChange={(e) => e.target.value && setDate(e.target.value)}
+          />
+        </label>
+        <label>
+          Until (optional)
+          <input
+            type="date"
+            min={date}
+            value={until}
+            onChange={(e) => setUntil(e.target.value)}
+          />
+        </label>
+        <label>
+          Chair
+          <select
+            value={barberId}
+            onChange={(e) => setBarberId(e.target.value)}
+          >
+            <option value="">Any chair</option>
+            {chairs.map((b) => (
+              <option value={b.id} key={b.id}>
+                {b.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Trim
+          <select
+            value={serviceId}
+            onChange={(e) => setServiceId(e.target.value)}
+          >
+            {ctx.services.map((s) => (
+              <option value={s.id} key={s.id}>
+                {canonicalServiceName(s.slug, s.name)}
+              </option>
+            ))}
+          </select>
+        </label>
+        {error && (
+          <p className="staff-error wide" role="alert">
+            {error}
+          </p>
+        )}
+        <div className="form-actions">
+          <button
+            type="submit"
+            className="button-primary"
+            disabled={busy || (!phone.trim() && !email.trim())}
+          >
+            Put them on the list
+          </button>
+          <button type="button" className="text-button" onClick={onClose}>
+            Close
+          </button>
+        </div>
+      </form>
+      <h3 className="wait-heading">
+        Waiting for {shortDay(date)}
+        {waiting ? ` (${waiting.length})` : ""}
+      </h3>
+      {!waiting ? (
+        <p className="staff-muted">Checking…</p>
+      ) : waiting.length === 0 ? (
+        <p className="staff-muted">Nobody yet.</p>
+      ) : (
+        <ul className="wait-list">
+          {waiting.map((w) => (
+            <WaitingRow key={w.id} w={w} busy={busy} onRemove={remove} />
+          ))}
+        </ul>
+      )}
+    </aside>
+  );
+}

@@ -233,6 +233,26 @@ export async function GET(req: Request) {
     if (rows.error || br.error || bl.error || sv.error || pr.error || sh.error)
       throw new Error("The diary could not load");
     const ids = rows.data.map((b) => b.id);
+    // Who is waiting for each day shown, so a full day says so.
+    const { data: waitRows } = await db
+      .from("waitlist_requests")
+      .select("preferred_date,until_date")
+      .eq("active", true)
+      .eq("verified", true)
+      .lte("preferred_date", to)
+      .or(
+        `until_date.gte.${date},and(until_date.is.null,preferred_date.gte.${date})`,
+      )
+      .limit(500);
+    const waiting: Record<string, number> = {};
+    for (let i = 0; i < days; i++) {
+      const d = addDays(date, i);
+      waiting[d] = (waitRows || []).filter(
+        (w) =>
+          w.preferred_date <= d &&
+          (w.until_date ? w.until_date >= d : w.preferred_date === d),
+      ).length;
+    }
     const { data: events } = await db
       .from("booking_events")
       .select("id,booking_id,kind,created_at")
@@ -308,6 +328,7 @@ export async function GET(req: Request) {
       prices: pr.data,
       events: events || [],
       history,
+      waiting,
     });
   } catch (e) {
     return publicError(e, 403);

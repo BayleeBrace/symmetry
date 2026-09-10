@@ -3,6 +3,79 @@ import { useEffect, useState } from "react";
 import { staffApi as api } from "@/lib/staff-client";
 import { clock, money } from "@/lib/booking-data";
 import { type Context, initials, shortDay } from "./types";
+import { type Waiting, WaitingRow } from "./forms";
+
+/** Everyone waiting for a day in the next two months, day by day. */
+function WaitingList({ onBack }: { onBack: () => void }) {
+  const [rows, setRows] = useState<Waiting[] | null>(null);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    let live = true;
+    api("/api/staff/waitlist")
+      .then((d) => {
+        if (live) setRows(d.waiting as Waiting[]);
+      })
+      .catch((e) => {
+        if (live) setError((e as Error).message);
+      });
+    return () => {
+      live = false;
+    };
+  }, [tick]);
+  const remove = async (id: string) => {
+    setBusy(true);
+    try {
+      await api("/api/staff/waitlist", { action: "remove", id });
+      setTick((t) => t + 1);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const days = [...new Set((rows ?? []).map((w) => w.date))];
+  return (
+    <section className="clients" aria-label="Waitlist">
+      <button type="button" className="text-button back-link" onClick={onBack}>
+        ‹ All clients
+      </button>
+      <header className="sec-head">
+        <h1>Waitlist</h1>
+      </header>
+      <p className="staff-muted">
+        People waiting for a day that was full. When a slot frees, the first
+        person is offered it by text or email, then the next five minutes later.
+      </p>
+      {error && (
+        <p className="staff-error" role="alert">
+          {error}
+        </p>
+      )}
+      {!rows ? (
+        <p role="status" className="staff-muted">
+          Loading…
+        </p>
+      ) : rows.length === 0 ? (
+        <p className="staff-muted">Nobody is waiting.</p>
+      ) : (
+        days.map((day) => (
+          <div key={day} className="wait-day">
+            <h3 className="wait-heading">{shortDay(day)}</h3>
+            <ul className="wait-list">
+              {rows
+                .filter((w) => w.date === day)
+                .map((w) => (
+                  <WaitingRow key={w.id} w={w} busy={busy} onRemove={remove} />
+                ))}
+            </ul>
+          </div>
+        ))
+      )}
+    </section>
+  );
+}
 
 type Client = {
   id: string;
@@ -47,6 +120,7 @@ export function Clients({
   onBook: (client: { name: string; email: string; phone: string }) => void;
 }) {
   const owner = ctx.staff.role === "owner";
+  const [showWaiting, setShowWaiting] = useState(false);
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(0);
@@ -358,10 +432,19 @@ export function Clients({
       </section>
     );
 
+  if (showWaiting) return <WaitingList onBack={() => setShowWaiting(false)} />;
+
   return (
     <section className="clients" aria-label="Clients">
       <header className="sec-head">
         <h1>Clients</h1>
+        <button
+          type="button"
+          className="button-secondary"
+          onClick={() => setShowWaiting(true)}
+        >
+          Waitlist
+        </button>
         <form
           className="client-search"
           onSubmit={(e) => {

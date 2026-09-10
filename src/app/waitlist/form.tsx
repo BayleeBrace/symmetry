@@ -51,6 +51,15 @@ export function WaitlistForm({
             />
           </label>
           <label>
+            Or any day until (optional)
+            <input
+              name="until"
+              type="date"
+              min={shopToday()}
+              max={addDays(shopToday(), 134)}
+            />
+          </label>
+          <label>
             Barber
             <select name="barber">
               <option value="any">Any barber</option>

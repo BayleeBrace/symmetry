@@ -262,6 +262,22 @@ test("database rejects blocked moves, enforces fees and keeps rejected batches a
     ).rows[0].d,
     "'{}'::jsonb",
   );
+  // Waitlist runs of days and one-at-a-time offers: columns only, safe to run twice.
+  for (let i = 0; i < 2; i++)
+    await db.exec(
+      await readFile(
+        "supabase/migrations/20260911180000_waitlist_range_hold.sql",
+        "utf8",
+      ),
+    );
+  assert.deepEqual(
+    (
+      await db.query<{ c: string }>(
+        `select column_name c from information_schema.columns where table_name='waitlist_requests' and column_name in ('until_date','offered_at','offered_slot','offer_count') order by 1`,
+      )
+    ).rows.map((r) => r.c),
+    ["offer_count", "offered_at", "offered_slot", "until_date"],
+  );
   // Squeeze-ins: safe to run twice, since it rebuilds the no-overlap rules by name.
   for (let i = 0; i < 2; i++)
     await db.exec(

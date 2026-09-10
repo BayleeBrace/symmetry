@@ -97,6 +97,8 @@ export type Diary = {
   to?: string;
   hoursByDay?: Record<string, [number, number] | null>;
   history?: Record<string, CustomerHistory>;
+  /** How many people are waiting for each day shown. */
+  waiting?: Record<string, number>;
 };
 
 /** The part of the diary every section needs: who is signed in, the chairs, the menu. */
