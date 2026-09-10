@@ -78,6 +78,7 @@ run(
     assert.equal((await fetch(base + "/api/staff/sales")).status, 403);
     assert.equal((await fetch(base + "/api/staff/marketing")).status, 403);
     assert.equal((await fetch(base + "/api/staff/passkey")).status, 403);
+    assert.equal((await fetch(base + "/api/staff/payouts")).status, 403);
     // A Face ID challenge needs no session; without LINK_SIGNING_SECRET it refuses cleanly.
     const challenge = await fetch(base + "/api/staff/passkey", {
       method: "POST",

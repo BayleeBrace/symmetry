@@ -87,3 +87,16 @@ The staff side now works the way Fresha does, in Symmetry's colours. Base: the b
 - **Calendar look.** Avatars centred above each column, a divider between chairs, rounded cards with a deeper edge in the service colour and a bolder client name.
 - **Current-time bar** runs across every chair with the time on the rail, in oxblood. The diary opens scrolled to it. Only on today, of course.
 - **The messages notice** now says plainly what is up: how many messages are waiting, and that the once-a-minute sender (the Vercel cron with NOTIFICATIONS_ENABLED) is not running when the number keeps growing.
+
+## Payouts and the plus button
+
+- **The plus button works again on phones.** Its menu had ended up inside the panel the sliders icon hides.
+- **Payouts.** A new section for the owner: pick this week, last week, this month or any dates; every barber's trims, sales, card and cash, their share, rent and cash kept, and what is owed. "Mark paid" per barber or "Pay everyone", with a history and Undo. "Bank file" gives a CSV for a bulk payment. Rules per barber (share of sales, weekly chair rent, keeps cash, optional bank details) live under each name. Barbers see their own figures and what has been paid to them under "Your pay". Details in `handover/PAYOUTS.md`.
+- Needs migration `20260910210000_payouts.sql`.
+
+### What to test
+1. Tap the plus button on the phone: New appointment and Blocked time should appear above it.
+2. Payouts, This week: figures per chair from the test data. Under Travis, Rules and bank: set 60% share, save, and watch "to pay" change.
+3. Mark Travis paid with a note, then Undo. Pay everyone, then check the list at the bottom.
+4. Bank file: with sort code and account saved for one barber, the CSV has their line.
+5. Sign in as Travis: Your pay shows only his figures and payouts, no rules, no buttons.

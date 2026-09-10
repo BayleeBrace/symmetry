@@ -6,6 +6,7 @@ export type Section =
   | "calendar"
   | "clients"
   | "sales"
+  | "payouts"
   | "catalogue"
   | "team"
   | "reports"
@@ -53,6 +54,13 @@ export const SECTIONS: {
     label: "Sales",
     icon: (
       <Icon d="M6 3h12v18l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5L6 21V3zM9 8h6M9 12h6M9 16h4" />
+    ),
+  },
+  {
+    id: "payouts",
+    label: "Payouts",
+    icon: (
+      <Icon d="M3 7h18v10H3zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 12h.01M18 12h.01" />
     ),
   },
   {

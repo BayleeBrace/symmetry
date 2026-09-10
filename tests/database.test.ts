@@ -243,6 +243,9 @@ test("database rejects blocked moves, enforces fees and keeps rejected batches a
       "utf8",
     ),
   );
+  await db.exec(
+    await readFile("supabase/migrations/20260910210000_payouts.sql", "utf8"),
+  );
   // Ticking the reminder box records the wording the customer saw.
   const { rows: laterDays } = await db.query<{ d: string }>(
     `select ((now() at time zone 'Europe/London')::date+n)::text d from generate_series(15,28) n where extract(isodow from (now() at time zone 'Europe/London')::date+n)=2 limit 1`,

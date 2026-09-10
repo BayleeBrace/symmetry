@@ -16,6 +16,7 @@ import { Shell, type Section } from "./shell";
 import { Calendar, type BookPrefill, type CalendarState } from "./calendar";
 import { Clients } from "./clients";
 import { Sales } from "./sales";
+import { Payouts } from "./payouts";
 import { Catalogue } from "./catalogue";
 import { Team } from "./team";
 import { Reports } from "./reports";
@@ -271,6 +272,7 @@ export function StaffApp() {
         />
       )}
       {section === "sales" && <Sales ctx={ctx} />}
+      {section === "payouts" && <Payouts ctx={ctx} />}
       {section === "catalogue" && owner && (
         <Catalogue ctx={ctx} act={act} busy={busy} reload={load} />
       )}

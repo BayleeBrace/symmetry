@@ -358,36 +358,30 @@ export function Calendar({
             >
               Add
             </button>
-            {addOpen && (
-              <>
-                <div
-                  className="menu-backdrop"
-                  onClick={() => setAddOpen(false)}
-                />
-                <div className="menu" role="menu">
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => openNew()}
-                  >
-                    New appointment
-                  </button>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => {
-                      setAddOpen(false);
-                      setDrawer({ kind: "block", date });
-                    }}
-                  >
-                    Blocked time
-                  </button>
-                </div>
-              </>
-            )}
           </div>
         </div>
       </div>
+
+      {addOpen && (
+        <div className="add-menu-host">
+          <div className="menu-backdrop" onClick={() => setAddOpen(false)} />
+          <div className="menu" role="menu">
+            <button type="button" role="menuitem" onClick={() => openNew()}>
+              New appointment
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setAddOpen(false);
+                setDrawer({ kind: "block", date });
+              }}
+            >
+              Blocked time
+            </button>
+          </div>
+        </div>
+      )}
 
       {view === "day" && stripOpen && (
         <div className="date-strip" aria-label="This week">

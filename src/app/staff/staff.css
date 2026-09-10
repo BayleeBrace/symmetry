@@ -376,6 +376,12 @@
   inset: 0;
   z-index: 30;
 }
+.add-menu-host {
+  position: relative;
+}
+.add-menu-host .menu {
+  top: -8px;
+}
 .menu {
   position: absolute;
   top: calc(100% + 6px);
@@ -1441,6 +1447,113 @@
   margin-top: 0.4rem;
 }
 
+/* Payouts */
+.range-form {
+  max-width: 420px;
+  margin: 0 0 12px;
+}
+.payouts > .staff-muted {
+  max-width: 680px;
+  margin: 0 0 14px;
+}
+.payout-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 0 0 16px;
+}
+.payout-actions .button-secondary {
+  text-decoration: none;
+}
+.payout-list {
+  display: grid;
+  gap: 12px;
+  margin: 0 0 20px;
+}
+.payout {
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+}
+.payout.is-paid {
+  background: var(--bone);
+}
+.payout-head {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 12px;
+}
+.payout-head strong {
+  display: block;
+  font-size: 1.05rem;
+  font-weight: 400;
+}
+.payout-head small {
+  display: block;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+.payout-net {
+  text-align: right;
+  font-size: 1.5rem;
+  font-variant-numeric: tabular-nums;
+}
+.payout-net small {
+  display: block;
+  color: var(--muted);
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.payout-net.is-negative {
+  color: var(--oxblood);
+}
+.payout-figures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 8px 12px;
+  margin: 0;
+}
+.payout-figures div {
+  padding: 8px 10px;
+  background: var(--white);
+  border: 1px solid var(--line);
+}
+.payout.is-paid .payout-figures div {
+  border-color: transparent;
+}
+.payout-figures dt {
+  color: var(--muted);
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.payout-figures dd {
+  margin: 2px 0 0;
+  font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
+}
+.payout-paid {
+  display: flex;
+  align-items: center;
+  gap: 8px 16px;
+  flex-wrap: wrap;
+  margin: 12px 0 0;
+  font-size: 0.9rem;
+}
+.payout-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px 18px;
+  flex-wrap: wrap;
+  margin: 12px 0 0;
+}
+.payout-history .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
 /* Clients */
 .client-search {
   display: flex;
@@ -1906,7 +2019,8 @@
   .cal-add .button-primary {
     display: none;
   }
-  .menu {
+  .menu,
+  .add-menu-host .menu {
     position: fixed;
     top: auto;
     right: 16px;
