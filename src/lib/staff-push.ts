@@ -73,14 +73,21 @@ async function members(): Promise<Member[]> {
 function audience(
   all: Member[],
   barberId: string | null | undefined,
-  opts: { except?: string | null; chairOnly?: boolean } = {},
+  opts: {
+    except?: string | null;
+    chairOnly?: boolean;
+    ownersOnly?: boolean;
+  } = {},
 ) {
+  const owners = all.filter((m) => m.role === "owner");
   const chair = all.filter((m) => barberId && m.barber_id === barberId);
-  const picked = opts.chairOnly
-    ? chair.length
-      ? chair
-      : all.filter((m) => m.role === "owner")
-    : all.filter((m) => m.role === "owner" || chair.includes(m));
+  const picked = opts.ownersOnly
+    ? owners
+    : opts.chairOnly
+      ? chair.length
+        ? chair
+        : owners
+      : all.filter((m) => m.role === "owner" || chair.includes(m));
   return picked.filter((m) => m.user_id !== opts.except).map((m) => m.user_id);
 }
 
@@ -168,11 +175,24 @@ const when = (date: string, minute: number) =>
     timeZone: "UTC",
   }).format(parseDate(date))} at ${clock(minute)}`;
 
+export type TrimLine = {
+  barberId: string;
+  date: string;
+  text: string;
+  feePence: number;
+  hasNotes: boolean;
+};
+
+const gbp = (pence: number) =>
+  "£" + (pence % 100 ? (pence / 100).toFixed(2) : String(pence / 100));
+
 /** What a push says about a trim: day, time, service and chair. Never the customer's name. */
-export async function trimLine(bookingId: string) {
+export async function trimLine(bookingId: string): Promise<TrimLine | null> {
   const { data: b } = await createAdminClient()
     .from("bookings")
-    .select("barber_id,local_date,start_minute,services(name),barbers(name)")
+    .select(
+      "barber_id,local_date,start_minute,fee_pence,services(name),barbers(name),booking_groups(customers(preferences))",
+    )
     .eq("id", bookingId)
     .maybeSingle();
   if (!b) return null;
@@ -180,10 +200,17 @@ export async function trimLine(bookingId: string) {
     (b.services as unknown as { name: string } | null)?.name ?? "trim";
   const barber =
     (b.barbers as unknown as { name: string } | null)?.name ?? "the chair";
+  const notes = (
+    b.booking_groups as unknown as {
+      customers: { preferences: string | null } | null;
+    } | null
+  )?.customers?.preferences;
   return {
     barberId: b.barber_id as string,
     date: b.local_date as string,
     text: `${when(b.local_date, b.start_minute)}, ${service.toLowerCase()} with ${barber}.`,
+    feePence: (b.fee_pence as number) || 0,
+    hasNotes: Boolean(notes && notes.trim()),
   };
 }
 
@@ -209,9 +236,12 @@ export async function notifyTrim(
   bookingId: string,
   opts: {
     title: string;
-    lead?: string;
+    lead?: string | ((line: TrimLine) => string);
     except?: string | null;
     chairOnly?: boolean;
+    ownersOnly?: boolean;
+    /** Add "Has notes." when the customer has written any, so the barber reads them first. */
+    withNotes?: boolean;
   },
 ) {
   try {
@@ -221,13 +251,100 @@ export async function notifyTrim(
     const to = audience(await members(), line.barberId, {
       except: opts.except,
       chairOnly: opts.chairOnly,
+      ownersOnly: opts.ownersOnly,
     });
+    const lead =
+      typeof opts.lead === "function" ? opts.lead(line) : (opts.lead ?? "");
     await sendStaffPush(to, {
       kind,
       title: opts.title,
-      body: (opts.lead ? opts.lead + " " : "") + line.text,
+      body:
+        (lead ? lead + " " : "") +
+        line.text +
+        (opts.withNotes && line.hasNotes ? " Has notes." : ""),
       url: `/staff?date=${line.date}`,
       tag: `${kind}-${bookingId}`,
+    });
+  } catch {}
+}
+
+/** A late cancellation or no-show fee is up for review: tell the owners, not whoever marked it. */
+export function notifyFee(
+  bookingId: string,
+  reason: "late cancellation" | "no show",
+  except?: string | null,
+) {
+  return notifyTrim("fee", bookingId, {
+    title: "Fee to review",
+    lead: (line) => `${gbp(line.feePence)} ${reason} fee:`,
+    ownersOnly: true,
+    except,
+  });
+}
+
+/** How many verified people are waiting for a day on a chair (or any chair). */
+async function waitingFor(date: string, barberId: string) {
+  const { data } = await createAdminClient()
+    .from("waitlist_requests")
+    .select("id,barber_id")
+    .eq("preferred_date", date)
+    .eq("active", true)
+    .eq("verified", true);
+  return (data || []).filter((w) => !w.barber_id || w.barber_id === barberId)
+    .length;
+}
+
+/** A trim was cancelled or moved away: if people are waiting for that day, tell the chair and the owner. */
+export async function notifySlotFreed(
+  bookingId: string,
+  was: { date: string; barberId: string },
+  except?: string | null,
+) {
+  try {
+    if (!pushConfigured()) return;
+    const waiting = await waitingFor(was.date, was.barberId);
+    if (!waiting) return;
+    const line = await trimLine(bookingId);
+    const barber =
+      (
+        await createAdminClient()
+          .from("barbers")
+          .select("name")
+          .eq("id", was.barberId)
+          .maybeSingle()
+      ).data?.name ?? "the chair";
+    const to = audience(await members(), was.barberId, { except });
+    await sendStaffPush(to, {
+      kind: "waitlist",
+      title: "Waitlist",
+      body: `A slot freed on ${when(was.date, 0).replace(/ at .*$/, "")} with ${barber}: ${waiting} ${waiting === 1 ? "person is" : "people are"} waiting for that day.${line ? "" : ""} They get an email offer from the sender.`,
+      url: `/staff?date=${was.date}`,
+      tag: `waitlist-${was.date}-${was.barberId}`,
+    });
+  } catch {}
+}
+
+/** Someone confirmed a waitlist request: the owner hears what day and chair they want. */
+export async function notifyWaitlistJoined(requestId: string) {
+  try {
+    if (!pushConfigured()) return;
+    const { data: w } = await createAdminClient()
+      .from("waitlist_requests")
+      .select("preferred_date,barber_id,barbers(name),services(name)")
+      .eq("id", requestId)
+      .maybeSingle();
+    if (!w) return;
+    const barber = (w.barbers as unknown as { name: string } | null)?.name;
+    const service =
+      (w.services as unknown as { name: string } | null)?.name ?? "trim";
+    const day = when(w.preferred_date as string, 0).replace(/ at .*$/, "");
+    const to = audience(await members(), null, { ownersOnly: true });
+    await sendStaffPush(to, {
+      kind: "waitlist",
+      title: "Waitlist",
+      body: `Someone wants ${day}: ${service.toLowerCase()} with ${barber ?? "any chair"}. They will be emailed if a slot opens.`,
+      url: `/staff?date=${w.preferred_date}`,
+      tag: `waitlist-join-${requestId}`,
     });
   } catch {}
 }

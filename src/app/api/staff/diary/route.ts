@@ -4,7 +4,12 @@ import { randomBytes, createHash } from "node:crypto";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 import { requireStaff } from "@/lib/staff";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { notifyTrim, staffName } from "@/lib/staff-push";
+import {
+  notifyFee,
+  notifySlotFreed,
+  notifyTrim,
+  staffName,
+} from "@/lib/staff-push";
 import {
   addDays,
   validDate,
@@ -525,7 +530,20 @@ export async function POST(req: Request) {
           except: staff.user_id,
           chairOnly: true,
         });
+        // The old slot is free again: worth knowing if people are waiting for that day.
+        await notifySlotFreed(
+          b.id,
+          { date: b.local_date, barberId: b.barber_id },
+          staff.user_id,
+        );
       });
+    // A no-show fee is up for review: tell the owner, unless the owner marked it.
+    if (
+      p.action === "status" &&
+      p.status === "no_show" &&
+      update.fee_status === "review"
+    )
+      after(() => notifyFee(b.id, "no show", staff.user_id));
     if (p.action === "status" && p.status === "done") {
       // One thank-you per trim, two hours later, with the review link when one is configured.
       await db.from("notification_jobs").upsert(

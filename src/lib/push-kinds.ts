@@ -13,7 +13,10 @@ export type PushKind =
   | "day_ahead"
   | "overdue"
   | "day_end"
-  | "payday";
+  | "payday"
+  | "waitlist"
+  | "fee"
+  | "notes";
 
 export type PushMessage = {
   kind: PushKind;
@@ -115,6 +118,36 @@ export const PUSH_KINDS: {
     sample: {
       title: "Payday",
       body: "Last week is ready: Travis owed £510, Dylan £430.",
+    },
+  },
+  {
+    id: "waitlist",
+    label: "Waitlist",
+    detail:
+      "Someone joins the waitlist for a day (the owner hears), and when a cancellation frees a slot on a day people are waiting for (the chair and the owner).",
+    sample: {
+      title: "Waitlist",
+      body: "A slot freed on Fri 12 Sept at 10:00 with Travis: 2 people are waiting for that day.",
+    },
+  },
+  {
+    id: "fee",
+    label: "Fee to review",
+    detail:
+      "A late cancellation or no-show fee is ready to charge or waive. Owner only.",
+    sample: {
+      title: "Fee to review",
+      body: "£10 late cancellation fee: Fri 12 Sept at 10:00, fade with Travis. Tap to charge or waive.",
+    },
+  },
+  {
+    id: "notes",
+    label: "Customer notes changed",
+    detail:
+      "A customer with a trim booked on your chair edits their notes. New bookings also say when the customer has notes.",
+    sample: {
+      title: "Notes updated",
+      body: "Read before the trim: Fri 12 Sept at 10:00, fade with Travis.",
     },
   },
 ];

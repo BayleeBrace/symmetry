@@ -189,3 +189,16 @@ From Sean's screen recording of Fresha. Four things the Symmetry app now does th
 ## Running behind pill
 
 - The "Running behind?" link in each chair header was drawn full size across the avatar once every chair had a trim coming up. It is now a small pill in the top corner of the column, reading "Late?" on phones and "Running behind?" on desktop, and never touches the avatar.
+
+## Three more pushes: waitlist, fees, notes
+
+- **Waitlist.** When a customer confirms a waitlist request, Sean gets the day, chair and service they want. When a cancellation or an online move frees a slot on a day people are waiting for, the chair's barber and Sean get "A slot freed on Fri 12 Sept with Travis: 2 people are waiting". The sender still emails the waiting customers as before.
+- **Fee to review.** A late cancellation online, or a no-show marked by one of the team, that puts a fee up for review now pushes Sean the amount and the trim. Marking your own no-show does not push you.
+- **Customer notes.** A customer who edits their notes on the booking page pushes the barber of their next booked trim: "Notes updated. Read before the trim". New-booking pushes end with "Has notes" when the customer wrote any.
+- All three have their own switch under Settings, Notifications.
+
+### What to test
+1. On the website, join the waitlist for a full day and confirm the email link. Sean's phone: "Waitlist: someone wants ...".
+2. Cancel a trim on that day from its manage link. The chair's phone and Sean's: "A slot freed ... 1 person is waiting".
+3. On a booking page, edit the notes and save. The chair's phone: "Notes updated".
+4. As Travis, mark a no-show on a booking with a saved card and a no-show percentage set. Sean's phone: "Fee to review".

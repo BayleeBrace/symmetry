@@ -57,6 +57,7 @@ export async function finalizeBooking(sessionId: string) {
       await notifyTrim("new_booking", b.id, {
         title: "New booking",
         lead: "Booked online:",
+        withNotes: true,
       });
   });
   return { group, token: signLink("manage", group) };

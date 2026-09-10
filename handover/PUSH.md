@@ -15,6 +15,9 @@ Each barber turns notifications on per phone under Staff, Settings, Notification
 | Possible no show | The chair's barber | Ten minutes after a trim was due with nobody marked in the chair |
 | End of day | Each barber who worked; the owner gets the shop and each chair's count | At closing time (from the shop's opening hours) |
 | Payday | Barbers get what the shop owes them for last week; the owner gets every chair | Monday at nine in the morning, using the Payouts figures |
+| Waitlist | The owner when someone confirms a waitlist request; the chair's barber and the owner when a cancellation frees a slot on a day with people waiting | Straight away |
+| Fee to review | The owner (never the person who marked it) | When a late cancellation or a no-show puts a fee up for review |
+| Customer notes changed | The chair's barber, for the customer's next booked trim | When a customer edits their notes; new-booking pushes also say "Has notes" |
 
 Tapping a push opens the staff app on the day in question, or on Sales or Payouts for the daily and weekly ones.
 

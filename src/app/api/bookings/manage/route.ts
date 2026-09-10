@@ -3,7 +3,7 @@ import { after } from "next/server";
 import { loadManagedBookingGroup } from "@/lib/manage-bookings";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCatalog } from "@/lib/catalog";
-import { notifyTrim } from "@/lib/staff-push";
+import { notifyFee, notifySlotFreed, notifyTrim } from "@/lib/staff-push";
 import {
   sameOrigin,
   rateLimit,
@@ -58,6 +58,18 @@ export async function PATCH(req: Request) {
         .update({ preferences: p.preferences || "" })
         .eq("id", g!.customer_id);
       if (error) throw new Error("Notes could not be saved");
+      // The barber of their next booked trim reads the notes before the trim.
+      const next = group.appointments
+        .filter((a) => a.status === "booked" && a.date >= shopToday())
+        .sort((a, b) => a.date.localeCompare(b.date) || a.time - b.time)[0];
+      if (next)
+        after(() =>
+          notifyTrim("notes", next.id, {
+            title: "Notes updated",
+            lead: "Read before the trim:",
+            chairOnly: true,
+          }),
+        );
       return privateJson({ ok: true });
     }
     const b = group.appointments.find((x) => x.id === p.bookingId);
@@ -118,17 +130,24 @@ export async function PATCH(req: Request) {
               ? "Please accept the late cancellation fee."
               : "The trim could not be changed. Check the date, time and cancellation policy.",
       );
-    after(() =>
-      p.action === "cancel"
-        ? notifyTrim("cancelled", b.id, {
-            title: "Cancelled online",
-            lead: "A customer cancelled:",
-          })
-        : notifyTrim("moved", b.id, {
-            title: "Moved online",
-            lead: "A customer moved a trim. Now:",
-          }),
-    );
+    const feePence =
+      Number((data as { feePence?: number } | null)?.feePence) || 0;
+    after(async () => {
+      if (p.action === "cancel")
+        await notifyTrim("cancelled", b.id, {
+          title: "Cancelled online",
+          lead: "A customer cancelled:",
+        });
+      else
+        await notifyTrim("moved", b.id, {
+          title: "Moved online",
+          lead: "A customer moved a trim. Now:",
+        });
+      // The old slot is free again: worth knowing if people are waiting for that day.
+      await notifySlotFreed(b.id, { date: b.date, barberId: b.barber.id });
+      if (p.action === "cancel" && feePence > 0)
+        await notifyFee(b.id, "late cancellation");
+    });
     return privateJson(data);
   } catch (e) {
     return publicError(e, 409);

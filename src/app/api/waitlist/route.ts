@@ -1,6 +1,8 @@
 import { z } from "zod";
+import { after } from "next/server";
 import { randomBytes, createHash } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { notifyWaitlistJoined } from "@/lib/staff-push";
 import {
   sameOrigin,
   rateLimit,
@@ -85,6 +87,7 @@ export async function PATCH(req: Request) {
       .update(action === "verify" ? { verified: true } : { active: false })
       .eq("id", id);
     if (error) throw new Error("Could not update waitlist");
+    if (action === "verify") after(() => notifyWaitlistJoined(id));
     return privateJson({
       message:
         action === "verify"
