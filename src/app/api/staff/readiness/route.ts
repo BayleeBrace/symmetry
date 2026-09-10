@@ -4,8 +4,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { processNotifications } from "@/lib/notifications";
 import { sameOrigin, privateJson, publicError } from "@/lib/security";
 
-/** Messages this far past due are stale: the trim has been and gone. */
-const STALE_MS = 24 * 3600000;
+/** Messages this far past due are stale: the sender would have taken them within a minute. */
+const STALE_MS = 3600000;
 
 export async function GET() {
   try {
@@ -148,7 +148,7 @@ export async function POST(req: Request) {
         .from("notification_jobs")
         .update({
           status: "cancelled",
-          last_error: "Cleared by the owner: more than a day overdue",
+          last_error: "Cleared by the owner: more than an hour overdue",
         })
         .in("status", ["pending", "failed"])
         .neq("kind", "delivery_alert")
@@ -172,8 +172,15 @@ export async function POST(req: Request) {
       throw new Error(
         "Sending is switched off. Set NOTIFICATIONS_ENABLED to true in Vercel and redeploy first.",
       );
-    const result = await processNotifications();
-    return privateJson({ ok: true, ...result });
+    // The sender takes ten at a time; run it a few times so one tap clears a backlog.
+    const total = { sent: 0, failed: 0 };
+    for (let i = 0; i < 5; i++) {
+      const r = await processNotifications();
+      total.sent += r.sent;
+      total.failed += r.failed;
+      if (r.sent + r.failed < 10) break;
+    }
+    return privateJson({ ok: true, ...total });
   } catch (error) {
     return publicError(error, 409);
   }

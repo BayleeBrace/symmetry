@@ -85,47 +85,137 @@ html[data-staff-page][data-staff-theme="dark"] body {
 .staff-shell {
   padding: 40px;
 }
+/* Splash: black, the monogram settles, the wordmark is revealed by a blade
+   sweeping left to right (the brand's one "cut"), a hairline underlines it,
+   then the note. Always black, whatever the theme: it is the brand card. */
 .staff-splash {
   display: grid;
-  place-content: center;
-  justify-items: center;
-  gap: 8px;
+  place-items: center;
   min-height: 100svh;
-  background: var(--white);
+  padding: 24px;
+  background: #161616;
+  color: #efebe3;
 }
-.staff-splash img {
-  width: 60px;
-  height: 60px;
-  padding: 13px;
-  border-radius: 50%;
-  background: var(--bone);
-  animation: splash-pulse 1.6s ease-in-out infinite;
+.splash-stage {
+  display: grid;
+  justify-items: center;
+  gap: 22px;
+  width: min(320px, 78vw);
 }
-.splash-word {
-  font-family: var(--font-serif, Georgia), serif;
-  font-size: 1.9rem;
-  letter-spacing: 0.02em;
+.splash-mono {
+  width: 64px;
+  height: 64px;
+  opacity: 0;
+  transform: scale(0.7);
+  animation: splash-mono 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
+}
+.splash-mark {
+  position: relative;
+  width: 0;
+  overflow: hidden;
+  animation: splash-reveal 0.9s cubic-bezier(0.65, 0, 0.25, 1) 0.35s forwards;
+}
+.splash-mark img {
+  display: block;
+  width: min(320px, 78vw);
+  max-width: none;
+  height: auto;
+}
+.splash-mark::after {
+  content: "";
+  position: absolute;
+  top: -6%;
+  right: 0;
+  width: 1px;
+  height: 112%;
+  background: #efebe3;
+  opacity: 0;
+  animation: splash-blade 0.9s linear 0.35s forwards;
+}
+.splash-cut {
+  display: block;
+  width: 0;
+  height: 1px;
+  background: rgba(239, 235, 227, 0.7);
+  animation:
+    splash-cut 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) 1.1s forwards,
+    splash-breathe 2.4s ease-in-out 1.9s infinite;
 }
 .splash-note {
-  color: var(--muted);
-  font-size: 0.82rem;
-  letter-spacing: 0.12em;
+  font-size: 0.72rem;
+  letter-spacing: 0.24em;
   text-transform: uppercase;
+  color: rgba(239, 235, 227, 0.62);
+  opacity: 0;
+  transform: translateY(6px);
+  animation: splash-note 0.6s ease-out 1.4s forwards;
 }
-@keyframes splash-pulse {
-  0%,
-  100% {
+@keyframes splash-mono {
+  to {
+    opacity: 1;
     transform: scale(1);
+  }
+}
+@keyframes splash-reveal {
+  from {
+    width: 0;
+  }
+  to {
+    width: min(320px, 78vw);
+  }
+}
+@keyframes splash-blade {
+  0% {
     opacity: 1;
   }
-  50% {
-    transform: scale(0.93);
+  92% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes splash-cut {
+  to {
+    width: 100%;
+  }
+}
+@keyframes splash-breathe {
+  0%,
+  100% {
     opacity: 0.7;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+@keyframes splash-note {
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .staff-splash img {
+  .splash-mono,
+  .splash-mark,
+  .splash-mark::after,
+  .splash-cut,
+  .splash-note {
     animation: none;
+  }
+  .splash-mono,
+  .splash-note {
+    opacity: 1;
+    transform: none;
+  }
+  .splash-mark {
+    width: min(320px, 78vw);
+  }
+  .splash-mark::after {
+    opacity: 0;
+  }
+  .splash-cut {
+    width: 100%;
   }
 }
 .staff-muted {

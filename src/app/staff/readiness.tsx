@@ -52,7 +52,7 @@ export function Readiness() {
           ? `Cleared ${r.cleared ?? 0} old message${r.cleared === 1 ? "" : "s"}.`
           : action === "retry_failed"
             ? `${r.retried ?? 0} message${r.retried === 1 ? "" : "s"} back in the queue. The sender picks them up on its next run, or use Send now.`
-            : `Sent ${r.sent ?? 0}, failed ${r.failed ?? 0}. The sender takes up to ten at a time; tap again for more.`,
+            : `Sent ${r.sent ?? 0}, failed ${r.failed ?? 0}. Up to fifty a tap; tap again for more.`,
       );
       await load();
     } catch (e) {
@@ -105,9 +105,9 @@ export function Readiness() {
           <span>{counts.stale + counts.pending + counts.failed}</span>
         </header>
         <p className="queue-summary">
-          {counts.stale} more than a day overdue (their trims have been and
-          gone, so they are safe to clear). {counts.pending} waiting or due
-          soon. {counts.failed} failed.{" "}
+          {counts.stale} more than an hour overdue (the sender missed them, so
+          they are safe to clear). {counts.pending} due or due soon.{" "}
+          {counts.failed} failed.{" "}
           {data.sending
             ? "Sending is on."
             : "Sending is switched off in Vercel (NOTIFICATIONS_ENABLED), so nothing goes out until it is on."}

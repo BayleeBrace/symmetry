@@ -212,9 +212,14 @@ export function StaffApp() {
         role="status"
         aria-label="Opening the diary"
       >
-        <img src="/symmetry-monogram-black.svg" alt="" />
-        <span className="splash-word">Symmetry</span>
-        <span className="splash-note">Opening the diary</span>
+        <div className="splash-stage">
+          <img className="splash-mono" src="/symmetry-monogram.svg" alt="" />
+          <div className="splash-mark">
+            <img src="/symmetry-wordmark.svg" alt="Symmetry" />
+          </div>
+          <span className="splash-cut" aria-hidden="true" />
+          <span className="splash-note">Opening the diary</span>
+        </div>
       </section>
     );
 

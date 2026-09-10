@@ -225,3 +225,8 @@ From Sean's screen recording of Fresha. Four things the Symmetry app now does th
 1. Add two people to the waitlist for a full day from the staff app. The week strip shows a red 2 on that day; the pill above the diary says "2 people are waiting".
 2. Cancel a trim on that day. Within a minute (once the sender runs) the first person gets the offer, and the drawer shows "offered a slot" against them. Five minutes later, if nobody booked, the second person gets it.
 3. On the website, join with "any day until" a week ahead. The count shows on every day of that run.
+
+## Splash screen
+
+- The opening screen is now the brand card: black, the monogram settles in, the Symmetry wordmark is revealed by a thin blade sweeping left to right, a hairline draws under it, then "Opening the diary" fades up. About a second and a half, then the diary. It stays black in both light and dark, like an app splash should. People who have reduced motion set on the phone get the finished card with no animation.
+- Launch checks: "Clear old messages" now clears anything more than an hour overdue rather than a day, since the sender would have taken them within a minute. "Send now" works through up to fifty a tap.
