@@ -246,6 +246,22 @@ test("database rejects blocked moves, enforces fees and keeps rejected batches a
   await db.exec(
     await readFile("supabase/migrations/20260910210000_payouts.sql", "utf8"),
   );
+  // Staff push choices: a column with a default, safe to run twice.
+  for (let i = 0; i < 2; i++)
+    await db.exec(
+      await readFile(
+        "supabase/migrations/20260911120000_staff_notify.sql",
+        "utf8",
+      ),
+    );
+  assert.equal(
+    (
+      await db.query<{ d: string }>(
+        `select column_default d from information_schema.columns where table_name='staff_members' and column_name='notify'`,
+      )
+    ).rows[0].d,
+    "'{}'::jsonb",
+  );
   // Squeeze-ins: safe to run twice, since it rebuilds the no-overlap rules by name.
   for (let i = 0; i < 2; i++)
     await db.exec(

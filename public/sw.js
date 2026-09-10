@@ -21,9 +21,11 @@ self.addEventListener("push", (event) => {
     data = event.data.json();
   } catch {}
   event.waitUntil(
-    self.registration.showNotification("Symmetry", {
+    self.registration.showNotification(data.title || "Symmetry", {
       body: data.body || "There’s an update to your trim.",
       icon: "/apple-touch-icon.png",
+      badge: "/icon-192.png",
+      tag: data.tag || undefined,
       data: { url: data.url || "/bookings" },
     }),
   );

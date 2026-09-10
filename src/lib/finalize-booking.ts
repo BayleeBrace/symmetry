@@ -1,7 +1,9 @@
 import "server-only";
+import { after } from "next/server";
 import { stripeClient } from "./stripe";
 import { createAdminClient } from "./supabase/admin";
 import { signLink } from "./security";
+import { notifyTrim } from "./staff-push";
 export async function finalizeBooking(sessionId: string) {
   const stripe = stripeClient();
   const session = await stripe.checkout.sessions.retrieve(sessionId, {
@@ -45,5 +47,17 @@ export async function finalizeBooking(sessionId: string) {
     throw new Error(
       "Your card was saved, but the trim could not be reserved. No payment was taken. Please choose another time or contact the shop.",
     );
+  // Tell the team once the customer has their confirmation, not before.
+  after(async () => {
+    const { data: made } = await db
+      .from("bookings")
+      .select("id")
+      .eq("group_id", group);
+    for (const b of made || [])
+      await notifyTrim("new_booking", b.id, {
+        title: "New booking",
+        lead: "Booked online:",
+      });
+  });
   return { group, token: signLink("manage", group) };
 }

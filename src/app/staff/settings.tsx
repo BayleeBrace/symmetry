@@ -5,8 +5,9 @@ import { type Act } from "./types";
 import { Account } from "./account";
 import { Readiness } from "./readiness";
 import { type Theme, THEME_LABEL, applyTheme, readTheme } from "./theme";
+import { NotificationSettings } from "./notify";
 
-export type SettingsTab = "account" | "policy" | "checks";
+export type SettingsTab = "account" | "notify" | "policy" | "checks";
 
 type Policy = {
   cancellation_hours: number;
@@ -30,7 +31,8 @@ export function SettingsSection({
   tab: SettingsTab;
   onTab: (tab: SettingsTab) => void;
 }) {
-  const current = !owner && tab !== "account" ? "account" : tab;
+  const current =
+    !owner && tab !== "account" && tab !== "notify" ? "account" : tab;
   return (
     <section className="settings" aria-label="Settings">
       <header className="sec-head">
@@ -42,6 +44,13 @@ export function SettingsSection({
             onClick={() => onTab("account")}
           >
             Your account
+          </button>
+          <button
+            type="button"
+            aria-pressed={current === "notify"}
+            onClick={() => onTab("notify")}
+          >
+            Notifications
           </button>
           {owner && (
             <>
@@ -69,6 +78,7 @@ export function SettingsSection({
           <Account owner={owner} name={name} />
         </>
       )}
+      {current === "notify" && <NotificationSettings />}
       {current === "policy" && owner && <PolicyForm act={act} busy={busy} />}
       {current === "checks" && owner && <Readiness />}
     </section>

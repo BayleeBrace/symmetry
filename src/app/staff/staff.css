@@ -345,6 +345,57 @@ html[data-staff-page][data-staff-theme="dark"] body {
 .appearance .seg {
   margin-top: 4px;
 }
+.notify .staff-panel + .staff-panel {
+  margin-top: 8px;
+}
+.notify-test {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+}
+.notify-test select {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  background: var(--white);
+  color: var(--black);
+  font: inherit;
+}
+.notify-kinds {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.notify-kinds label {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 8px;
+  border-top: 1px solid var(--line);
+  cursor: pointer;
+}
+.notify-kinds li:last-child label {
+  border-bottom: 1px solid var(--line);
+}
+.notify-kinds input {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  margin: 2px 0 0;
+  accent-color: var(--black);
+}
+.notify-kinds strong {
+  display: block;
+  font-weight: 400;
+}
+.notify-kinds small {
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
 .queue-summary {
   margin: 0 0 10px;
   color: var(--muted);

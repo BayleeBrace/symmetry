@@ -267,39 +267,7 @@ export async function processNotifications() {
             else throw e;
           }
         }
-        // Staff notifications contain no customer details on the lock screen.
-        if (
-          ["confirmed", "moved", "cancelled", "running_late"].includes(job.kind)
-        ) {
-          const { data: b } = await db
-            .from("bookings")
-            .select("barber_id")
-            .eq("id", job.booking_id)
-            .single();
-          const { data: members } = await db
-            .from("staff_members")
-            .select("user_id,role,barber_id")
-            .eq("active", true);
-          const ids = (members || [])
-            .filter((m) => m.role === "owner" || m.barber_id === b?.barber_id)
-            .map((m) => m.user_id);
-          const { data: ss } = await db
-            .from("push_subscriptions")
-            .select("*")
-            .in("staff_user", ids);
-          for (const sub of ss || [])
-            await webpush.sendNotification(
-              sub.subscription,
-              JSON.stringify({
-                body:
-                  job.kind === "running_late"
-                    ? "A customer is running late."
-                    : "Your diary has an update.",
-                url: "/staff",
-              }),
-              { timeout: 10000 },
-            );
-        }
+        // The team's pushes are sent straight from the booking routes (see staff-push.ts), not from here.
       }
       const { error: save } = await db
         .from("notification_jobs")

@@ -1,7 +1,9 @@
 import { z } from "zod";
+import { after } from "next/server";
 import { randomBytes, createHash } from "node:crypto";
 import { requireStaff } from "@/lib/staff";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { notifyTrim, staffName } from "@/lib/staff-push";
 import {
   addDays,
   validDate,
@@ -141,20 +143,26 @@ async function addStaffTrims(
     : [p.date];
   let made = 0;
   let firstError = "";
+  const ids: string[] = [];
   for (const date of dates) {
-    const { error } = await db.from("bookings").insert({
-      group_id: group.id,
-      barber_id: barber.id,
-      service_id: service.id,
-      local_date: date,
-      start_minute: p.time,
-      duration: price.duration,
-      price_pence: price.price_pence,
-      source: "walk_in",
-      ...(p.squeeze ? { squeezed: true } : {}),
-    });
+    const { data: row, error } = await db
+      .from("bookings")
+      .insert({
+        group_id: group.id,
+        barber_id: barber.id,
+        service_id: service.id,
+        local_date: date,
+        start_minute: p.time,
+        duration: price.duration,
+        price_pence: price.price_pence,
+        source: "walk_in",
+        ...(p.squeeze ? { squeezed: true } : {}),
+      })
+      .select("id")
+      .maybeSingle();
     if (!error) {
       made++;
+      if (row) ids.push(row.id);
       continue;
     }
     if (!firstError)
@@ -170,7 +178,7 @@ async function addStaffTrims(
     await db.from("booking_groups").delete().eq("id", group.id);
     throw new Error(firstError || "The booking could not be saved");
   }
-  return { ok: true, made, skipped: dates.length - made };
+  return { ok: true, made, skipped: dates.length - made, ids };
 }
 export async function GET(req: Request) {
   try {
@@ -297,7 +305,23 @@ export async function POST(req: Request) {
     const staff = await requireStaff();
     const p = actions.parse(await req.json());
     const db = createAdminClient();
-    if (p.action === "walkin") return privateJson(await addStaffTrims(db, p));
+    if (p.action === "walkin") {
+      const result = await addStaffTrims(db, p);
+      // The chair's barber hears when someone else books onto their diary.
+      if (result.ids[0])
+        after(async () =>
+          notifyTrim("added_by_team", result.ids[0], {
+            title: "Added to your diary",
+            lead: `${await staffName(staff)} added ${
+              result.made > 1 ? `${result.made} trims, the first` : "a trim"
+            }:`,
+            except: staff.user_id,
+            chairOnly: true,
+          }),
+        );
+      const body = { ok: true, made: result.made, skipped: result.skipped };
+      return privateJson(body);
+    }
     if (p.action === "block") {
       const { error } = await db.from("diary_blocks").insert({
         barber_id: p.barber,
@@ -436,6 +460,23 @@ export async function POST(req: Request) {
             }
           : { action: p.action },
     });
+    // The chair's barber hears when someone else on the team moves or cancels their trim.
+    if (
+      p.action === "move" ||
+      (p.action === "status" && p.status === "cancelled")
+    )
+      after(async () => {
+        const who = await staffName(staff);
+        await notifyTrim(p.action === "move" ? "moved" : "cancelled", b.id, {
+          title: p.action === "move" ? "Trim moved" : "Trim cancelled",
+          lead:
+            p.action === "move"
+              ? `${who} moved a trim on your diary. Now:`
+              : `${who} cancelled a trim on your diary:`,
+          except: staff.user_id,
+          chairOnly: true,
+        });
+      });
     if (p.action === "status" && p.status === "done") {
       // One thank-you per trim, two hours later, with the review link when one is configured.
       await db.from("notification_jobs").upsert(

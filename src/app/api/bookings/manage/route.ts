@@ -1,7 +1,9 @@
 import { z } from "zod";
+import { after } from "next/server";
 import { loadManagedBookingGroup } from "@/lib/manage-bookings";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCatalog } from "@/lib/catalog";
+import { notifyTrim } from "@/lib/staff-push";
 import {
   sameOrigin,
   rateLimit,
@@ -82,6 +84,13 @@ export async function PATCH(req: Request) {
         },
         { onConflict: "dedupe_key", ignoreDuplicates: true },
       );
+      const minutes = p.minutes || 10;
+      after(() =>
+        notifyTrim("running_late", b.id, {
+          title: "Running late",
+          lead: `Expects to be about ${minutes} minutes late.`,
+        }),
+      );
       return privateJson({ ok: true });
     }
     if (
@@ -109,6 +118,17 @@ export async function PATCH(req: Request) {
               ? "Please accept the late cancellation fee."
               : "The trim could not be changed. Check the date, time and cancellation policy.",
       );
+    after(() =>
+      p.action === "cancel"
+        ? notifyTrim("cancelled", b.id, {
+            title: "Cancelled online",
+            lead: "A customer cancelled:",
+          })
+        : notifyTrim("moved", b.id, {
+            title: "Moved online",
+            lead: "A customer moved a trim. Now:",
+          }),
+    );
     return privateJson(data);
   } catch (e) {
     return publicError(e, 409);

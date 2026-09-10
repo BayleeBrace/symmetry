@@ -56,11 +56,15 @@ export function StaffApp() {
   const [cal, setCal] = useState<CalendarState>(() => {
     let view: CalendarState["view"] = "day";
     let mine = false;
+    let date = shopToday();
     try {
       view = localStorage.getItem(MODE_KEY) === "week" ? "week" : "day";
       mine = localStorage.getItem(VIEW_KEY) === "mine";
+      // A push notification opens the diary on the day it was about.
+      const asked = new URLSearchParams(window.location.search).get("date");
+      if (asked && /^\d{4}-\d{2}-\d{2}$/.test(asked)) date = asked;
     } catch {}
-    return { date: shopToday(), view, team: mine ? "mine" : "all" };
+    return { date, view, team: mine ? "mine" : "all" };
   });
 
   const load = useCallback(async () => {

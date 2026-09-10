@@ -133,3 +133,18 @@ From Sean's screen recording of Fresha. Four things the Symmetry app now does th
 1. Settings, Your account, Appearance: tap Dark. The whole staff app should go dark at once, including the tab bar, sheets and the calendar. Close the app and reopen it: still dark, no white flash.
 2. Tap With the phone, then switch the phone to dark in Control Centre: the app should follow.
 3. Settings, Launch checks: the message queue shows the three counts. Tap Clear old messages; the waiting number at the top should drop to the ones actually due.
+
+## Push notifications for the team
+
+- **Settings, Notifications** (every barber): Enable on this phone, Turn off on this phone, a "Send a test to my phone" button with a pick-list of every kind, and tick boxes for what you want. Everything is on to start with.
+- **What arrives:** new online booking; cancellation; trim moved; customer running late; a trim added to your diary by someone else on the team; "Tomorrow" at six each evening (barbers get their chair, the owner the whole shop, chair by chair); "Not in the chair yet" ten minutes after a trim was due with nobody marked arrived. No customer names, ever: pushes show on the lock screen. Tapping one opens the diary on that day.
+- The instant kinds are sent from the booking itself, so they work now, without the cron. The evening brief and the no-show nudge come from the once-a-minute job and go out even while customer messaging is switched off.
+- Owners hear about every chair for online bookings, cancellations, moves and late customers. Things the team does to each other's diaries only go to the chair's barber, never to the person who did it.
+- Needs `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` and `VAPID_CONTACT` in Vercel (in `vercel-env.txt`), and migration `20260911120000_staff_notify.sql` for the choices. Details in `handover/PUSH.md`.
+
+### What to test
+1. Put the three VAPID variables in Vercel and redeploy. On your iPhone, open the staff app from the Home Screen, Settings, Notifications, Enable on this phone, allow.
+2. Send a test of each kind from the pick-list. Each should arrive on the lock screen within a few seconds with its own title.
+3. Sign in as Travis on a second phone and enable it. Then, as Sean, add a walk-in onto Travis's chair: Travis's phone should get "Added to your diary". Move it: "Trim moved". Cancel it: "Trim cancelled". Sean's phone gets nothing for his own actions.
+4. Book a trim on the website (test mode) and cancel it from the manage link: both phones should get "New booking" then "Cancelled online".
+5. Untick "Possible no show" for Travis and check the box stays off after a reload.
