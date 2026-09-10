@@ -47,6 +47,7 @@ import {
   NewAppointment,
   WaitlistForm,
 } from "./forms";
+import { toast } from "./toast";
 
 export type BookPrefill = {
   client?: { name: string; email: string; phone: string };
@@ -115,7 +116,6 @@ export function Calendar({
   );
   // "Select time": a plus placeholder on the day that can be dragged, or moved by tapping a gap.
   const [placing, setPlacing] = useState<Placement | null>(null);
-  const [notice, setNotice] = useState("");
   const dateInput = useRef<HTMLInputElement>(null);
 
   const from = view === "week" ? weekStart(date) : date;
@@ -546,18 +546,6 @@ export function Calendar({
           {loadError}
         </p>
       )}
-      {notice && (
-        <p className="day-notice" role="status">
-          <span>{notice}</span>
-          <button
-            type="button"
-            className="text-button"
-            onClick={() => setNotice("")}
-          >
-            OK
-          </button>
-        </p>
-      )}
 
       {!dayData ? (
         <p role="status" className="staff-muted">
@@ -606,7 +594,7 @@ export function Calendar({
             onClose={closeDrawer}
             onSaved={(message) => {
               closeDrawer();
-              setNotice(message);
+              toast(message);
             }}
           />
         </>
@@ -621,7 +609,7 @@ export function Calendar({
             busy={busy}
             act={run}
             onClose={closeDrawer}
-            onSaved={(message) => setNotice(message)}
+            onSaved={(message) => toast(message)}
           />
         </>
       )}
@@ -637,7 +625,7 @@ export function Calendar({
             onClose={closeDrawer}
             onSaved={(message) => {
               closeDrawer();
-              setNotice(message);
+              toast(message);
             }}
           />
         </>

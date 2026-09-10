@@ -6,6 +6,7 @@ import { Account } from "./account";
 import { Readiness } from "./readiness";
 import { type Theme, THEME_LABEL, applyTheme, readTheme } from "./theme";
 import { NotificationSettings } from "./notify";
+import { toast } from "./toast";
 
 export type SettingsTab =
   "home" | "account" | "notify" | "appearance" | "policy" | "checks";
@@ -147,7 +148,6 @@ function Appearance() {
 function PolicyForm({ act, busy }: { act: Act; busy: boolean }) {
   const [policy, setPolicy] = useState<Policy | null>(null);
   const [error, setError] = useState("");
-  const [saved, setSaved] = useState("");
   const reload = useCallback(() => {
     api("/api/staff/settings")
       .then((d) => {
@@ -177,7 +177,6 @@ function PolicyForm({ act, busy }: { act: Act; busy: boolean }) {
         onSubmit={async (event) => {
           event.preventDefault();
           const form = new FormData(event.currentTarget);
-          setSaved("");
           await act("/api/staff/settings", {
             action: "policy",
             cancellation_hours: Number(form.get("hours")),
@@ -185,7 +184,7 @@ function PolicyForm({ act, busy }: { act: Act; busy: boolean }) {
             no_show_percent: Number(form.get("noShow")),
             policy_confirmed: form.get("confirmed") === "on",
           });
-          setSaved("Policy saved.");
+          toast("Policy saved.");
           reload();
         }}
       >
@@ -231,7 +230,6 @@ function PolicyForm({ act, busy }: { act: Act; busy: boolean }) {
           <button type="submit" className="button-primary" disabled={busy}>
             Save policy
           </button>
-          {saved && <span className="form-note">{saved}</span>}
         </div>
       </form>
     </div>

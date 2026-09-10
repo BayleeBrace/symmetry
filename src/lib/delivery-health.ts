@@ -71,12 +71,23 @@ export async function alertDeliveryProblems() {
   if (claimError?.code === "23505")
     return { alerted: false, reason: "Already attempted this hour", ...health };
   if (claimError || !claim) throw new Error("Owner alert could not be claimed");
-  webpush.setVapidDetails(
-    process.env.VAPID_CONTACT || "mailto:info@symmetrywales.com",
-    process.env.VAPID_PUBLIC_KEY,
-    process.env.VAPID_PRIVATE_KEY,
-  );
   let delivered = 0;
+  try {
+    webpush.setVapidDetails(
+      process.env.VAPID_CONTACT || "mailto:info@symmetrywales.com",
+      process.env.VAPID_PUBLIC_KEY,
+      process.env.VAPID_PRIVATE_KEY,
+    );
+  } catch (e) {
+    await db
+      .from("notification_jobs")
+      .update({
+        status: "cancelled",
+        last_error: (e as Error).message.slice(0, 200),
+      })
+      .eq("id", claim.id);
+    return { alerted: false, reason: (e as Error).message, ...health };
+  }
   for (const sub of subs) {
     try {
       await webpush.sendNotification(
@@ -96,7 +107,7 @@ export async function alertDeliveryProblems() {
   await db
     .from("notification_jobs")
     .update({
-      status: delivered ? "sent" : "failed",
+      status: delivered ? "sent" : "cancelled",
       last_error: delivered ? null : "No owner device accepted the alert",
     })
     .eq("id", claim.id);

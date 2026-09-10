@@ -24,6 +24,7 @@ import {
   timeRange,
 } from "./types";
 import { attachDrag, type DragDrop } from "./drag";
+import { toast } from "./toast";
 
 type Selection = { kind: "booking" | "block"; id: string } | null;
 /** Where the "select time" plus sits: a chair and a start minute. */
@@ -182,7 +183,6 @@ export function DayTimeline({
 }) {
   const [selected, setSelected] = useState<Selection>(null);
   const [behind, setBehind] = useState<string | null>(null);
-  const [notice, setNotice] = useState("");
   const [nowMinute, setNowMinute] = useState(() => shopMinute());
   useEffect(() => {
     const timer = setInterval(() => setNowMinute(shopMinute()), 60000);
@@ -311,18 +311,6 @@ export function DayTimeline({
           </button>
         )}
       </div>
-      {notice && (
-        <p className="day-notice" role="status">
-          <span>{notice}</span>
-          <button
-            type="button"
-            className="text-button"
-            onClick={() => setNotice("")}
-          >
-            OK
-          </button>
-        </p>
-      )}
       {!diary.hours && (
         <p className="day-closed">
           The shop is closed on this day. Anything shown here was added by
@@ -423,7 +411,7 @@ export function DayTimeline({
                           })) as { told?: number } | undefined;
                           setBehind(null);
                           if (!result) return;
-                          setNotice(
+                          toast(
                             result.told
                               ? `Told ${
                                   result.told === 1

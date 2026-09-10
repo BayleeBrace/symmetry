@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { staffApi as api } from "@/lib/staff-client";
 import { PUSH_KINDS, type PushKind } from "@/lib/push-kinds";
+import { toast } from "./toast";
 
 type Info = {
   configured: boolean;
@@ -17,8 +18,6 @@ export function NotificationSettings() {
   const [supported, setSupported] = useState<boolean | null>(null);
   const [enabled, setEnabled] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState("");
-  const [failed, setFailed] = useState(false);
   const [testKind, setTestKind] = useState<PushKind>("new_booking");
   // Facts about this phone that decide whether a push can show at all.
   const [diag, setDiag] = useState<{
@@ -69,14 +68,10 @@ export function NotificationSettings() {
     return () => clearTimeout(t);
   }, [load]);
 
-  const say = (text: string, bad = false) => {
-    setMessage(text);
-    setFailed(bad);
-  };
+  const say = (text: string, bad = false) => toast(text, bad ? "error" : "ok");
 
   const enable = async () => {
     setBusy(true);
-    setMessage("");
     try {
       if (!supported)
         throw new Error(
@@ -120,7 +115,6 @@ export function NotificationSettings() {
 
   const disable = async () => {
     setBusy(true);
-    setMessage("");
     try {
       const registration = await navigator.serviceWorker.getRegistration();
       const sub = await registration?.pushManager.getSubscription();
@@ -155,7 +149,6 @@ export function NotificationSettings() {
 
   const test = async (delay = 0) => {
     setBusy(true);
-    setMessage("");
     try {
       const r = (await api("/api/staff/notify", {
         action: "test",
@@ -342,15 +335,6 @@ export function NotificationSettings() {
           })}
         </ul>
       </section>
-
-      {message && (
-        <p
-          role={failed ? "alert" : "status"}
-          className={failed ? "staff-error" : "queue-result"}
-        >
-          {message}
-        </p>
-      )}
     </div>
   );
 }

@@ -230,3 +230,14 @@ From Sean's screen recording of Fresha. Four things the Symmetry app now does th
 
 - The opening screen is now the brand card: black, the monogram settles in, the Symmetry wordmark is revealed by a thin blade sweeping left to right, a hairline draws under it, then "Opening the diary" fades up. About a second and a half, then the diary. It stays black in both light and dark, like an app splash should. People who have reduced motion set on the phone get the finished card with no animation.
 - Launch checks: "Clear old messages" now clears anything more than an hour overdue rather than a day, since the sender would have taken them within a minute. "Send now" works through up to fifty a tap.
+
+## Red bands instead of notices, and a quieter message queue
+
+- **Every confirmation and warning now drops down from the top as a red band and goes away by itself:** trim added, moved, cancelled, blocked, checked out, running behind told, password changed, notifications on, policy saved, details saved, queue cleared, and any error. Tap a band to dismiss it early. The grey notice boxes and inline "saved" notes are gone.
+- **The messages notice** no longer nags about messages that are merely waiting. It shows one line only when messages have actually failed, with Review and Hide. Everything about the queue lives under Settings, Launch checks.
+- **Clear everything waiting** under Launch checks cancels every pending message whenever it is due, for wiping the noise from test data. Clear old messages still clears only those more than an hour overdue.
+- The owner's own "messages need attention" alerts no longer appear in the queue list or get stuck as "interrupted".
+
+### What to test
+1. Move a trim: a red band drops from the top, "Moved…", and fades. Drop a trim on a taken slot: a darker red band with the reason.
+2. Settings, Launch checks, Clear everything waiting, confirm: the count goes to zero and the notice at the top is gone.

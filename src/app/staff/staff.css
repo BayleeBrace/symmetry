@@ -1757,6 +1757,54 @@ html[data-staff-page][data-staff-theme="dark"] body {
 .chip-button:hover {
   background: var(--bone);
 }
+/* Toasts: a red band drops from the top and goes away by itself */
+.toasts {
+  position: fixed;
+  top: calc(env(safe-area-inset-top) + 10px);
+  right: 12px;
+  left: 12px;
+  z-index: 70;
+  display: grid;
+  gap: 8px;
+  max-width: 520px;
+  margin: 0 auto;
+  pointer-events: none;
+}
+.toast {
+  display: block;
+  width: 100%;
+  padding: 13px 18px;
+  border: 0;
+  border-radius: 12px;
+  background: #4a2026;
+  color: #ffffff;
+  font: inherit;
+  font-size: 0.94rem;
+  line-height: 1.4;
+  text-align: left;
+  box-shadow: 0 14px 34px rgba(22, 22, 22, 0.32);
+  pointer-events: auto;
+  cursor: pointer;
+  animation: toast-in 0.34s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.toast.is-error {
+  background: #6a1f2b;
+}
+@keyframes toast-in {
+  from {
+    transform: translateY(-140%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: none;
+  }
+}
 .waiting-pill {
   display: inline-flex;
   align-items: center;

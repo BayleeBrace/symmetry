@@ -4,6 +4,7 @@ import { staffApi as api } from "@/lib/staff-client";
 import { clock, money } from "@/lib/booking-data";
 import { type Context, initials, shortDay } from "./types";
 import { type Waiting, WaitingRow } from "./forms";
+import { toast } from "./toast";
 
 /** Everyone waiting for a day in the next two months, day by day. */
 function WaitingList({ onBack }: { onBack: () => void }) {
@@ -135,7 +136,6 @@ export function Clients({
   const [draft, setDraft] = useState<Client | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
 
   useEffect(() => {
     let live = true;
@@ -172,7 +172,6 @@ export function Clients({
 
   const open = (next: string | null) => {
     setError("");
-    setMessage("");
     setEditing(false);
     setId(next);
     setPage(0);
@@ -249,7 +248,6 @@ export function Clients({
                     onClick={() => {
                       setDraft(client);
                       setEditing((e) => !e);
-                      setMessage("");
                     }}
                   >
                     {editing ? "Stop editing" : "Edit details"}
@@ -257,11 +255,6 @@ export function Clients({
                 )}
               </div>
             </header>
-            {message && (
-              <p className="staff-muted" role="status">
-                {message}
-              </p>
-            )}
             {stats && (
               <div className="stat-row client-stats">
                 {[
@@ -289,7 +282,6 @@ export function Clients({
                 onSubmit={async (e) => {
                   e.preventDefault();
                   setSaving(true);
-                  setMessage("");
                   try {
                     const pick = (c: Client) => ({
                       name: c.name,
@@ -305,9 +297,9 @@ export function Clients({
                     setClient(data.customer);
                     setDraft(data.customer);
                     setEditing(false);
-                    setMessage("Details saved.");
+                    toast("Details saved.");
                   } catch (err) {
-                    setMessage((err as Error).message);
+                    toast((err as Error).message, "error");
                   } finally {
                     setSaving(false);
                   }

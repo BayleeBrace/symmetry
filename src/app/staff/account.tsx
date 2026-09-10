@@ -6,10 +6,9 @@ import {
   startRegistration,
 } from "@simplewebauthn/browser";
 import { staffApi as api } from "@/lib/staff-client";
+import { toast } from "./toast";
 
 export function Account({ owner, name }: { owner: boolean; name: string }) {
-  const [message, setMessage] = useState("");
-  const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState(false);
   return (
     <section className="staff-panel">
@@ -26,22 +25,18 @@ export function Account({ owner, name }: { owner: boolean; name: string }) {
           const form = event.currentTarget;
           const data = new FormData(form);
           if (data.get("password") !== data.get("confirm")) {
-            setFailed(true);
-            setMessage("The two passwords do not match.");
+            toast("The two passwords do not match.", "error");
             return;
           }
           setBusy(true);
-          setMessage("");
           try {
             await api("/api/staff/password", {
               password: data.get("password"),
             });
             form.reset();
-            setFailed(false);
-            setMessage("Password changed.");
+            toast("Password changed.");
           } catch (e) {
-            setFailed(true);
-            setMessage((e as Error).message);
+            toast((e as Error).message, "error");
           } finally {
             setBusy(false);
           }
@@ -71,14 +66,6 @@ export function Account({ owner, name }: { owner: boolean; name: string }) {
           <button type="submit" className="button-primary" disabled={busy}>
             Change password
           </button>
-          {message && (
-            <span
-              role={failed ? "alert" : "status"}
-              className={failed ? "form-error" : "form-note"}
-            >
-              {message}
-            </span>
-          )}
         </div>
       </form>
       <FaceId />

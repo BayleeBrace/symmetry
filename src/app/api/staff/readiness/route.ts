@@ -25,6 +25,7 @@ export async function GET() {
         db
           .from("notification_jobs")
           .select("id,kind,channel,status,due_at,last_error")
+          .neq("kind", "delivery_alert")
           .in("status", ["pending", "failed", "sending"])
           .order("due_at")
           .limit(50),
@@ -131,6 +132,7 @@ export async function GET() {
 
 const actions = z.discriminatedUnion("action", [
   z.object({ action: z.literal("clear_stale") }),
+  z.object({ action: z.literal("clear_all") }),
   z.object({ action: z.literal("retry_failed") }),
   z.object({ action: z.literal("send_now") }),
 ]);
@@ -155,6 +157,17 @@ export async function POST(req: Request) {
         .lt("due_at", cutoff)
         .select("id");
       if (error) throw new Error("The old messages could not be cleared");
+      return privateJson({ ok: true, cleared: data.length });
+    }
+    if (p.action === "clear_all") {
+      // Everything still waiting, whenever it is due. For wiping test noise.
+      const { data, error } = await db
+        .from("notification_jobs")
+        .update({ status: "cancelled", last_error: "Cleared by the owner" })
+        .in("status", ["pending", "failed"])
+        .neq("kind", "delivery_alert")
+        .select("id");
+      if (error) throw new Error("The queue could not be cleared");
       return privateJson({ ok: true, cleared: data.length });
     }
     if (p.action === "retry_failed") {

@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { staffApi as api } from "@/lib/staff-client";
+import { toast } from "./toast";
 
 type ReadinessData = {
   checks: { label: string; ready: boolean }[];
@@ -22,7 +23,6 @@ export function Readiness() {
   const [data, setData] = useState<ReadinessData | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState("");
   const load = useCallback(
     () =>
       api("/api/staff/readiness")
@@ -37,9 +37,10 @@ export function Readiness() {
     const t = setTimeout(() => void load(), 0);
     return () => clearTimeout(t);
   }, [load]);
-  const run = async (action: "clear_stale" | "retry_failed" | "send_now") => {
+  const run = async (
+    action: "clear_stale" | "clear_all" | "retry_failed" | "send_now",
+  ) => {
     setBusy(true);
-    setResult("");
     try {
       const r = (await api("/api/staff/readiness", { action })) as {
         cleared?: number;
@@ -47,16 +48,16 @@ export function Readiness() {
         sent?: number;
         failed?: number;
       };
-      setResult(
-        action === "clear_stale"
-          ? `Cleared ${r.cleared ?? 0} old message${r.cleared === 1 ? "" : "s"}.`
+      toast(
+        action === "clear_stale" || action === "clear_all"
+          ? `Cleared ${r.cleared ?? 0} message${r.cleared === 1 ? "" : "s"}.`
           : action === "retry_failed"
             ? `${r.retried ?? 0} message${r.retried === 1 ? "" : "s"} back in the queue. The sender picks them up on its next run, or use Send now.`
             : `Sent ${r.sent ?? 0}, failed ${r.failed ?? 0}. Up to fifty a tap; tap again for more.`,
       );
       await load();
     } catch (e) {
-      setResult((e as Error).message);
+      toast((e as Error).message, "error");
     } finally {
       setBusy(false);
     }
@@ -141,17 +142,27 @@ export function Readiness() {
           <button
             type="button"
             className="button-secondary"
+            disabled={busy || counts.pending + counts.stale === 0}
+            onClick={() => {
+              if (
+                confirm(
+                  "Cancel every waiting message, including reminders for upcoming trims? Use this to wipe test data noise.",
+                )
+              )
+                void run("clear_all");
+            }}
+          >
+            Clear everything waiting
+          </button>
+          <button
+            type="button"
+            className="button-secondary"
             disabled={busy || !data.sending}
             onClick={() => void run("send_now")}
           >
             Send now
           </button>
         </div>
-        {result && (
-          <p className="queue-result" role="status">
-            {result}
-          </p>
-        )}
         {!data.jobs.length ? (
           <p className="queue-empty">
             Everything is clear. No pending or failed messages.
@@ -183,20 +194,25 @@ export function Readiness() {
   );
 }
 
+/** One quiet line for the owner, only when messages have actually failed. Waiting ones live under Launch checks. */
 export function DeliveryAlert({ onReview }: { onReview: () => void }) {
   const [health, setHealth] = useState<{
     failed: number;
     delayed: number;
   } | null>(null);
-  const [error, setError] = useState("");
+  const [hidden, setHidden] = useState<number | null>(() => {
+    try {
+      const h = sessionStorage.getItem("symmetry-alert-hidden");
+      return h ? Number(h) : null;
+    } catch {
+      return null;
+    }
+  });
   useEffect(() => {
     const load = () => {
       api("/api/staff/alerts")
-        .then((d) => {
-          setHealth(d);
-          setError("");
-        })
-        .catch(() => setError("Message status could not be checked."));
+        .then((d) => setHealth(d))
+        .catch(() => {});
     };
     const first = setTimeout(load, 0);
     const timer = setInterval(load, 60000);
@@ -205,32 +221,29 @@ export function DeliveryAlert({ onReview }: { onReview: () => void }) {
       clearInterval(timer);
     };
   }, []);
-  if (error)
-    return (
-      <div className="staff-notice" role="status">
-        <span>{error}</span>
-        <button type="button" className="text-button" onClick={onReview}>
-          Check messages
-        </button>
-      </div>
-    );
-  if (!health || (!health.failed && !health.delayed)) return null;
+  if (!health || !health.failed || hidden === health.failed) return null;
   return (
-    <div className="staff-notice" role="alert">
+    <div className="staff-notice is-quiet" role="status">
       <span>
-        {health.failed > 0 && (
-          <>
-            <strong>
-              {health.failed} message{health.failed === 1 ? "" : "s"} failed to
-              send.
-            </strong>{" "}
-          </>
-        )}
-        {health.delayed > 0 &&
-          `${health.delayed} message${health.delayed === 1 ? " is" : "s are"} waiting to go out. Old ones can be cleared under Launch checks; if the number keeps growing, the once-a-minute sender is not running.`}
+        {health.failed} message{health.failed === 1 ? "" : "s"} failed to send.
       </span>
       <button type="button" className="text-button" onClick={onReview}>
-        Review messages
+        Review
+      </button>
+      <button
+        type="button"
+        className="text-button"
+        onClick={() => {
+          setHidden(health.failed);
+          try {
+            sessionStorage.setItem(
+              "symmetry-alert-hidden",
+              String(health.failed),
+            );
+          } catch {}
+        }}
+      >
+        Hide
       </button>
     </div>
   );

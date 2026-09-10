@@ -24,6 +24,7 @@ import { Marketing } from "./marketing";
 import { SettingsSection, type SettingsTab } from "./settings";
 import { DeliveryAlert } from "./readiness";
 import { syncThemeColor } from "./theme";
+import { toast } from "./toast";
 
 const VIEW_KEY = "symmetry-staff-view";
 const MODE_KEY = "symmetry-staff-cal";
@@ -192,6 +193,10 @@ export function StaffApp() {
   }
 
   const { pull, refreshing } = usePullToRefresh(Boolean(ctx));
+  // Anything that goes wrong after sign-in drops down as a red band.
+  useEffect(() => {
+    if (error && ctx) toast(error, "error");
+  }, [error, ctx]);
 
   const updateCal = (next: Partial<CalendarState>) => {
     setCal((c) => {
@@ -363,11 +368,6 @@ export function StaffApp() {
             setSection("settings");
           }}
         />
-      )}
-      {error && (
-        <p className="staff-error" role="alert">
-          {error}
-        </p>
       )}
       {section === "calendar" && (
         <Calendar

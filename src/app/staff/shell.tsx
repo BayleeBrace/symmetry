@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { type ReactNode, useState } from "react";
+import { Toaster } from "./toast";
 
 export type Section =
   | "calendar"
@@ -139,6 +140,7 @@ export function Shell({
   );
   return (
     <div className="staff-app">
+      <Toaster />
       <nav className="rail" aria-label="Staff sections">
         <Link className="rail-mark" href="/" title="Back to the site">
           <img src="/symmetry-monogram-black.svg" alt="Symmetry" />
