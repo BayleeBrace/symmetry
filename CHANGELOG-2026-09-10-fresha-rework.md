@@ -241,3 +241,7 @@ From Sean's screen recording of Fresha. Four things the Symmetry app now does th
 ### What to test
 1. Move a trim: a red band drops from the top, "Moved…", and fades. Drop a trim on a taken slot: a darker red band with the reason.
 2. Settings, Launch checks, Clear everything waiting, confirm: the count goes to zero and the notice at the top is gone.
+
+## Your own chair first
+
+- The calendar now opens on the signed-in barber's own chair rather than the whole shop. Pick All chairs from the sliders icon to see everyone; that choice is remembered on the phone. An owner without a chair of their own still sees the whole shop.
