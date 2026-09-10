@@ -115,7 +115,7 @@ export function StaffApp() {
     } catch {}
     return "calendar";
   });
-  const [settingsTab, setSettingsTab] = useState<SettingsTab>("account");
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>("home");
   const [prefill, setPrefill] = useState<BookPrefill | null>(null);
   // The plus in the tab bar opens the calendar's Add menu from any section.
   const [addOpen, setAddOpen] = useState(false);

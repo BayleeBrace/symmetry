@@ -19,6 +19,13 @@ export function NotificationSettings() {
   const [message, setMessage] = useState("");
   const [failed, setFailed] = useState(false);
   const [testKind, setTestKind] = useState<PushKind>("new_booking");
+  // Facts about this phone that decide whether a push can show at all.
+  const [diag, setDiag] = useState<{
+    installed: boolean;
+    permission: string;
+    worker: boolean;
+    service: string | null;
+  } | null>(null);
 
   const load = useCallback(
     () =>
@@ -35,12 +42,28 @@ export function NotificationSettings() {
       void load();
       const ok = "serviceWorker" in navigator && "PushManager" in window;
       setSupported(ok);
+      const installed =
+        window.matchMedia("(display-mode: standalone)").matches ||
+        (navigator as { standalone?: boolean }).standalone === true;
+      const permission =
+        "Notification" in window ? Notification.permission : "unsupported";
       if (ok)
         navigator.serviceWorker
           .getRegistration()
-          .then((r) => r?.pushManager.getSubscription())
-          .then((s) => setEnabled(Boolean(s)))
-          .catch(() => {});
+          .then(async (r) => {
+            const s = await r?.pushManager.getSubscription();
+            setEnabled(Boolean(s));
+            setDiag({
+              installed,
+              permission,
+              worker: Boolean(r),
+              service: s ? new URL(s.endpoint).host : null,
+            });
+          })
+          .catch(() =>
+            setDiag({ installed, permission, worker: false, service: null }),
+          );
+      else setDiag({ installed, permission, worker: false, service: null });
     }, 0);
     return () => clearTimeout(t);
   }, [load]);
@@ -250,6 +273,39 @@ export function NotificationSettings() {
           On iPhone a test sent while the app is open in front may not show. Use
           Send in 10 seconds, then lock the phone or go to the Home Screen.
         </p>
+        {diag && (
+          <ul className="notify-diag" aria-label="This phone">
+            <li>
+              <span>Opened from the Home Screen</span>
+              <strong>
+                {diag.installed ? "Yes" : "No, this is a browser tab"}
+              </strong>
+            </li>
+            <li>
+              <span>Notifications allowed on this phone</span>
+              <strong>
+                {diag.permission === "granted"
+                  ? "Yes"
+                  : diag.permission === "denied"
+                    ? "No: blocked in the phone settings"
+                    : diag.permission === "default"
+                      ? "Not asked yet"
+                      : "Not supported here"}
+              </strong>
+            </li>
+            <li>
+              <span>Registered with a push service</span>
+              <strong>{diag.service ?? "No"}</strong>
+            </li>
+          </ul>
+        )}
+        {diag?.permission === "denied" && (
+          <p className="staff-error" role="alert">
+            This phone has notifications blocked for the app. On iPhone:
+            Settings, Notifications, Symmetry staff, Allow Notifications. Then
+            come back and tap Enable on this phone.
+          </p>
+        )}
       </section>
 
       <section className="staff-panel">

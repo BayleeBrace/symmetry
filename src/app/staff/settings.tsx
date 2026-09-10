@@ -7,7 +7,8 @@ import { Readiness } from "./readiness";
 import { type Theme, THEME_LABEL, applyTheme, readTheme } from "./theme";
 import { NotificationSettings } from "./notify";
 
-export type SettingsTab = "account" | "notify" | "policy" | "checks";
+export type SettingsTab =
+  "home" | "account" | "notify" | "appearance" | "policy" | "checks";
 
 type Policy = {
   cancellation_hours: number;
@@ -15,6 +16,42 @@ type Policy = {
   no_show_percent: number;
   policy_confirmed: boolean;
 };
+
+/** One row per setting, like a phone's Settings app. Owner-only pages are marked. */
+const PAGES: {
+  id: Exclude<SettingsTab, "home">;
+  title: string;
+  detail: string;
+  owner?: boolean;
+}[] = [
+  {
+    id: "account",
+    title: "Your account",
+    detail: "Who you are signed in as, and your password.",
+  },
+  {
+    id: "notify",
+    title: "Notifications",
+    detail: "Turn them on for this phone, choose what you get, send a test.",
+  },
+  {
+    id: "appearance",
+    title: "Appearance",
+    detail: "Light, dark, or with the phone.",
+  },
+  {
+    id: "policy",
+    title: "Cancellation policy",
+    detail: "Notice period, late cancellation and no-show charges.",
+    owner: true,
+  },
+  {
+    id: "checks",
+    title: "Launch checks",
+    detail: "Set-up checks and the message queue.",
+    owner: true,
+  },
+];
 
 export function SettingsSection({
   owner,
@@ -31,56 +68,48 @@ export function SettingsSection({
   tab: SettingsTab;
   onTab: (tab: SettingsTab) => void;
 }) {
-  const current =
-    !owner && tab !== "account" && tab !== "notify" ? "account" : tab;
+  const pages = PAGES.filter((p) => owner || !p.owner);
+  const page = pages.find((p) => p.id === tab);
+  if (!page)
+    return (
+      <section className="settings" aria-label="Settings">
+        <header className="sec-head">
+          <h1>Settings</h1>
+        </header>
+        <ul className="settings-list">
+          {pages.map((p) => (
+            <li key={p.id}>
+              <button type="button" onClick={() => onTab(p.id)}>
+                <span>
+                  <strong>{p.title}</strong>
+                  <small>{p.detail}</small>
+                </span>
+                <span className="chev" aria-hidden="true">
+                  ›
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </section>
+    );
   return (
-    <section className="settings" aria-label="Settings">
+    <section className="settings" aria-label={page.title}>
+      <button
+        type="button"
+        className="settings-back"
+        onClick={() => onTab("home")}
+      >
+        <span aria-hidden="true">‹</span> Settings
+      </button>
       <header className="sec-head">
-        <h1>Settings</h1>
-        <div className="seg" role="group" aria-label="Settings pages">
-          <button
-            type="button"
-            aria-pressed={current === "account"}
-            onClick={() => onTab("account")}
-          >
-            Your account
-          </button>
-          <button
-            type="button"
-            aria-pressed={current === "notify"}
-            onClick={() => onTab("notify")}
-          >
-            Notifications
-          </button>
-          {owner && (
-            <>
-              <button
-                type="button"
-                aria-pressed={current === "policy"}
-                onClick={() => onTab("policy")}
-              >
-                Cancellation policy
-              </button>
-              <button
-                type="button"
-                aria-pressed={current === "checks"}
-                onClick={() => onTab("checks")}
-              >
-                Launch checks
-              </button>
-            </>
-          )}
-        </div>
+        <h1>{page.title}</h1>
       </header>
-      {current === "account" && (
-        <>
-          <Appearance />
-          <Account owner={owner} name={name} />
-        </>
-      )}
-      {current === "notify" && <NotificationSettings />}
-      {current === "policy" && owner && <PolicyForm act={act} busy={busy} />}
-      {current === "checks" && owner && <Readiness />}
+      {page.id === "account" && <Account owner={owner} name={name} />}
+      {page.id === "notify" && <NotificationSettings />}
+      {page.id === "appearance" && <Appearance />}
+      {page.id === "policy" && <PolicyForm act={act} busy={busy} />}
+      {page.id === "checks" && <Readiness />}
     </section>
   );
 }
@@ -138,7 +167,7 @@ function PolicyForm({ act, busy }: { act: Act; busy: boolean }) {
       </p>
     );
   return (
-    <div className="settings-block">
+    <div className="staff-panel settings-block">
       <p className="staff-muted">
         Changes apply to new bookings. Existing bookings keep the policy
         accepted at checkout.

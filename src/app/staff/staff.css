@@ -348,6 +348,104 @@ html[data-staff-page][data-staff-theme="dark"] body {
 .appearance .seg {
   margin-top: 4px;
 }
+/* Settings: one card per page, like a phone's Settings app */
+.settings-list {
+  display: grid;
+  gap: 10px;
+  max-width: 640px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.settings-list button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--white);
+  color: var(--black);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.settings-list button:hover {
+  border-color: var(--black);
+}
+.settings-list strong {
+  display: block;
+  font-size: 1.02rem;
+  font-weight: 400;
+}
+.settings-list small {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+.settings-list .chev {
+  color: var(--muted);
+  font-size: 1.5rem;
+  line-height: 1;
+}
+.settings-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  margin: -6px 0 4px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+}
+.settings-back span {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+.staff-panel {
+  max-width: 720px;
+  margin: 0 0 14px;
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--white);
+}
+.staff-panel > h2:first-child {
+  margin-top: 0;
+}
+.staff-page .seg {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.notify-diag {
+  display: grid;
+  gap: 0;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.86rem;
+}
+.notify-diag li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+}
+.notify-diag span {
+  color: var(--muted);
+}
+.notify-diag strong {
+  font-weight: 400;
+  text-align: right;
+}
 .notify .staff-panel + .staff-panel {
   margin-top: 8px;
 }

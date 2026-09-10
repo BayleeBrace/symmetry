@@ -103,6 +103,13 @@ export async function POST(req: Request) {
       return privateJson({ ok: true, scheduled: p.delay, devices: count });
     }
     const r = await send();
+    // Visible in Vercel logs, so a phone that never shows anything can be traced.
+    console.log(
+      "[push test]",
+      staff.user_id,
+      p.kind,
+      JSON.stringify(r.outcomes),
+    );
     return privateJson({
       ok: true,
       sent: r.sent,

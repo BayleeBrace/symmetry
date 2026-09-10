@@ -170,3 +170,13 @@ From Sean's screen recording of Fresha. Four things the Symmetry app now does th
 5. Scroll to the top of the diary, pull down past "Let go to refresh", let go: the app reloads.
 6. Settings, Notifications: Send in 10 seconds, lock the phone. The test should land on the lock screen. If it is refused, the message now says why.
 7. Settings, Launch checks: the failed reasons are listed. Once Resend is configured, Retry failed, then Send now.
+
+## Settings, cleaned up
+
+- **Settings is now a list**, one card per page: Your account, Notifications, Appearance, and for the owner, Cancellation policy and Launch checks. Tap one to open it, with a Settings link at the top to come back. The row of tabs that ran off the side of the phone is gone.
+- Every settings page sits in its own bordered panel, so the sections read as separate things.
+- **Notifications** shows three facts about the phone under the test buttons: whether the app was opened from the Home Screen, whether notifications are allowed on the phone, and which push service the phone is registered with. If the phone has notifications blocked, it says so and where to fix it. Test outcomes are also written to the Vercel logs.
+
+### What to test
+1. Settings: five cards for the owner, three for a barber. Open each and come back.
+2. Notifications: the three facts at the bottom of Send a test. On your iPhone, the first should say Yes, the second Yes, the third web.push.apple.com. Send me a photo of that block and of the message after a test.
