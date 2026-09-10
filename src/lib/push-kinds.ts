@@ -11,7 +11,9 @@ export type PushKind =
   | "running_late"
   | "added_by_team"
   | "day_ahead"
-  | "overdue";
+  | "overdue"
+  | "day_end"
+  | "payday";
 
 export type PushMessage = {
   kind: PushKind;
@@ -95,9 +97,103 @@ export const PUSH_KINDS: {
       body: "The 10:00 has not been marked in the chair. Tap to mark them arrived, or a no show.",
     },
   },
+  {
+    id: "day_end",
+    label: "End of day",
+    detail:
+      "At closing: your trims today, and how much was card and cash. The owner gets the whole shop, chair by chair.",
+    sample: {
+      title: "Today",
+      body: "9 trims, £220 card, £80 cash.",
+    },
+  },
+  {
+    id: "payday",
+    label: "Payday, Monday morning",
+    detail:
+      "Last week's figures. Barbers get what the shop owes them; the owner gets every chair, ready to pay.",
+    sample: {
+      title: "Payday",
+      body: "Last week is ready: Travis owed £510, Dylan £430.",
+    },
+  },
 ];
 
 const trims = (n: number) => `${n} trim${n === 1 ? "" : "s"}`;
+const gbp = (pence: number) => {
+  const p = Math.abs(pence);
+  return "£" + (p % 100 ? (p / 100).toFixed(2) : String(p / 100));
+};
+
+type Takings = {
+  count: number;
+  cardPence: number;
+  cashPence: number;
+  otherPence: number;
+};
+
+const takingsParts = (t: Takings) =>
+  [
+    `${gbp(t.cardPence)} card`,
+    t.cashPence ? `${gbp(t.cashPence)} cash` : "",
+    t.otherPence ? `${gbp(t.otherPence)} other` : "",
+  ]
+    .filter(Boolean)
+    .join(", ");
+
+/** The closing-time line for one chair. */
+export function dayEndText(t: Takings) {
+  if (!t.count) return "Nothing checked out today.";
+  return `${trims(t.count)}, ${takingsParts(t)}.`;
+}
+
+/** The closing-time line for the owner: the shop, then each chair's count. */
+export function dayEndShopText(perChair: ({ name: string } & Takings)[]) {
+  const total = perChair.reduce(
+    (s, c) => ({
+      count: s.count + c.count,
+      cardPence: s.cardPence + c.cardPence,
+      cashPence: s.cashPence + c.cashPence,
+      otherPence: s.otherPence + c.otherPence,
+    }),
+    { count: 0, cardPence: 0, cashPence: 0, otherPence: 0 },
+  );
+  if (!total.count) return "Nothing checked out across the shop today.";
+  return `Across the shop: ${trims(total.count)}, ${takingsParts(total)}. ${perChair
+    .map((c) => `${c.name} ${c.count}`)
+    .join(", ")}.`;
+}
+
+/** Monday morning for the owner: each barber and what they are owed. */
+export function paydayOwnerText(
+  items: { name: string; netPence: number; paid: boolean }[],
+) {
+  if (!items.length) return "Last week: nothing to pay out.";
+  return `Last week is ready: ${items
+    .map((i) =>
+      i.paid
+        ? `${i.name} paid`
+        : i.netPence < 0
+          ? `${i.name} owes the shop ${gbp(i.netPence)}`
+          : `${i.name} owed ${gbp(i.netPence)}`,
+    )
+    .join(", ")}.`;
+}
+
+/** Monday morning for a barber: what the shop owes them for last week. */
+export function paydayBarberText(figures: {
+  salesPence: number;
+  netPence: number;
+  rentPence: number;
+  paid: boolean;
+}) {
+  const sales = `Last week on your chair: ${gbp(figures.salesPence)} in trims.`;
+  if (figures.paid)
+    return `${sales} Your ${gbp(figures.netPence)} has been marked paid.`;
+  if (figures.netPence < 0)
+    return `${sales} Rent came to more than the card takings, so there is ${gbp(figures.netPence)} to settle with the shop.`;
+  return `${sales} Card takings less rent comes to ${gbp(figures.netPence)}, due from the shop. Tap for the breakdown.`;
+}
 
 /** The evening-before line for one barber's chair. */
 export function dayAheadText(count: number, firstMinuteLabel: string | null) {

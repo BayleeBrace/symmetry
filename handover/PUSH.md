@@ -13,8 +13,16 @@ Each barber turns notifications on per phone under Staff, Settings, Notification
 | Added to your diary by the team | The chair's barber, when someone else made the booking | Straight away |
 | Tomorrow, the evening before | Everyone, once a day | Six in the evening: barbers get their chair, the owner gets the whole shop |
 | Possible no show | The chair's barber | Ten minutes after a trim was due with nobody marked in the chair |
+| End of day | Each barber who worked; the owner gets the shop and each chair's count | At closing time (from the shop's opening hours) |
+| Payday | Barbers get what the shop owes them for last week; the owner gets every chair | Monday at nine in the morning, using the Payouts figures |
 
-Tapping a push opens the staff app on the day in question.
+Tapping a push opens the staff app on the day in question, or on Sales or Payouts for the daily and weekly ones.
+
+## If a test never arrives on an iPhone
+
+- The app must be opened from the Home Screen, not Safari, and notifications must be allowed for it (phone Settings, Notifications, Symmetry staff).
+- A push sent while the app is open in front may not show. Use "Send in 10 seconds" and lock the phone.
+- The test now reports what Apple's push service replied. "Accepted" means it left the server; a refusal shows the code and reason (403 usually means the VAPID keys changed after the phone was enabled: turn notifications off and on again on the phone).
 
 ## Set up
 

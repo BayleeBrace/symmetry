@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   browserSupportsWebAuthn,
   startAuthentication,
@@ -27,6 +27,64 @@ import { syncThemeColor } from "./theme";
 
 const VIEW_KEY = "symmetry-staff-view";
 const MODE_KEY = "symmetry-staff-cal";
+const PULL_TO_REFRESH = 72;
+
+/**
+ * Pull down from the top of the page to reload the whole app, the way a
+ * native app does. A Home Screen app has no address bar to refresh from.
+ */
+function usePullToRefresh(enabled: boolean) {
+  const [pull, setPull] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+  const pullRef = useRef(0);
+  useEffect(() => {
+    if (!enabled) return;
+    let startY: number | null = null;
+    const blocked = () =>
+      Boolean(document.querySelector(".sheet-backdrop, .is-drag-active"));
+    const set = (value: number) => {
+      pullRef.current = value;
+      setPull(value);
+    };
+    const onStart = (event: TouchEvent) => {
+      startY =
+        event.touches.length === 1 && window.scrollY <= 0 && !blocked()
+          ? event.touches[0].clientY
+          : null;
+    };
+    const onMove = (event: TouchEvent) => {
+      if (startY === null) return;
+      if (blocked()) {
+        startY = null;
+        set(0);
+        return;
+      }
+      const dy = event.touches[0].clientY - startY;
+      if (dy > 12 && window.scrollY <= 0) set(Math.min(120, (dy - 12) * 0.6));
+      else if (pullRef.current) set(0);
+    };
+    const onEnd = () => {
+      if (startY !== null && pullRef.current >= PULL_TO_REFRESH) {
+        setRefreshing(true);
+        window.location.reload();
+        return;
+      }
+      startY = null;
+      set(0);
+    };
+    window.addEventListener("touchstart", onStart, { passive: true });
+    window.addEventListener("touchmove", onMove, { passive: true });
+    window.addEventListener("touchend", onEnd);
+    window.addEventListener("touchcancel", onEnd);
+    return () => {
+      window.removeEventListener("touchstart", onStart);
+      window.removeEventListener("touchmove", onMove);
+      window.removeEventListener("touchend", onEnd);
+      window.removeEventListener("touchcancel", onEnd);
+    };
+  }, [enabled]);
+  return { pull, refreshing };
+}
 
 /** Sign-in calls go straight to fetch: there is no session to renew yet. */
 async function post(url: string, data: unknown) {
@@ -45,7 +103,18 @@ export function StaffApp() {
   const [checked, setChecked] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [section, setSection] = useState<Section>("calendar");
+  // A push notification can open straight onto Payouts or Sales.
+  const [section, setSection] = useState<Section>(() => {
+    try {
+      const asked = new URLSearchParams(window.location.search).get("section");
+      if (
+        asked &&
+        ["clients", "sales", "payouts", "reports", "settings"].includes(asked)
+      )
+        return asked as Section;
+    } catch {}
+    return "calendar";
+  });
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("account");
   const [prefill, setPrefill] = useState<BookPrefill | null>(null);
   // The plus in the tab bar opens the calendar's Add menu from any section.
@@ -121,6 +190,8 @@ export function StaffApp() {
       setBusy(false);
     }
   }
+
+  const { pull, refreshing } = usePullToRefresh(Boolean(ctx));
 
   const updateCal = (next: Partial<CalendarState>) => {
     setCal((c) => {
@@ -269,6 +340,17 @@ export function StaffApp() {
         if (!r.ok) setError((await r.json()).error);
       }}
     >
+      <div
+        className={`pull-refresh ${pull > 0 || refreshing ? "is-visible" : ""}`}
+        style={{ transform: `translate(-50%, ${Math.min(pull, 90) - 60}px)` }}
+        aria-hidden="true"
+      >
+        {refreshing
+          ? "Refreshing…"
+          : pull >= PULL_TO_REFRESH
+            ? "Let go to refresh"
+            : "Pull to refresh"}
+      </div>
       {owner && (
         <DeliveryAlert
           onReview={() => {

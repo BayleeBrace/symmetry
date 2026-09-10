@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { after } from "next/server";
 import { requireStaff } from "@/lib/staff";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { PUSH_KINDS, type PushKind } from "@/lib/push-kinds";
@@ -12,7 +13,12 @@ const actions = z.discriminatedUnion("action", [
     action: z.literal("prefs"),
     notify: z.record(z.enum(kinds), z.boolean()),
   }),
-  z.object({ action: z.literal("test"), kind: z.enum(kinds) }),
+  z.object({
+    action: z.literal("test"),
+    kind: z.enum(kinds),
+    // Seconds to wait, so the phone can be locked first: a foreground app may swallow its own test.
+    delay: z.number().int().min(0).max(30).optional(),
+  }),
   z.object({ action: z.literal("forget"), endpoint: z.url().max(2048) }),
 ]);
 
@@ -70,18 +76,39 @@ export async function POST(req: Request) {
       return privateJson({ ok: true });
     }
     // A test goes to this account's phones whatever the choices say.
-    const sample = PUSH_KINDS.find((k) => k.id === p.kind)!.sample;
-    const r = await sendStaffPush(
-      [staff.user_id],
-      { kind: p.kind, ...sample, url: "/staff", tag: "test" },
-      { force: true },
-    );
-    if ("off" in r && r.off) throw new Error(r.off);
-    if (!r.devices)
+    if (!pushConfigured())
+      throw new Error(
+        "Push is not set up yet: add VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY in Vercel and redeploy.",
+      );
+    const { count } = await db
+      .from("push_subscriptions")
+      .select("id", { count: "exact", head: true })
+      .eq("staff_user", staff.user_id);
+    if (!count)
       throw new Error(
         "No phone is enabled for your account yet. Tap Enable on this phone first.",
       );
-    return privateJson({ ok: true, sent: r.sent, devices: r.devices });
+    const sample = PUSH_KINDS.find((k) => k.id === p.kind)!.sample;
+    const send = () =>
+      sendStaffPush(
+        [staff.user_id],
+        { kind: p.kind, ...sample, url: "/staff", tag: "test" },
+        { force: true },
+      );
+    if (p.delay) {
+      after(async () => {
+        await new Promise((r) => setTimeout(r, p.delay! * 1000));
+        await send();
+      });
+      return privateJson({ ok: true, scheduled: p.delay, devices: count });
+    }
+    const r = await send();
+    return privateJson({
+      ok: true,
+      sent: r.sent,
+      devices: r.devices,
+      outcomes: r.outcomes,
+    });
   } catch (e) {
     return publicError(e, 409);
   }

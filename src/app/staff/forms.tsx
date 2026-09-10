@@ -505,11 +505,14 @@ export function BlockedTime({
   const [label, setLabel] = useState("Break");
   const [from, setFrom] = useState<number | null>(prefill.minute ?? null);
   const [until, setUntil] = useState<number | null>(null);
+  // A holiday: whole days from the date until this one.
+  const [lastDay, setLastDay] = useState("");
   const [error, setError] = useState("");
   const day = useDay(date, cached);
   const hours = day ? hoursFor(day, date) : null;
   const [open, close] = hours ?? [540, 1080];
   const fromValue = from ?? open;
+  const range = kind === "day" && lastDay > date ? lastDay : "";
   const untilValue = until ?? Math.min(close, fromValue + 60);
   return (
     <aside
@@ -537,18 +540,27 @@ export function BlockedTime({
           const wholeDay = kind === "day";
           setError("");
           try {
-            await act("/api/staff/diary", {
+            const result = (await act("/api/staff/diary", {
               action: "block",
               date,
               barber: barberId,
               time: wholeDay ? 0 : fromValue,
               duration: wholeDay ? 1440 : Math.max(15, untilValue - fromValue),
               label: label.trim() || (wholeDay ? "Day off" : "Break"),
-            });
+              ...(range ? { until: range } : {}),
+            })) as { made?: number; skipped?: number } | undefined;
+            const who =
+              chairs.find((b) => b.id === barberId)?.name ?? "the chair";
+            const skipped = result?.skipped ?? 0;
             onSaved(
-              wholeDay
-                ? `${dayLabel(date)} blocked for ${chairs.find((b) => b.id === barberId)?.name ?? "the chair"}.`
-                : `Break added on ${dayLabel(date)}.`,
+              (range
+                ? `${who} is off from ${shortDay(date)} to ${shortDay(range)}: ${result?.made ?? 0} day${result?.made === 1 ? "" : "s"} blocked.`
+                : wholeDay
+                  ? `${dayLabel(date)} blocked for ${who}.`
+                  : `Break added on ${dayLabel(date)}.`) +
+                (skipped
+                  ? ` ${skipped} day${skipped === 1 ? " was" : "s were"} skipped: there are bookings to move first.`
+                  : ""),
             );
           } catch (e) {
             setError((e as Error).message);
@@ -579,11 +591,11 @@ export function BlockedTime({
             }}
           >
             <option value="break">A break</option>
-            <option value="day">The whole day</option>
+            <option value="day">A day off, or a run of days</option>
           </select>
         </label>
         <label>
-          Date
+          {kind === "day" ? "First day" : "Date"}
           <input
             type="date"
             required
@@ -591,6 +603,21 @@ export function BlockedTime({
             onChange={(e) => e.target.value && setDate(e.target.value)}
           />
         </label>
+        {kind === "day" && (
+          <label>
+            Last day (optional)
+            <input
+              type="date"
+              min={date}
+              value={lastDay}
+              onChange={(e) => {
+                setLastDay(e.target.value);
+                if (e.target.value > date && label === "Day off")
+                  setLabel("Holiday");
+              }}
+            />
+          </label>
+        )}
         <label>
           Label
           <input
@@ -646,7 +673,11 @@ export function BlockedTime({
         )}
         <div className="form-actions">
           <button type="submit" className="button-primary" disabled={busy}>
-            {kind === "day" ? "Block the day" : "Add the break"}
+            {range
+              ? "Block these days"
+              : kind === "day"
+                ? "Block the day"
+                : "Add the break"}
           </button>
           <button type="button" className="text-button" onClick={onClose}>
             Cancel

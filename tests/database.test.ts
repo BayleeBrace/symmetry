@@ -346,5 +346,27 @@ test("database rejects blocked moves, enforces fees and keeps rejected batches a
       again.rows[0].id,
     ]),
   );
+  // Checkout edits: changing what was done on a finished trim is not a move, so no customer message is queued.
+  for (let i = 0; i < 2; i++)
+    await db.exec(
+      await readFile(
+        "supabase/migrations/20260911150000_checkout_edits.sql",
+        "utf8",
+      ),
+    );
+  await db.query(
+    `update public.bookings set service_id=(select id from public.services where slug<>'cut' and active limit 1), price_pence=price_pence+500 where group_id=$1`,
+    [again.rows[0].id],
+  );
+  const { rows: movedJobs } = await db.query<{ n: number }>(
+    `select count(*)::int n from public.notification_jobs j join public.bookings b on b.id=j.booking_id where b.group_id=$1 and j.kind='moved'`,
+    [again.rows[0].id],
+  );
+  assert.equal(movedJobs[0].n, 0);
+  const { rows: updatedEvents } = await db.query<{ n: number }>(
+    `select count(*)::int n from public.booking_events e join public.bookings b on b.id=e.booking_id where b.group_id=$1 and e.kind='updated'`,
+    [again.rows[0].id],
+  );
+  assert.ok(updatedEvents[0].n >= 1);
   await db.close();
 });

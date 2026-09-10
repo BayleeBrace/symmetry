@@ -55,7 +55,7 @@ export function attachDrag(container: HTMLElement, opts: DragOptions) {
     return el;
   };
 
-  function begin(card: HTMLElement, x: number, y: number) {
+  function begin(card: HTMLElement, x: number, y: number, touch = false) {
     const column = card.closest(".chair-day") as HTMLElement | null;
     if (!column?.dataset.key) return;
     const rect = card.getBoundingClientRect();
@@ -63,7 +63,7 @@ export function attachDrag(container: HTMLElement, opts: DragOptions) {
     ghost.className = "drop-ghost";
     ghost.style.height = card.style.height;
     const label = document.createElement("div");
-    label.className = "drag-label";
+    label.className = touch ? "drag-label is-touch" : "drag-label";
     drag = {
       card,
       id: card.dataset.id ?? "",
@@ -119,8 +119,11 @@ export function attachDrag(container: HTMLElement, opts: DragOptions) {
     drag.minute = minute;
     drag.card.style.transform = `translate(${x - drag.startX}px, ${y - drag.startY}px)`;
     drag.label.textContent = `${clock(minute)} to ${clock(minute + drag.duration)}`;
-    drag.label.style.left = `${Math.min(x + 14, window.innerWidth - 150)}px`;
-    drag.label.style.top = `${Math.max(8, y - 40)}px`;
+    // With a finger the label sits at the top of the screen, never under the thumb.
+    if (!drag.label.classList.contains("is-touch")) {
+      drag.label.style.left = `${Math.min(x + 14, window.innerWidth - 150)}px`;
+      drag.label.style.top = `${Math.max(8, y - 40)}px`;
+    }
     if (y < SCROLL_EDGE) window.scrollBy(0, -10);
     else if (y > window.innerHeight - SCROLL_EDGE) window.scrollBy(0, 10);
   }
@@ -158,7 +161,7 @@ export function attachDrag(container: HTMLElement, opts: DragOptions) {
     pressed = { card, x: t.clientX, y: t.clientY };
     timer = window.setTimeout(() => {
       timer = null;
-      if (pressed) begin(pressed.card, pressed.x, pressed.y);
+      if (pressed) begin(pressed.card, pressed.x, pressed.y, true);
     }, HOLD_MS);
   };
   const onTouchMove = (event: TouchEvent) => {

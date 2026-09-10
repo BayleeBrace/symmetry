@@ -559,6 +559,7 @@ export function DayTimeline({
           {selectedBooking && (
             <BookingSheet
               booking={selectedBooking}
+              diary={diary}
               serviceName={serviceLabel(diary, selectedBooking)}
               history={historyView(diary, selectedBooking)}
               owner={diary.staff.role === "owner"}
@@ -583,6 +584,14 @@ export function DayTimeline({
   );
 }
 
+/** "22" or "22.50" typed at checkout, as pence. Null when it is not a price. */
+function parsePounds(text: string) {
+  const n = Number(text.replace(/[£,\s]/g, ""));
+  return text.trim() !== "" && Number.isFinite(n) && n >= 0 && n <= 1000
+    ? Math.round(n * 100)
+    : null;
+}
+
 export function BookingSheet({
   booking,
   serviceName,
@@ -591,6 +600,7 @@ export function BookingSheet({
   busy,
   act,
   today,
+  diary,
   onClose,
 }: {
   booking: Booking;
@@ -600,6 +610,7 @@ export function BookingSheet({
   busy: boolean;
   act: Act;
   today: string;
+  diary?: Diary;
   onClose: () => void;
 }) {
   const customer = customerOf(booking);
@@ -608,6 +619,20 @@ export function BookingSheet({
     booking.local_date < today ||
     (booking.local_date === today && booking.start_minute <= shopMinute());
   const [checkout, setCheckout] = useState(false);
+  // What was actually done and charged: the booking to start with, editable at checkout.
+  const chairPrices = (diary?.prices ?? []).filter(
+    (p) => p.barber_id === booking.barber_id && p.active !== false,
+  );
+  const serviceOptions = [...(diary?.services ?? [])]
+    .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0))
+    .filter(
+      (s) =>
+        s.id === booking.service_id ||
+        chairPrices.some((p) => p.service_id === s.id),
+    );
+  const [serviceId, setServiceId] = useState(booking.service_id);
+  const [priceText, setPriceText] = useState(() => pounds(booking.price_pence));
+  const pricePence = parsePounds(priceText);
   const setStatus = (status: Booking["status"], paid_by?: PaidBy) =>
     act("/api/staff/diary", {
       action: "status",
@@ -615,6 +640,14 @@ export function BookingSheet({
       status,
       version: booking.updated_at,
       ...(paid_by ? { paid_by } : {}),
+      ...(status === "done" && serviceId !== booking.service_id
+        ? { service: serviceId }
+        : {}),
+      ...(status === "done" &&
+      pricePence !== null &&
+      pricePence !== booking.price_pence
+        ? { price_pence: pricePence }
+        : {}),
     });
   const feeOpen = owner && ["review", "charging"].includes(booking.fee_status);
   return (
@@ -753,10 +786,52 @@ export function BookingSheet({
       )}
       {isOpen && checkout && (
         <div className="checkout-box">
+          {serviceOptions.length > 0 && (
+            <div className="checkout-fields">
+              <label>
+                What was done
+                <select
+                  value={serviceId}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setServiceId(next);
+                    const chair = chairPrices.find(
+                      (p) => p.service_id === next,
+                    );
+                    if (chair) setPriceText(pounds(chair.price_pence));
+                  }}
+                >
+                  {serviceOptions.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {canonicalServiceName(s.slug, s.name)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Price (pounds)
+                <input
+                  inputMode="decimal"
+                  value={priceText}
+                  onChange={(e) => setPriceText(e.target.value)}
+                  aria-invalid={pricePence === null}
+                />
+              </label>
+            </div>
+          )}
           <p className="checkout-total">
             <span>Total</span>
-            <strong>{pounds(booking.price_pence)} pounds</strong>
+            <strong>
+              {pricePence === null ? "?" : pounds(pricePence)} pounds
+            </strong>
           </p>
+          {(serviceId !== booking.service_id ||
+            (pricePence !== null && pricePence !== booking.price_pence)) && (
+            <p className="staff-muted checkout-note">
+              Booked as {serviceName} at {pounds(booking.price_pence)} pounds.
+              Sales and pay use what you record here.
+            </p>
+          )}
           <p className="staff-muted">How did {customer.name} pay?</p>
           <div className="checkout-methods">
             {(["card", "cash", "other"] as PaidBy[]).map((method) => (
@@ -764,7 +839,7 @@ export function BookingSheet({
                 key={method}
                 type="button"
                 className="button-secondary"
-                disabled={busy}
+                disabled={busy || pricePence === null}
                 onClick={() => void setStatus("done", method)}
               >
                 {PAID_LABEL[method]}
@@ -775,7 +850,7 @@ export function BookingSheet({
             <button
               type="button"
               className="text-button"
-              disabled={busy}
+              disabled={busy || pricePence === null}
               onClick={() => void setStatus("done")}
             >
               Done without recording payment

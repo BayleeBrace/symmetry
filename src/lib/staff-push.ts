@@ -1,6 +1,7 @@
 import "server-only";
 import webpush from "web-push";
 import { createAdminClient } from "./supabase/admin";
+import { getCatalog } from "./catalog";
 import {
   addDays,
   clock,
@@ -8,20 +9,25 @@ import {
   shopMinute,
   shopToday,
 } from "./booking-data";
+import { payoutFigures } from "./payouts-data";
 import {
   type PushKind,
   type PushMessage,
   dayAheadShopText,
   dayAheadText,
+  dayEndShopText,
+  dayEndText,
   overdueText,
+  paydayBarberText,
+  paydayOwnerText,
 } from "./push-kinds";
 
 /**
  * Push notifications to the team's phones. Sent straight away from the
  * request that caused them (a booking, a cancellation), so they work without
- * the once-a-minute sender; only the evening brief and the no-show nudge come
- * from the cron. Nothing here ever throws into a booking: a push that fails
- * is a push that fails.
+ * the once-a-minute sender; the evening brief, the no-show nudge, the
+ * end-of-day figures and Monday's payday come from the cron. Nothing here
+ * ever throws into a booking: a push that fails is a push that fails.
  */
 export const pushConfigured = () =>
   Boolean(process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY);
@@ -32,6 +38,8 @@ type Member = {
   barber_id: string | null;
   notify?: Record<string, boolean> | null;
 };
+
+export type PushOutcome = { status: number; error?: string };
 
 async function members(): Promise<Member[]> {
   const { data } = await createAdminClient()
@@ -61,15 +69,21 @@ export async function sendStaffPush(
   userIds: string[],
   message: PushMessage,
   opts: { force?: boolean } = {},
-) {
+): Promise<{
+  sent: number;
+  devices: number;
+  outcomes: PushOutcome[];
+  off?: string;
+}> {
   if (!pushConfigured())
     return {
       sent: 0,
       devices: 0,
+      outcomes: [],
       off: "Push is not set up yet: add VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY in Vercel and redeploy.",
     };
   const ids = [...new Set(userIds)];
-  if (!ids.length) return { sent: 0, devices: 0 };
+  if (!ids.length) return { sent: 0, devices: 0, outcomes: [] };
   const db = createAdminClient();
   const { data: rows } = await db
     .from("staff_members")
@@ -79,7 +93,7 @@ export async function sendStaffPush(
   const wanted = ((rows as Member[]) || [])
     .filter((r) => opts.force || (r.notify ?? {})[message.kind] !== false)
     .map((r) => r.user_id);
-  if (!wanted.length) return { sent: 0, devices: 0 };
+  if (!wanted.length) return { sent: 0, devices: 0, outcomes: [] };
   webpush.setVapidDetails(
     process.env.VAPID_CONTACT || "mailto:info@symmetrywales.com",
     process.env.VAPID_PUBLIC_KEY!,
@@ -90,10 +104,11 @@ export async function sendStaffPush(
     .select("id,subscription")
     .in("staff_user", wanted);
   let sent = 0;
+  const outcomes: PushOutcome[] = [];
   await Promise.all(
     (subs || []).map(async (sub) => {
       try {
-        await webpush.sendNotification(
+        const r = await webpush.sendNotification(
           sub.subscription as webpush.PushSubscription,
           JSON.stringify({
             title: message.title,
@@ -101,18 +116,28 @@ export async function sendStaffPush(
             url: message.url ?? "/staff",
             tag: message.tag ?? message.kind,
           }),
-          { timeout: 8000, TTL: 3600 },
+          { timeout: 8000, TTL: 3600, urgency: "high" },
         );
         sent++;
+        outcomes.push({ status: r.statusCode });
       } catch (e) {
-        const code = (e as { statusCode?: number }).statusCode || 0;
+        const err = e as {
+          statusCode?: number;
+          body?: string;
+          message?: string;
+        };
+        const code = err.statusCode || 0;
+        outcomes.push({
+          status: code,
+          error: (err.body || err.message || "").slice(0, 160),
+        });
         // The phone has withdrawn permission or reinstalled: forget it.
         if (code === 404 || code === 410)
           await db.from("push_subscriptions").delete().eq("id", sub.id);
       }
     }),
   );
-  return { sent, devices: subs?.length ?? 0 };
+  return { sent, devices: subs?.length ?? 0, outcomes };
 }
 
 const when = (date: string, minute: number) =>
@@ -203,34 +228,60 @@ async function claim(key: string, kind: PushKind) {
   return Boolean(data);
 }
 
+type Takings = {
+  count: number;
+  cardPence: number;
+  cashPence: number;
+  otherPence: number;
+};
+
+function takings(
+  rows: { barber_id: string; price_pence: number; paid_by: string | null }[],
+  barberId: string | null,
+): Takings {
+  const mine = rows.filter((r) => r.barber_id === barberId);
+  const sum = (f: (r: (typeof mine)[number]) => boolean) =>
+    mine.filter(f).reduce((s, r) => s + r.price_pence, 0);
+  return {
+    count: mine.length,
+    cardPence: sum((r) => r.paid_by === "card"),
+    cashPence: sum((r) => r.paid_by === "cash"),
+    otherPence: sum((r) => r.paid_by !== "card" && r.paid_by !== "cash"),
+  };
+}
+
 /**
- * From the cron: the evening-before brief (six o'clock) and the no-show
- * nudge ten minutes after a trim was due with nobody marked in the chair.
+ * From the cron, once each: the evening-before brief (six o'clock), the
+ * no-show nudge ten minutes after a trim was due with nobody marked in the
+ * chair, the end-of-day figures at closing, and Monday morning's payday.
  */
 export async function sendStaffBriefs() {
-  if (!pushConfigured()) return { dayAhead: 0, overdue: 0 };
+  if (!pushConfigured())
+    return { dayAhead: 0, overdue: 0, dayEnd: 0, payday: 0 };
   const db = createAdminClient();
   const all = await members();
   const today = shopToday();
   const now = shopMinute();
+  const { data: chairRows } = await db
+    .from("barbers")
+    .select("id,name,display_order")
+    .eq("active", true)
+    .order("display_order");
+  const chairs = chairRows || [];
   let dayAhead = 0;
   let overdue = 0;
+  let dayEnd = 0;
+  let payday = 0;
 
+  // Six in the evening: tomorrow's brief.
   if (now >= 1080 && now < 1140) {
     const tomorrow = addDays(today, 1);
-    const [{ data: rows }, { data: chairs }] = await Promise.all([
-      db
-        .from("bookings")
-        .select("barber_id,start_minute")
-        .eq("local_date", tomorrow)
-        .in("status", ["booked", "arrived"])
-        .order("start_minute"),
-      db
-        .from("barbers")
-        .select("id,name,display_order")
-        .eq("active", true)
-        .order("display_order"),
-    ]);
+    const { data: rows } = await db
+      .from("bookings")
+      .select("barber_id,start_minute")
+      .eq("local_date", tomorrow)
+      .in("status", ["booked", "arrived"])
+      .order("start_minute");
     const trims = rows || [];
     for (const m of all) {
       if (!(await claim(`day-ahead-${tomorrow}-${m.user_id}`, "day_ahead")))
@@ -239,7 +290,7 @@ export async function sendStaffBriefs() {
       const body =
         m.role === "owner"
           ? dayAheadShopText(
-              (chairs || []).map((c) => ({
+              chairs.map((c) => ({
                 name: c.name,
                 count: trims.filter((t) => t.barber_id === c.id).length,
               })),
@@ -260,6 +311,7 @@ export async function sendStaffBriefs() {
     }
   }
 
+  // Ten minutes past a booked start with nobody marked in the chair.
   const { data: late } = await db
     .from("bookings")
     .select("id,barber_id,start_minute")
@@ -281,5 +333,79 @@ export async function sendStaffBriefs() {
     );
     overdue += r.sent;
   }
-  return { dayAhead, overdue };
+
+  // Closing time: today's trims, card and cash, for each chair and the shop.
+  const catalog = await getCatalog();
+  const hours = catalog.hours[parseDate(today).getUTCDay()] ?? null;
+  if (hours && now >= hours[1] && now < hours[1] + 240) {
+    const { data: done } = await db
+      .from("bookings")
+      .select("barber_id,price_pence,paid_by")
+      .eq("local_date", today)
+      .eq("status", "done");
+    const rows = done || [];
+    for (const m of all) {
+      const mine = takings(rows, m.barber_id);
+      const body =
+        m.role === "owner"
+          ? dayEndShopText(
+              chairs.map((c) => ({ name: c.name, ...takings(rows, c.id) })),
+            )
+          : dayEndText(mine);
+      // A barber who was off today hears nothing; the owner hears when the shop took anything.
+      if (m.role === "owner" ? !rows.length : !mine.count) continue;
+      if (!(await claim(`day-end-${today}-${m.user_id}`, "day_end"))) continue;
+      const r = await sendStaffPush([m.user_id], {
+        kind: "day_end",
+        title: "Today",
+        body,
+        url: "/staff?section=sales",
+        tag: "day-end",
+      });
+      dayEnd += r.sent;
+    }
+  }
+
+  // Monday, nine in the morning: last week's pay.
+  const isMonday = (parseDate(today).getUTCDay() + 6) % 7 === 0;
+  if (isMonday && now >= 540 && now < 600) {
+    const from = addDays(today, -7);
+    const to = addDays(today, -1);
+    const { items } = await payoutFigures(from, to).catch(() => ({
+      items: [],
+    }));
+    for (const m of all) {
+      let body: string;
+      if (m.role === "owner")
+        body = paydayOwnerText(
+          items
+            .filter((i) => !i.barber.owner)
+            .map((i) => ({
+              name: i.barber.name,
+              netPence: i.netPence,
+              paid: Boolean(i.paid),
+            })),
+        );
+      else {
+        const mine = items.find((i) => i.barber.id === m.barber_id);
+        if (!mine) continue;
+        body = paydayBarberText({
+          salesPence: mine.salesPence,
+          netPence: mine.netPence,
+          rentPence: mine.rentPence,
+          paid: Boolean(mine.paid),
+        });
+      }
+      if (!(await claim(`payday-${today}-${m.user_id}`, "payday"))) continue;
+      const r = await sendStaffPush([m.user_id], {
+        kind: "payday",
+        title: "Payday",
+        body,
+        url: "/staff?section=payouts",
+        tag: "payday",
+      });
+      payday += r.sent;
+    }
+  }
+  return { dayAhead, overdue, dayEnd, payday };
 }

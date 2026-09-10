@@ -809,6 +809,7 @@ function WeekGrid({
           {selectedBooking && (
             <BookingSheet
               booking={selectedBooking}
+              diary={diary}
               serviceName={serviceLabel(diary, selectedBooking)}
               history={historyView(diary, selectedBooking)}
               owner={diary.staff.role === "owner"}

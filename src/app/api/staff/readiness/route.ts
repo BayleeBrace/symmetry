@@ -19,23 +19,40 @@ export async function GET() {
         .from("notification_jobs")
         .select("id", { count: "exact", head: true })
         .neq("kind", "delivery_alert");
-    const [settings, jobs, staff, stale, pending, failed] = await Promise.all([
-      db.from("shop_settings").select("policy_confirmed").single(),
-      db
-        .from("notification_jobs")
-        .select("id,kind,channel,status,due_at,last_error")
-        .in("status", ["pending", "failed", "sending"])
-        .order("due_at")
-        .limit(50),
-      db.from("staff_members").select("user_id").eq("active", true),
-      count().in("status", ["pending", "failed"]).lt("due_at", cutoff),
-      count().eq("status", "pending").gte("due_at", cutoff),
-      count().eq("status", "failed"),
-    ]);
+    const [settings, jobs, staff, stale, pending, failed, failedRows] =
+      await Promise.all([
+        db.from("shop_settings").select("policy_confirmed").single(),
+        db
+          .from("notification_jobs")
+          .select("id,kind,channel,status,due_at,last_error")
+          .in("status", ["pending", "failed", "sending"])
+          .order("due_at")
+          .limit(50),
+        db.from("staff_members").select("user_id").eq("active", true),
+        count().in("status", ["pending", "failed"]).lt("due_at", cutoff),
+        count().eq("status", "pending").gte("due_at", cutoff),
+        count().eq("status", "failed"),
+        db
+          .from("notification_jobs")
+          .select("last_error")
+          .eq("status", "failed")
+          .neq("kind", "delivery_alert")
+          .limit(500),
+      ]);
     if (settings.error || jobs.error || staff.error)
       throw new Error(
         "Readiness checks could not load. Check the database upgrade.",
       );
+    // Why messages failed, most common first, so the fix is obvious.
+    const reasons = new Map<string, number>();
+    for (const r of failedRows.data || []) {
+      const key = (r.last_error || "No reason recorded").slice(0, 90);
+      reasons.set(key, (reasons.get(key) ?? 0) + 1);
+    }
+    const failures = [...reasons]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([error, count]) => ({ error, count }));
     return privateJson({
       checks: [
         {
@@ -103,6 +120,7 @@ export async function GET() {
         pending: pending.count ?? 0,
         failed: failed.count ?? 0,
       },
+      failures,
       sending: process.env.NOTIFICATIONS_ENABLED === "true",
       note: "Configuration checks do not prove delivery or payments work. Complete the staging trial before launch.",
     });
@@ -113,6 +131,7 @@ export async function GET() {
 
 const actions = z.discriminatedUnion("action", [
   z.object({ action: z.literal("clear_stale") }),
+  z.object({ action: z.literal("retry_failed") }),
   z.object({ action: z.literal("send_now") }),
 ]);
 
@@ -137,6 +156,17 @@ export async function POST(req: Request) {
         .select("id");
       if (error) throw new Error("The old messages could not be cleared");
       return privateJson({ ok: true, cleared: data.length });
+    }
+    if (p.action === "retry_failed") {
+      // Back to the queue; the sender drops any whose trim has since passed or changed.
+      const { data, error } = await db
+        .from("notification_jobs")
+        .update({ status: "pending", last_error: null, locked_at: null })
+        .eq("status", "failed")
+        .neq("kind", "delivery_alert")
+        .select("id");
+      if (error) throw new Error("The failed messages could not be queued");
+      return privateJson({ ok: true, retried: data.length });
     }
     if (process.env.NOTIFICATIONS_ENABLED !== "true")
       throw new Error(

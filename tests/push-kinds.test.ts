@@ -4,8 +4,74 @@ import {
   PUSH_KINDS,
   dayAheadShopText,
   dayAheadText,
+  dayEndShopText,
+  dayEndText,
   overdueText,
+  paydayBarberText,
+  paydayOwnerText,
 } from "../src/lib/push-kinds.ts";
+
+test("end of day and payday pushes read as plain sentences with pounds", () => {
+  assert.equal(
+    dayEndText({ count: 9, cardPence: 22000, cashPence: 8000, otherPence: 0 }),
+    "9 trims, £220 card, £80 cash.",
+  );
+  assert.equal(
+    dayEndText({ count: 1, cardPence: 2250, cashPence: 0, otherPence: 500 }),
+    "1 trim, £22.50 card, £5 other.",
+  );
+  assert.equal(
+    dayEndText({ count: 0, cardPence: 0, cashPence: 0, otherPence: 0 }),
+    "Nothing checked out today.",
+  );
+  assert.equal(
+    dayEndShopText([
+      {
+        name: "Sean",
+        count: 9,
+        cardPence: 22000,
+        cashPence: 8000,
+        otherPence: 0,
+      },
+      {
+        name: "Travis",
+        count: 7,
+        cardPence: 15000,
+        cashPence: 3000,
+        otherPence: 0,
+      },
+      { name: "Dylan", count: 0, cardPence: 0, cashPence: 0, otherPence: 0 },
+    ]),
+    "Across the shop: 16 trims, £370 card, £110 cash. Sean 9, Travis 7, Dylan 0.",
+  );
+  assert.equal(
+    paydayOwnerText([
+      { name: "Travis", netPence: 51000, paid: false },
+      { name: "Dylan", netPence: 43000, paid: true },
+      { name: "Ash", netPence: -4000, paid: false },
+    ]),
+    "Last week is ready: Travis owed £510, Dylan paid, Ash owes the shop £40.",
+  );
+  assert.equal(paydayOwnerText([]), "Last week: nothing to pay out.");
+  assert.equal(
+    paydayBarberText({
+      salesPence: 88000,
+      netPence: 51000,
+      rentPence: 15000,
+      paid: false,
+    }),
+    "Last week on your chair: £880 in trims. Card takings less rent comes to £510, due from the shop. Tap for the breakdown.",
+  );
+  assert.match(
+    paydayBarberText({
+      salesPence: 20000,
+      netPence: -4000,
+      rentPence: 15000,
+      paid: false,
+    }),
+    /£40 to settle with the shop/,
+  );
+});
 
 test("staff push wording never needs a customer name and reads as a sentence", () => {
   assert.equal(

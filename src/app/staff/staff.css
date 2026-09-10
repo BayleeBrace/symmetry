@@ -12,6 +12,7 @@
   --hatch-a: #f5f2ec;
   --hatch-b: #e6e1d8;
   --block-hatch: #e4dfd6;
+  --glass-edge: rgba(255, 255, 255, 0.6);
   --rail: 84px;
   --tabbar: 64px;
   --head: 86px;
@@ -38,6 +39,7 @@ html[data-staff-theme="dark"] .staff-page {
   --hatch-a: #1c1b1a;
   --hatch-b: #2a2826;
   --block-hatch: #35322e;
+  --glass-edge: rgba(255, 255, 255, 0.12);
   color-scheme: dark;
 }
 /* The ground behind the page (overscroll, the iPhone status bar area) matches too. */
@@ -67,6 +69,7 @@ html[data-staff-page][data-staff-theme="dark"] body {
     --hatch-a: #1c1b1a;
     --hatch-b: #2a2826;
     --block-hatch: #35322e;
+    --glass-edge: rgba(255, 255, 255, 0.12);
     color-scheme: dark;
   }
 }
@@ -782,6 +785,85 @@ html[data-staff-page][data-staff-theme="dark"] body {
   border-radius: 4px;
   background: color-mix(in srgb, var(--black) 8%, transparent);
   pointer-events: none;
+}
+/* Dragging with a finger: the time sits at the top of the screen, not under the thumb */
+.drag-label.is-touch {
+  top: max(14px, env(safe-area-inset-top)) !important;
+  left: 50% !important;
+  transform: translateX(-50%);
+  padding: 9px 18px;
+  border-radius: 999px;
+  font-size: 1rem;
+  box-shadow: 0 10px 24px rgba(22, 22, 22, 0.25);
+}
+.checkout-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 120px;
+  gap: 10px;
+  margin: 0 0 12px;
+}
+.checkout-fields label {
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.checkout-fields input,
+.checkout-fields select {
+  min-height: 42px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  background: var(--white);
+  color: var(--black);
+  font: inherit;
+}
+.checkout-fields input[aria-invalid="true"] {
+  border-color: var(--oxblood);
+}
+.checkout-note {
+  margin: -4px 0 10px;
+  font-size: 0.84rem;
+}
+.pull-refresh {
+  position: fixed;
+  top: calc(env(safe-area-inset-top) + 8px);
+  left: 50%;
+  z-index: 50;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: var(--black);
+  color: var(--white);
+  font-size: 0.82rem;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform 0.12s ease-out,
+    opacity 0.12s ease-out;
+}
+.pull-refresh.is-visible {
+  opacity: 1;
+}
+.queue-reasons {
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+.queue-reasons li {
+  padding: 4px 0;
+  border-top: 1px solid var(--line);
+}
+.queue-reasons strong {
+  display: inline-block;
+  min-width: 2.2em;
+  color: var(--black);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+.notify-hint {
+  margin: 10px 0 0;
+  font-size: 0.84rem;
 }
 .drag-label {
   position: fixed;
@@ -2191,18 +2273,30 @@ html[data-staff-page][data-staff-theme="dark"] body {
   .staff-main {
     padding: max(12px, env(safe-area-inset-top)) 16px calc(var(--tabbar) + 96px);
   }
+  /* Floating glass bar: content slides underneath it */
   .tabbar {
     position: fixed;
-    right: 0;
-    bottom: 0;
-    left: 0;
+    right: 14px;
+    bottom: calc(10px + env(safe-area-inset-bottom));
+    left: 14px;
     z-index: 35;
     display: grid;
     grid-template-columns: repeat(5, 1fr);
-    height: calc(var(--tabbar) + env(safe-area-inset-bottom));
-    padding-bottom: env(safe-area-inset-bottom);
-    border-top: 1px solid var(--line);
-    background: var(--white);
+    height: var(--tabbar);
+    padding: 0 4px;
+    border: 1px solid color-mix(in srgb, var(--black) 10%, transparent);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--white) 64%, transparent);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    backdrop-filter: blur(24px) saturate(180%);
+    box-shadow:
+      inset 0 1px 0 var(--glass-edge),
+      0 12px 32px rgba(22, 22, 22, 0.18);
+  }
+  @supports not (backdrop-filter: blur(1px)) {
+    .tabbar {
+      background: var(--white);
+    }
   }
   .tabbar button {
     display: grid;
@@ -2287,7 +2381,7 @@ html[data-staff-page][data-staff-theme="dark"] body {
     top: auto;
     right: auto;
     left: 50%;
-    bottom: calc(var(--tabbar) + 14px + env(safe-area-inset-bottom));
+    bottom: calc(var(--tabbar) + 26px + env(safe-area-inset-bottom));
     z-index: 36;
     min-width: 240px;
     transform: translateX(-50%);

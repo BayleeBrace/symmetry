@@ -148,3 +148,25 @@ From Sean's screen recording of Fresha. Four things the Symmetry app now does th
 3. Sign in as Travis on a second phone and enable it. Then, as Sean, add a walk-in onto Travis's chair: Travis's phone should get "Added to your diary". Move it: "Trim moved". Cancel it: "Trim cancelled". Sean's phone gets nothing for his own actions.
 4. Book a trim on the website (test mode) and cancel it from the manage link: both phones should get "New booking" then "Cancelled online".
 5. Untick "Possible no show" for Travis and check the box stays off after a reload.
+
+## Checkout edits, holidays, two more pushes, and phone polish
+
+- **Change what was done at checkout.** Checkout now has "What was done" and "Price" above the card, cash and other buttons, filled in from the booking. A fade that became a fade and beard is recorded as such, at that price, and Sales, Reports and Payouts use the recorded figure. A note shows what was booked when you change either. Needs migration `20260911150000_checkout_edits.sql`, which stops a checkout edit being logged as a "moved" trim (otherwise the sender would queue and then drop a pointless customer message).
+- **Block a run of days.** Blocked time, "A day off, or a run of days": first day and an optional last day. One block per day, up to nine weeks. Days with bookings are skipped and the message says how many, so move those trims first. The label switches to Holiday for a run.
+- **End of day push** at closing: each barber gets their trims, card and cash; the owner gets the shop total and each chair's count. A barber who was off hears nothing.
+- **Payday push** on Monday at nine: the owner gets "Last week is ready: Travis owed £510, Dylan £430" and a tap opens Payouts. Each barber gets "It is payday": last week's trims, and card takings less rent due from the shop, or that it has been marked paid. Both use exactly the figures the Payouts screen shows.
+- **The time label while dragging** now sits at the top of the screen when you drag with a finger, not under your thumb. With a mouse it still follows the pointer.
+- **Floating glass tab bar** on phones: a rounded bar lifted off the bottom edge, frosted so the diary shows through, in both light and dark.
+- **Pull down to refresh** anywhere in the staff app: pull from the top of the page and let go to reload the whole thing. Useful on the Home Screen app, which has no address bar.
+- **Push tests you can trust.** The test button now reports what each phone's push service said (accepted, or refused with the reason). "Send in 10 seconds" lets you lock the phone first: on iPhone a push sent while the app is open in front may not show.
+- **Failed messages** under Launch checks now list why they failed, most common first, with a "Retry failed" button once the cause is fixed.
+- Mobile numbers typed by staff are saved in international form (07700 900123 becomes +447700900123), so texts can reach them once Twilio is set up.
+
+### What to test
+1. Open a trim in the chair, Checkout, change the service to Fade and beard: the price updates. Change the price to 30. Card. Open Sales: it shows fade and beard at 30.
+2. Blocked time, A day off or a run of days, first day Monday, last day Friday, Block these days. Five days blocked; the week view shows them. Try again over a day with a booking: that day is skipped and the message says so.
+3. Hold a trim and drag it: the time pill sits at the top of the screen. Drop it.
+4. Look at the tab bar: floating, rounded, the diary blurred behind it. Switch to dark: still legible.
+5. Scroll to the top of the diary, pull down past "Let go to refresh", let go: the app reloads.
+6. Settings, Notifications: Send in 10 seconds, lock the phone. The test should land on the lock screen. If it is refused, the message now says why.
+7. Settings, Launch checks: the failed reasons are listed. Once Resend is configured, Retry failed, then Send now.

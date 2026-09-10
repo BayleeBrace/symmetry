@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { after } from "next/server";
 import { randomBytes, createHash } from "node:crypto";
+import { parsePhoneNumberFromString } from "libphonenumber-js";
 import { requireStaff } from "@/lib/staff";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notifyTrim, staffName } from "@/lib/staff-push";
@@ -20,6 +21,9 @@ const actions = z.discriminatedUnion("action", [
     status: z.enum(["arrived", "done", "no_show", "cancelled"]),
     version: z.string(),
     paid_by: z.enum(["card", "cash", "other"]).optional(),
+    // At checkout the barber can record what was actually done and charged.
+    service: z.uuid().optional(),
+    price_pence: z.number().int().min(0).max(100000).optional(),
   }),
   z.object({
     action: z.literal("move"),
@@ -36,6 +40,8 @@ const actions = z.discriminatedUnion("action", [
     time: z.number().int().min(0).max(1439),
     duration: z.number().int().min(5).max(1440),
     label: z.string().min(1).max(80),
+    // A run of days off: one block per day from date to until.
+    until: z.string().refine(validDate).optional(),
   }),
   z.object({ action: z.literal("unblock"), id: z.uuid() }),
   z.object({
@@ -102,7 +108,10 @@ async function addStaffTrims(
   // Walk-ins without details share one hidden "Walk-in" record.
   const name = p.name.trim();
   const email = p.email.trim().toLowerCase();
-  const phone = p.phone.trim();
+  // Mobiles are kept in international form so texts can reach them.
+  const typed = p.phone.trim();
+  const parsed = typed ? parsePhoneNumberFromString(typed, "GB") : undefined;
+  const phone = parsed?.isValid() ? parsed.number : typed;
   const walkIn = name === WALK_IN && !email && !phone;
   let customerId: string | null = null;
   if (walkIn || (email && phone)) {
@@ -323,16 +332,29 @@ export async function POST(req: Request) {
       return privateJson(body);
     }
     if (p.action === "block") {
-      const { error } = await db.from("diary_blocks").insert({
-        barber_id: p.barber,
-        local_date: p.date,
-        start_minute: p.time,
-        duration: p.duration,
-        label: p.label,
-      });
-      if (error)
-        throw new Error("That block overlaps a booking or another block");
-      return privateJson({ ok: true });
+      const last = p.until && p.until > p.date ? p.until : p.date;
+      if (last > addDays(p.date, 62))
+        throw new Error("Block up to nine weeks at a time");
+      let made = 0;
+      let skipped = 0;
+      for (let d = p.date; d <= last; d = addDays(d, 1)) {
+        const { error } = await db.from("diary_blocks").insert({
+          barber_id: p.barber,
+          local_date: d,
+          start_minute: p.time,
+          duration: p.duration,
+          label: p.label,
+        });
+        if (error) skipped++;
+        else made++;
+      }
+      if (!made)
+        throw new Error(
+          skipped > 1
+            ? "Those days have bookings or blocks already. Move the bookings first."
+            : "That block overlaps a booking or another block",
+        );
+      return privateJson({ ok: true, made, skipped });
     }
     if (p.action === "unblock") {
       const { error } = await db.from("diary_blocks").delete().eq("id", p.id);
@@ -420,7 +442,24 @@ export async function POST(req: Request) {
       )
         throw new Error("This trim has not started yet");
       update.status = p.status;
-      if (p.status === "done" && p.paid_by) update.paid_by = p.paid_by;
+      if (p.status === "done") {
+        if (p.paid_by) update.paid_by = p.paid_by;
+        // What was actually done and charged, if it differs from the booking.
+        if (p.service && p.service !== b.service_id) {
+          const { data: price } = await db
+            .from("service_prices")
+            .select("price_pence")
+            .eq("barber_id", b.barber_id)
+            .eq("service_id", p.service)
+            .eq("active", true)
+            .maybeSingle();
+          if (!price)
+            throw new Error("That service has no price on this chair");
+          update.service_id = p.service;
+          update.price_pence = price.price_pence;
+        }
+        if (p.price_pence !== undefined) update.price_pence = p.price_pence;
+      }
       if (p.status === "no_show") {
         const percent = b.booking_groups?.policy_snapshot?.no_show_percent || 0;
         update.fee_pence = Math.round((b.price_pence * percent) / 100);
@@ -458,7 +497,17 @@ export async function POST(req: Request) {
                 barber: p.barber ?? b.barber_id,
               },
             }
-          : { action: p.action },
+          : {
+              action: p.action,
+              status: p.status,
+              ...(update.service_id
+                ? { service: { from: b.service_id, to: update.service_id } }
+                : {}),
+              ...(update.price_pence !== undefined &&
+              update.price_pence !== b.price_pence
+                ? { price: { from: b.price_pence, to: update.price_pence } }
+                : {}),
+            },
     });
     // The chair's barber hears when someone else on the team moves or cancels their trim.
     if (

@@ -13,6 +13,7 @@ type ReadinessData = {
     last_error: string | null;
   }[];
   counts?: { stale: number; pending: number; failed: number };
+  failures?: { error: string; count: number }[];
   sending?: boolean;
   note: string;
 };
@@ -36,19 +37,22 @@ export function Readiness() {
     const t = setTimeout(() => void load(), 0);
     return () => clearTimeout(t);
   }, [load]);
-  const run = async (action: "clear_stale" | "send_now") => {
+  const run = async (action: "clear_stale" | "retry_failed" | "send_now") => {
     setBusy(true);
     setResult("");
     try {
       const r = (await api("/api/staff/readiness", { action })) as {
         cleared?: number;
+        retried?: number;
         sent?: number;
         failed?: number;
       };
       setResult(
         action === "clear_stale"
           ? `Cleared ${r.cleared ?? 0} old message${r.cleared === 1 ? "" : "s"}.`
-          : `Sent ${r.sent ?? 0}, failed ${r.failed ?? 0}. The sender takes up to ten at a time; tap again for more.`,
+          : action === "retry_failed"
+            ? `${r.retried ?? 0} message${r.retried === 1 ? "" : "s"} back in the queue. The sender picks them up on its next run, or use Send now.`
+            : `Sent ${r.sent ?? 0}, failed ${r.failed ?? 0}. The sender takes up to ten at a time; tap again for more.`,
       );
       await load();
     } catch (e) {
@@ -108,6 +112,15 @@ export function Readiness() {
             ? "Sending is on."
             : "Sending is switched off in Vercel (NOTIFICATIONS_ENABLED), so nothing goes out until it is on."}
         </p>
+        {data.failures && data.failures.length > 0 && (
+          <ul className="queue-reasons">
+            {data.failures.map((f) => (
+              <li key={f.error}>
+                <strong>{f.count}</strong> {f.error}
+              </li>
+            ))}
+          </ul>
+        )}
         <div className="queue-actions">
           <button
             type="button"
@@ -116,6 +129,14 @@ export function Readiness() {
             onClick={() => void run("clear_stale")}
           >
             Clear old messages
+          </button>
+          <button
+            type="button"
+            className="button-secondary"
+            disabled={busy || counts.failed === 0}
+            onClick={() => void run("retry_failed")}
+          >
+            Retry failed
           </button>
           <button
             type="button"

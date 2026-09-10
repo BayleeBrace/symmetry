@@ -120,19 +120,37 @@ export function NotificationSettings() {
     }
   };
 
-  const test = async () => {
+  const test = async (delay = 0) => {
     setBusy(true);
     setMessage("");
     try {
       const r = (await api("/api/staff/notify", {
         action: "test",
         kind: testKind,
-      })) as { sent: number; devices: number };
+        ...(delay ? { delay } : {}),
+      })) as {
+        sent?: number;
+        devices: number;
+        scheduled?: number;
+        outcomes?: { status: number; error?: string }[];
+      };
+      if (r.scheduled) {
+        say(
+          `Sending in ${r.scheduled} seconds. Lock the phone now and watch the lock screen.`,
+        );
+        return;
+      }
+      const ok = (o: { status: number }) => o.status >= 200 && o.status < 300;
+      const accepted = r.outcomes?.filter(ok).length ?? r.sent ?? 0;
+      const refused = (r.outcomes ?? []).filter((o) => !ok(o));
+      const reasons = refused
+        .map((o) => `${o.status || "no reply"}${o.error ? " " + o.error : ""}`)
+        .join("; ");
       say(
-        r.sent
-          ? `Sent to ${r.sent} phone${r.sent === 1 ? "" : "s"}. It should appear in a moment.`
-          : `Your ${r.devices} phone${r.devices === 1 ? "" : "s"} did not accept it. Turn notifications off and on again on the phone.`,
-        !r.sent,
+        accepted
+          ? `Accepted by ${accepted} phone${accepted === 1 ? "" : "s"}. If nothing showed, the app was probably open in front: use "Send in 10 seconds" and lock the phone, and check the phone's Settings, Notifications, Symmetry staff is allowed.${refused.length ? ` ${refused.length} refused: ${reasons}.` : ""}`
+          : `No phone accepted it${reasons ? `: ${reasons}` : ""}. Turn notifications off and on again on the phone.`,
+        !accepted,
       );
     } catch (e) {
       say((e as Error).message, true);
@@ -219,7 +237,19 @@ export function NotificationSettings() {
           >
             Send a test to my phone
           </button>
+          <button
+            type="button"
+            className="button-secondary"
+            disabled={busy || !info.configured}
+            onClick={() => void test(10)}
+          >
+            Send in 10 seconds
+          </button>
         </div>
+        <p className="staff-muted notify-hint">
+          On iPhone a test sent while the app is open in front may not show. Use
+          Send in 10 seconds, then lock the phone or go to the Home Screen.
+        </p>
       </section>
 
       <section className="staff-panel">
