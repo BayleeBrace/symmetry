@@ -1,29 +1,62 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { staffApi as api } from "@/lib/staff-client";
 
+type ReadinessData = {
+  checks: { label: string; ready: boolean }[];
+  jobs: {
+    id: string;
+    kind: string;
+    channel: string;
+    status: string;
+    due_at: string;
+    last_error: string | null;
+  }[];
+  counts?: { stale: number; pending: number; failed: number };
+  sending?: boolean;
+  note: string;
+};
+
 export function Readiness() {
-  const [data, setData] = useState<{
-    checks: { label: string; ready: boolean }[];
-    jobs: {
-      id: string;
-      kind: string;
-      channel: string;
-      status: string;
-      due_at: string;
-      last_error: string | null;
-    }[];
-    note: string;
-  } | null>(null);
+  const [data, setData] = useState<ReadinessData | null>(null);
   const [error, setError] = useState("");
-  useEffect(() => {
-    const t = setTimeout(() => {
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState("");
+  const load = useCallback(
+    () =>
       api("/api/staff/readiness")
-        .then(setData)
-        .catch((e) => setError((e as Error).message));
-    }, 0);
+        .then((d) => {
+          setData(d as ReadinessData);
+          setError("");
+        })
+        .catch((e) => setError((e as Error).message)),
+    [],
+  );
+  useEffect(() => {
+    const t = setTimeout(() => void load(), 0);
     return () => clearTimeout(t);
-  }, []);
+  }, [load]);
+  const run = async (action: "clear_stale" | "send_now") => {
+    setBusy(true);
+    setResult("");
+    try {
+      const r = (await api("/api/staff/readiness", { action })) as {
+        cleared?: number;
+        sent?: number;
+        failed?: number;
+      };
+      setResult(
+        action === "clear_stale"
+          ? `Cleared ${r.cleared ?? 0} old message${r.cleared === 1 ? "" : "s"}.`
+          : `Sent ${r.sent ?? 0}, failed ${r.failed ?? 0}. The sender takes up to ten at a time; tap again for more.`,
+      );
+      await load();
+    } catch (e) {
+      setResult((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
   if (!data)
     return (
       <p role="status" className="staff-muted">
@@ -31,6 +64,7 @@ export function Readiness() {
       </p>
     );
   const ready = data.checks.filter((check) => check.ready).length;
+  const counts = data.counts ?? { stale: 0, pending: 0, failed: 0 };
   return (
     <div className="readiness">
       <header className="readiness-header">
@@ -64,8 +98,39 @@ export function Readiness() {
       <section className="message-queue">
         <header>
           <h2>Message queue.</h2>
-          <span>{data.jobs.length}</span>
+          <span>{counts.stale + counts.pending + counts.failed}</span>
         </header>
+        <p className="queue-summary">
+          {counts.stale} more than a day overdue (their trims have been and
+          gone, so they are safe to clear). {counts.pending} waiting or due
+          soon. {counts.failed} failed.{" "}
+          {data.sending
+            ? "Sending is on."
+            : "Sending is switched off in Vercel (NOTIFICATIONS_ENABLED), so nothing goes out until it is on."}
+        </p>
+        <div className="queue-actions">
+          <button
+            type="button"
+            className="button-secondary"
+            disabled={busy || counts.stale === 0}
+            onClick={() => void run("clear_stale")}
+          >
+            Clear old messages
+          </button>
+          <button
+            type="button"
+            className="button-secondary"
+            disabled={busy || !data.sending}
+            onClick={() => void run("send_now")}
+          >
+            Send now
+          </button>
+        </div>
+        {result && (
+          <p className="queue-result" role="status">
+            {result}
+          </p>
+        )}
         {!data.jobs.length ? (
           <p className="queue-empty">
             Everything is clear. No pending or failed messages.
@@ -141,7 +206,7 @@ export function DeliveryAlert({ onReview }: { onReview: () => void }) {
           </>
         )}
         {health.delayed > 0 &&
-          `${health.delayed} message${health.delayed === 1 ? " is" : "s are"} waiting to go out. The sender runs once a minute from the Vercel cron; if this number keeps growing, the cron is not running or NOTIFICATIONS_ENABLED is off.`}
+          `${health.delayed} message${health.delayed === 1 ? " is" : "s are"} waiting to go out. Old ones can be cleared under Launch checks; if the number keeps growing, the once-a-minute sender is not running.`}
       </span>
       <button type="button" className="text-button" onClick={onReview}>
         Review messages

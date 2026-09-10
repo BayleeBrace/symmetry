@@ -114,7 +114,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   };
 
   return (
-    <html lang="en-GB">
+    <html lang="en-GB" suppressHydrationWarning>
       <body className={`${brandSans.variable} ${brandSerif.variable}`}>
         <script
           type="application/ld+json"

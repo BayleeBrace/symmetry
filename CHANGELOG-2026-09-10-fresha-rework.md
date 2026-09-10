@@ -122,3 +122,14 @@ From Sean's screen recording of Fresha. Four things the Symmetry app now does th
 4. Open the drawer on a time that is already taken (the list says "taken, squeeze in"). Save, confirm, and the two trims should share the column side by side. Open the new one: the sheet shows "Squeezed in".
 5. Book a regular: Repeat every week, 4 times. Four trims on the same weekday and time. Then try again on the same time: it should say the dates were taken and skipped.
 6. Try to drag an ordinary trim onto a taken slot: it still bounces back.
+
+## Dark mode and the message backlog
+
+- **Appearance.** Settings, Your account: Light, Dark, or With the phone. Remembered on the device, applied before the page paints, so no flash. Dark keeps the brand: black ground, bone text, the service colours go muted so the cards still read, the "in the chair" card turns bone. The iPhone status bar follows.
+- **Message queue tools** under Settings, Launch checks (owner only). The queue now says how many messages are more than a day overdue, how many are due, and how many failed, and whether sending is on. "Clear old messages" cancels everything more than a day overdue: those trims have been and gone, so nothing useful is lost. "Send now" runs the sender once by hand (ten messages a go) when NOTIFICATIONS_ENABLED is on.
+- The waiting-messages notice at the top now points to Launch checks.
+
+### What to test
+1. Settings, Your account, Appearance: tap Dark. The whole staff app should go dark at once, including the tab bar, sheets and the calendar. Close the app and reopen it: still dark, no white flash.
+2. Tap With the phone, then switch the phone to dark in Control Centre: the app should follow.
+3. Settings, Launch checks: the message queue shows the three counts. Tap Clear old messages; the waiting number at the top should drop to the ones actually due.

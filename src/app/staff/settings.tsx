@@ -4,6 +4,7 @@ import { staffApi as api } from "@/lib/staff-client";
 import { type Act } from "./types";
 import { Account } from "./account";
 import { Readiness } from "./readiness";
+import { type Theme, THEME_LABEL, applyTheme, readTheme } from "./theme";
 
 export type SettingsTab = "account" | "policy" | "checks";
 
@@ -62,9 +63,44 @@ export function SettingsSection({
           )}
         </div>
       </header>
-      {current === "account" && <Account owner={owner} name={name} />}
+      {current === "account" && (
+        <>
+          <Appearance />
+          <Account owner={owner} name={name} />
+        </>
+      )}
       {current === "policy" && owner && <PolicyForm act={act} busy={busy} />}
       {current === "checks" && owner && <Readiness />}
+    </section>
+  );
+}
+
+/** Light, dark, or with the phone. Kept on this device, not the account. */
+function Appearance() {
+  const [theme, setTheme] = useState<Theme>(() =>
+    typeof window === "undefined" ? "auto" : readTheme(),
+  );
+  return (
+    <section className="staff-panel appearance">
+      <h2>Appearance.</h2>
+      <p>
+        Light or dark, or let it follow the phone. Remembered on this device.
+      </p>
+      <div className="seg" role="group" aria-label="Appearance">
+        {(["light", "dark", "auto"] as Theme[]).map((t) => (
+          <button
+            key={t}
+            type="button"
+            aria-pressed={theme === t}
+            onClick={() => {
+              setTheme(t);
+              applyTheme(t);
+            }}
+          >
+            {THEME_LABEL[t]}
+          </button>
+        ))}
+      </div>
     </section>
   );
 }

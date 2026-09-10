@@ -23,6 +23,7 @@ import { Reports } from "./reports";
 import { Marketing } from "./marketing";
 import { SettingsSection, type SettingsTab } from "./settings";
 import { DeliveryAlert } from "./readiness";
+import { syncThemeColor } from "./theme";
 
 const VIEW_KEY = "symmetry-staff-view";
 const MODE_KEY = "symmetry-staff-cal";
@@ -85,6 +86,23 @@ export function StaffApp() {
     const t = setTimeout(() => void load(), 0);
     return () => clearTimeout(t);
   }, [load]);
+  // The status bar colour follows the theme, including when the phone switches at dusk.
+  // The html flag keeps the dark ground to the staff app; the public site stays as it is.
+  useEffect(() => {
+    const root = document.documentElement;
+    root.dataset.staffPage = "1";
+    const dusk = window.matchMedia("(prefers-color-scheme: dark)");
+    const sync = () => syncThemeColor();
+    sync();
+    dusk.addEventListener("change", sync);
+    return () => {
+      dusk.removeEventListener("change", sync);
+      delete root.dataset.staffPage;
+      document
+        .querySelector('meta[name="theme-color"]')
+        ?.setAttribute("content", "#161616");
+    };
+  }, []);
 
   async function act(url: string, data: unknown) {
     setBusy(true);

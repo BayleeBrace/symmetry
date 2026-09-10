@@ -1,13 +1,25 @@
+import { z } from "zod";
 import { requireStaff } from "@/lib/staff";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { privateJson, publicError } from "@/lib/security";
+import { processNotifications } from "@/lib/notifications";
+import { sameOrigin, privateJson, publicError } from "@/lib/security";
+
+/** Messages this far past due are stale: the trim has been and gone. */
+const STALE_MS = 24 * 3600000;
+
 export async function GET() {
   try {
     await requireStaff(true);
     const configured = (keys: string[]) =>
       keys.every((key) => Boolean(process.env[key]));
     const db = createAdminClient();
-    const [settings, jobs, staff] = await Promise.all([
+    const cutoff = new Date(Date.now() - STALE_MS).toISOString();
+    const count = () =>
+      db
+        .from("notification_jobs")
+        .select("id", { count: "exact", head: true })
+        .neq("kind", "delivery_alert");
+    const [settings, jobs, staff, stale, pending, failed] = await Promise.all([
       db.from("shop_settings").select("policy_confirmed").single(),
       db
         .from("notification_jobs")
@@ -16,6 +28,9 @@ export async function GET() {
         .order("due_at")
         .limit(50),
       db.from("staff_members").select("user_id").eq("active", true),
+      count().in("status", ["pending", "failed"]).lt("due_at", cutoff),
+      count().eq("status", "pending").gte("due_at", cutoff),
+      count().eq("status", "failed"),
     ]);
     if (settings.error || jobs.error || staff.error)
       throw new Error(
@@ -83,9 +98,53 @@ export async function GET() {
         },
       ],
       jobs: jobs.data,
+      counts: {
+        stale: stale.count ?? 0,
+        pending: pending.count ?? 0,
+        failed: failed.count ?? 0,
+      },
+      sending: process.env.NOTIFICATIONS_ENABLED === "true",
       note: "Configuration checks do not prove delivery or payments work. Complete the staging trial before launch.",
     });
   } catch (error) {
     return publicError(error, 403);
+  }
+}
+
+const actions = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("clear_stale") }),
+  z.object({ action: z.literal("send_now") }),
+]);
+
+/** Owner tools for the queue: drop messages whose moment has passed, or run the sender once by hand. */
+export async function POST(req: Request) {
+  try {
+    sameOrigin(req);
+    await requireStaff(true);
+    const p = actions.parse(await req.json());
+    const db = createAdminClient();
+    if (p.action === "clear_stale") {
+      const cutoff = new Date(Date.now() - STALE_MS).toISOString();
+      const { data, error } = await db
+        .from("notification_jobs")
+        .update({
+          status: "cancelled",
+          last_error: "Cleared by the owner: more than a day overdue",
+        })
+        .in("status", ["pending", "failed"])
+        .neq("kind", "delivery_alert")
+        .lt("due_at", cutoff)
+        .select("id");
+      if (error) throw new Error("The old messages could not be cleared");
+      return privateJson({ ok: true, cleared: data.length });
+    }
+    if (process.env.NOTIFICATIONS_ENABLED !== "true")
+      throw new Error(
+        "Sending is switched off. Set NOTIFICATIONS_ENABLED to true in Vercel and redeploy first.",
+      );
+    const result = await processNotifications();
+    return privateJson({ ok: true, ...result });
+  } catch (error) {
+    return publicError(error, 409);
   }
 }
