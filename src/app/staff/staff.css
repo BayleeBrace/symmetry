@@ -11,7 +11,7 @@
   --svc-6: #dfe9d6;
   --rail: 84px;
   --tabbar: 64px;
-  --head: 52px;
+  --head: 86px;
   min-height: 100svh;
   background: var(--white);
   color: var(--black);
@@ -27,6 +27,49 @@
 }
 .staff-shell {
   padding: 40px;
+}
+.staff-splash {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 8px;
+  min-height: 100svh;
+  background: var(--white);
+}
+.staff-splash img {
+  width: 60px;
+  height: 60px;
+  padding: 13px;
+  border-radius: 50%;
+  background: var(--bone);
+  animation: splash-pulse 1.6s ease-in-out infinite;
+}
+.splash-word {
+  font-family: var(--font-serif, Georgia), serif;
+  font-size: 1.9rem;
+  letter-spacing: 0.02em;
+}
+.splash-note {
+  color: var(--muted);
+  font-size: 0.82rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+@keyframes splash-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(0.93);
+    opacity: 0.7;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .staff-splash img {
+    animation: none;
+  }
 }
 .staff-muted {
   color: var(--muted);
@@ -285,6 +328,11 @@
   text-overflow: ellipsis;
   cursor: pointer;
 }
+.cal-date .day-short,
+.cal-caret,
+.cal-filter-toggle {
+  display: none;
+}
 .day-picker {
   position: absolute;
   width: 1px;
@@ -418,9 +466,31 @@
   white-space: nowrap;
 }
 .day-grid {
+  position: relative;
   display: grid;
   grid-template-columns: 52px repeat(var(--chairs, 1), minmax(0, 1fr));
-  gap: 0 14px;
+  gap: 0;
+}
+.now-bar {
+  position: absolute;
+  right: 0;
+  left: 0;
+  z-index: 2;
+  height: 2px;
+  background: var(--oxblood);
+  pointer-events: none;
+}
+.now-bar span {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--oxblood);
+  color: var(--white);
+  font-size: 0.66rem;
+  font-variant-numeric: tabular-nums;
+  transform: translateY(-50%);
 }
 .hour-rail {
   position: relative;
@@ -438,6 +508,10 @@
 .chair {
   position: relative;
   min-width: 0;
+  padding: 0 6px;
+}
+.chair + .chair {
+  border-left: 1px solid var(--line);
 }
 .svc-0 {
   --tint: var(--svc-0);
@@ -462,22 +536,32 @@
 }
 .chair-head {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 10px;
+  justify-content: center;
+  gap: 2px;
   height: var(--head);
   border-bottom: 1px solid var(--black);
+  text-align: center;
+}
+.chair-head .avatar {
+  width: 34px;
+  height: 34px;
 }
 .chair-name {
-  margin-right: auto;
-  font-size: 1.02rem;
+  font-size: 0.98rem;
 }
 .chair-head small {
   color: var(--muted);
-  font-size: 0.76rem;
+  font-size: 0.72rem;
   white-space: nowrap;
 }
 .chair-behind-toggle {
-  font-size: 0.78rem;
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  min-height: 0;
+  font-size: 0.72rem;
 }
 .chair-behind {
   position: absolute;
@@ -533,8 +617,10 @@
 }
 .trim {
   z-index: 1;
-  border: 1px solid rgba(22, 22, 22, 0.12);
-  border-left: 3px solid var(--black);
+  border: 1px solid color-mix(in srgb, var(--tint, var(--bone)), #161616 16%);
+  border-left: 4px solid
+    color-mix(in srgb, var(--tint, var(--bone)), #161616 42%);
+  border-radius: 6px;
   background: var(--tint, var(--bone));
   color: var(--black);
   touch-action: pan-y;
@@ -597,7 +683,7 @@
   font-variant-numeric: tabular-nums;
 }
 .trim-name {
-  font-weight: 400;
+  font-weight: 500;
 }
 .trim-service {
   color: var(--muted);
@@ -1833,16 +1919,87 @@
   .staff-main h1 {
     font-size: 1.4rem;
   }
+  .staff-notice {
+    padding: 10px 12px;
+    font-size: 0.86rem;
+  }
   .cal-bar {
-    gap: 8px 12px;
+    position: relative;
+    flex-wrap: nowrap;
+    gap: 6px;
     margin-bottom: 8px;
   }
+  .cal-nav {
+    flex: 1;
+    gap: 4px;
+  }
+  .cal-nav .btn-quiet {
+    min-height: 38px;
+    padding: 0 10px;
+    font-size: 0.78rem;
+  }
+  .cal-arrow {
+    width: 34px;
+    height: 38px;
+  }
   .cal-date {
-    font-size: 0.95rem;
+    flex: 1;
+    padding: 0 4px;
+    font-size: 0.98rem;
+    text-align: center;
+  }
+  .cal-date .day-long {
+    display: none;
+  }
+  .cal-date .day-short,
+  .cal-caret {
+    display: inline;
+  }
+  .cal-caret {
+    margin-left: 4px;
+    font-size: 0.8rem;
+  }
+  .cal-filter-toggle {
+    display: grid;
+    flex: 0 0 auto;
+    place-items: center;
+    width: 40px;
+    height: 38px;
+    border: 1px solid var(--line);
+    background: var(--white);
+    cursor: pointer;
+  }
+  .cal-filter-toggle[aria-expanded="true"] {
+    border-color: var(--black);
+    background: var(--black);
+    color: var(--white);
   }
   .cal-tools {
+    display: none;
+  }
+  .cal-tools.is-open {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    z-index: 31;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    min-width: 230px;
+    padding: 12px;
+    border: 1px solid var(--line);
+    background: var(--white);
+    box-shadow: 0 12px 30px rgba(22, 22, 22, 0.14);
+  }
+  .cal-tools.is-open .cal-select select {
     width: 100%;
-    justify-content: space-between;
+  }
+  .cal-tools.is-open .cal-seg {
+    display: flex;
+  }
+  .cal-tools.is-open .cal-seg button {
+    flex: 1;
   }
   .date-strip {
     display: grid;
@@ -1883,7 +2040,10 @@
   }
   .day {
     --row: 26px;
-    --head: 78px;
+    --head: 76px;
+  }
+  .chair {
+    padding: 0 2px;
   }
   .day-sticky {
     display: block;
@@ -1907,26 +2067,24 @@
     grid-template-columns: 34px repeat(var(--chairs, 1), minmax(0, 1fr));
     gap: 0 4px;
   }
-  .chair-head {
-    flex-direction: column;
-    justify-content: center;
-    gap: 2px;
-    text-align: center;
-  }
   .chair-head .avatar {
     width: 32px;
     height: 32px;
   }
   .chair-name {
-    margin: 0;
     font-size: 0.78rem;
   }
   .chair-head small {
     display: none;
   }
   .chair-behind-toggle {
-    min-height: 0;
-    font-size: 0.62rem;
+    top: 2px;
+    right: 2px;
+    font-size: 0.6rem;
+  }
+  .now-bar span {
+    font-size: 0.58rem;
+    padding: 1px 4px;
   }
   .chair-behind {
     right: -60px;

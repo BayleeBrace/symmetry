@@ -20,6 +20,7 @@ import {
   dayNumber,
   initials,
   serviceTint,
+  shortDay,
   timeRange,
   weekDays,
   weekLabel,
@@ -90,6 +91,8 @@ export function Calendar({
   const [data, setData] = useState<Diary | null>(null);
   const [loadError, setLoadError] = useState("");
   const [addOpen, setAddOpen] = useState(false);
+  const [toolsOpen, setToolsOpen] = useState(false);
+  const [stripOpen, setStripOpen] = useState(false);
   const [drawer, setDrawer] = useState<Drawer>(() =>
     prefill ? { kind: "new", prefill } : null,
   );
@@ -219,7 +222,13 @@ export function Calendar({
           <button
             type="button"
             className="cal-date"
+            aria-expanded={stripOpen}
             onClick={() => {
+              // On a phone the date opens the week strip; on desktop, the date picker.
+              if (window.matchMedia("(max-width: 760px)").matches) {
+                setStripOpen((o) => !o);
+                return;
+              }
               const input = dateInput.current;
               if (!input) return;
               if ("showPicker" in input) {
@@ -234,9 +243,20 @@ export function Calendar({
             }}
             aria-label={`Pick a date. Showing ${dayLabel(date)}`}
           >
-            {view === "week"
-              ? weekLabel(date)
-              : `${date === today ? "Today · " : ""}${dayLabel(date)}`}
+            {view === "week" ? (
+              weekLabel(date)
+            ) : (
+              <>
+                <span className="day-long">
+                  {date === today ? "Today · " : ""}
+                  {dayLabel(date)}
+                </span>
+                <span className="day-short">{shortDay(date)}</span>
+              </>
+            )}
+            <span className="cal-caret" aria-hidden="true">
+              ▾
+            </span>
           </button>
           <button
             type="button"
@@ -257,7 +277,30 @@ export function Calendar({
             }
           />
         </div>
-        <div className="cal-tools">
+        <button
+          type="button"
+          className="cal-filter-toggle"
+          aria-label="Chairs and view"
+          aria-expanded={toolsOpen}
+          onClick={() => setToolsOpen((o) => !o)}
+        >
+          <svg
+            viewBox="0 0 24 24"
+            width="20"
+            height="20"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.7"
+            strokeLinecap="round"
+            aria-hidden="true"
+          >
+            <path d="M4 7h10M18 7h2M4 17h4M12 17h8M14 4.5v5M8 14.5v5" />
+          </svg>
+        </button>
+        {toolsOpen && (
+          <div className="menu-backdrop" onClick={() => setToolsOpen(false)} />
+        )}
+        <div className={`cal-tools ${toolsOpen ? "is-open" : ""}`}>
           {chairs.length > 1 && (
             <label className="cal-select">
               <span className="sr-only">Team</span>
@@ -346,7 +389,7 @@ export function Calendar({
         </div>
       </div>
 
-      {view === "day" && (
+      {view === "day" && stripOpen && (
         <div className="date-strip" aria-label="This week">
           {weekDays(date).map((d) => (
             <button

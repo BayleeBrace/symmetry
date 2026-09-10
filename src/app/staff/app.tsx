@@ -111,10 +111,14 @@ export function StaffApp() {
 
   if (!checked)
     return (
-      <section className="staff-shell">
-        <p role="status" className="staff-muted">
-          Opening the diary…
-        </p>
+      <section
+        className="staff-splash"
+        role="status"
+        aria-label="Opening the diary"
+      >
+        <img src="/symmetry-monogram-black.svg" alt="" />
+        <span className="splash-word">Symmetry</span>
+        <span className="splash-note">Opening the diary</span>
       </section>
     );
 

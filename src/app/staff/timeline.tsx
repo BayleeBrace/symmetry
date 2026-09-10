@@ -299,6 +299,18 @@ export function DayTimeline({
         </p>
       )}
       <div className="day-grid" style={gridStyle} ref={gridRef}>
+        {isToday && nowMinute >= start && nowMinute <= end && (
+          <div
+            className="now-bar"
+            ref={nowLine}
+            style={{
+              top: `calc(var(--head) + ${(nowMinute - start) / 15} * var(--row))`,
+            }}
+            aria-hidden="true"
+          >
+            <span>{clock(nowMinute)}</span>
+          </div>
+        )}
         <div className="hour-rail" aria-hidden="true">
           {hourMarks.map((h) => (
             <span key={h} style={{ top: top(h) }}>
@@ -415,13 +427,6 @@ export function DayTimeline({
                     end={end}
                     top={top}
                     height={height}
-                  />
-                )}
-                {isToday && nowMinute >= start && nowMinute <= end && (
-                  <div
-                    className="now-line"
-                    ref={barber.id === own ? nowLine : undefined}
-                    style={{ top: top(nowMinute) }}
                   />
                 )}
                 {dayOff && (

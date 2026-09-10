@@ -79,3 +79,10 @@ The staff side now works the way Fresha does, in Symmetry's colours. Base: the b
 4. Switch to Week, drag a trim from Thursday to Friday.
 
 - **Dropped trims stay put.** A dragged trim shows in its new place the moment you let go, while the save happens in the background. If the diary refuses the move, it slides back and the reason shows at the top.
+
+## Closer to Fresha (late)
+
+- **Splash screen** while the diary opens: monogram, Symmetry, a soft pulse. No more grey "Opening the diary…" text.
+- **One-row calendar header on phones.** Today, arrows, the date with a caret, and a sliders icon. Tap the date for the week strip; tap the sliders for the chair filter and Day or Week. Desktop is unchanged.
+- **Calendar look.** Avatars centred above each column, a divider between chairs, rounded cards with a deeper edge in the service colour and a bolder client name.
+- **The messages notice** now says plainly what is up: how many messages are waiting, and that the once-a-minute sender (the Vercel cron with NOTIFICATIONS_ENABLED) is not running when the number keeps growing.

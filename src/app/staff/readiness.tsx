@@ -132,8 +132,16 @@ export function DeliveryAlert({ onReview }: { onReview: () => void }) {
   return (
     <div className="staff-notice" role="alert">
       <span>
-        <strong>Messages need attention:</strong> {health.failed} failed,{" "}
-        {health.delayed} delayed over 15 minutes.
+        {health.failed > 0 && (
+          <>
+            <strong>
+              {health.failed} message{health.failed === 1 ? "" : "s"} failed to
+              send.
+            </strong>{" "}
+          </>
+        )}
+        {health.delayed > 0 &&
+          `${health.delayed} message${health.delayed === 1 ? " is" : "s are"} waiting to go out. The sender runs once a minute from the Vercel cron; if this number keeps growing, the cron is not running or NOTIFICATIONS_ENABLED is off.`}
       </span>
       <button type="button" className="text-button" onClick={onReview}>
         Review messages
