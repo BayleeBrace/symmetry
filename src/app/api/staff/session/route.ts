@@ -1,46 +1,18 @@
 import { cookies } from "next/headers";
-import type { Session } from "@supabase/supabase-js";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireStaff } from "@/lib/staff";
+import {
+  clearStaffSession,
+  saveStaffSession,
+  staffMembership,
+} from "@/lib/staff-session";
 import {
   sameOrigin,
   rateLimit,
   privateJson,
   publicError,
 } from "@/lib/security";
-const options = {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: "strict" as const,
-  path: "/",
-};
-async function save(session: Session) {
-  const jar = await cookies();
-  jar.set("symmetry_staff", session.access_token, {
-    ...options,
-    maxAge: session.expires_in,
-  });
-  jar.set("symmetry_staff_refresh", session.refresh_token, {
-    ...options,
-    maxAge: 60 * 60 * 24 * 28,
-  });
-}
-async function clear() {
-  const jar = await cookies();
-  jar.delete("symmetry_staff");
-  jar.delete("symmetry_staff_refresh");
-}
-async function membership(id: string) {
-  const { data, error } = await createAdminClient()
-    .from("staff_members")
-    .select("role")
-    .eq("user_id", id)
-    .eq("active", true)
-    .maybeSingle();
-  if (error) throw new Error("Staff access could not be checked");
-  return data;
-}
 export async function GET() {
   try {
     return privateJson(await requireStaff());
@@ -62,11 +34,11 @@ export async function POST(req: Request) {
     });
     if (error || !data.user || !data.session)
       throw new Error("Check your email and password");
-    if (!(await membership(data.user.id))) {
+    if (!(await staffMembership(data.user.id))) {
       await db.auth.admin.signOut(data.session.access_token, "local");
       throw new Error("Staff access has not been set up");
     }
-    await save(data.session);
+    await saveStaffSession(data.session);
     return privateJson({ ok: true });
   } catch (e) {
     return publicError(e, 401);
@@ -84,8 +56,8 @@ export async function PATCH(req: Request) {
     if (access) {
       const { data, error } = await auth.getUser(access);
       if (!error && data.user) {
-        if (!(await membership(data.user.id))) {
-          await clear();
+        if (!(await staffMembership(data.user.id))) {
+          await clearStaffSession();
           return privateJson({ error: "Staff access has been removed" }, 401);
         }
         // Expiry is only a scheduling hint. getUser and membership above authorize the request.
@@ -114,12 +86,12 @@ export async function PATCH(req: Request) {
         error?.status && error.status >= 500 ? 503 : 401,
       );
     }
-    if (!(await membership(data.user.id))) {
+    if (!(await staffMembership(data.user.id))) {
       await auth.admin.signOut(data.session.access_token, "local");
-      await clear();
+      await clearStaffSession();
       return privateJson({ error: "Staff access has been removed" }, 401);
     }
-    await save(data.session);
+    await saveStaffSession(data.session);
     return privateJson({ ok: true });
   } catch (e) {
     return publicError(e, 503);
@@ -146,10 +118,10 @@ export async function DELETE(req: Request) {
       const { error } = await auth.admin.signOut(token, "local");
       if (error) throw error;
     }
-    await clear();
+    await clearStaffSession();
     return privateJson({ ok: true });
   } catch {
-    await clear();
+    await clearStaffSession();
     return privateJson(
       {
         error:

@@ -77,6 +77,15 @@ run(
     assert.equal((await fetch(base + "/api/staff/customers")).status, 403);
     assert.equal((await fetch(base + "/api/staff/sales")).status, 403);
     assert.equal((await fetch(base + "/api/staff/marketing")).status, 403);
+    assert.equal((await fetch(base + "/api/staff/passkey")).status, 403);
+    // A Face ID challenge needs no session; without LINK_SIGNING_SECRET it refuses cleanly.
+    const challenge = await fetch(base + "/api/staff/passkey", {
+      method: "POST",
+      headers: { Origin: base, "Content-Type": "application/json" },
+      body: '{"action":"login-options"}',
+    });
+    assert.ok([200, 401].includes(challenge.status));
+    if (challenge.status === 200) assert.ok((await challenge.json()).challenge);
     assert.equal(
       (await fetch(base + "/api/reminders/stop?token=not-a-link")).status,
       400,

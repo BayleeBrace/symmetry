@@ -2,6 +2,10 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import {
+  browserSupportsWebAuthn,
+  startAuthentication,
+} from "@simplewebauthn/browser";
+import {
   staffApi as api,
   StaffSignInRequired,
   resetStaffSession,
@@ -22,6 +26,18 @@ import { DeliveryAlert } from "./readiness";
 const VIEW_KEY = "symmetry-staff-view";
 const MODE_KEY = "symmetry-staff-cal";
 
+/** Sign-in calls go straight to fetch: there is no session to renew yet. */
+async function post(url: string, data: unknown) {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  const body = await response.json();
+  if (!response.ok) throw new Error(body.error || "Could not sign in");
+  return body;
+}
+
 export function StaffApp() {
   const [ctx, setCtx] = useState<Context | null>(null);
   const [checked, setChecked] = useState(false);
@@ -30,6 +46,9 @@ export function StaffApp() {
   const [section, setSection] = useState<Section>("calendar");
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("account");
   const [prefill, setPrefill] = useState<BookPrefill | null>(null);
+  const [faceId] = useState(
+    () => typeof window !== "undefined" && browserSupportsWebAuthn(),
+  );
   const [cal, setCal] = useState<CalendarState>(() => {
     let view: CalendarState["view"] = "day";
     let mine = false;
@@ -151,6 +170,40 @@ export function StaffApp() {
             </button>
           </div>
         </form>
+        {faceId && (
+          <button
+            type="button"
+            className="button-secondary faceid-button"
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              setError("");
+              try {
+                const optionsJSON = await post("/api/staff/passkey", {
+                  action: "login-options",
+                });
+                const response = await startAuthentication({ optionsJSON });
+                await post("/api/staff/passkey", {
+                  action: "login-verify",
+                  response,
+                });
+                resetStaffSession();
+                await load();
+              } catch (e) {
+                const err = e as Error & { name?: string };
+                setError(
+                  err.name === "NotAllowedError"
+                    ? "Face ID was cancelled or timed out. Try again, or use your password."
+                    : err.message,
+                );
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            Sign in with Face ID
+          </button>
+        )}
         {error && (
           <p role="alert" className="staff-error">
             {error}

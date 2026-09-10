@@ -50,3 +50,16 @@ The staff side now works the way Fresha does, in Symmetry's colours. Base: the b
 4. Clients: search "Tom", open the profile, check the figures, tap New appointment and save one.
 5. Team, Shifts: change Dylan's Monday to Off and back.
 6. As Travis (barber sign-in): every chair in the calendar, only his own sales and reports, no Catalogue, Team or Marketing.
+
+## Home-screen app, Face ID, and fixes (afternoon)
+
+- **The staff app opens on the diary.** `/staff` now has its own web app manifest ("Symmetry staff", starts and stays in the staff area). Remove the old home-screen icon and add it again from the staff page in Safari.
+- **Face ID or fingerprint sign-in.** Settings, Your account, "Set up Face ID on this phone", once per phone per barber. The sign-in screen then has "Sign in with Face ID". Passwords still work. Details in `handover/FACE-ID.md`. Needs migration `20260910180000_staff_passkeys.sql`.
+- **Clients list on phones** lays out properly again (name beside the avatar, contact details under it).
+- **Everyone sees every chair** in the calendar; sales and reports stay each barber's own.
+- **Test data** (`handover/TEST-DATA.sql`) now fills four trims a day on every chair for the rest of today and the next ten days, with this morning's trims already done. Run `TEST-DATA-REMOVE.sql` first if the test clients are already in.
+
+### What to test
+1. Remove the old home-screen icon, open symmetrywales.com/staff in Safari, Add to Home Screen. It should open straight on the diary as "Symmetry staff".
+2. Sign in with the password, Settings, set up Face ID. Sign out. "Sign in with Face ID" should sign you straight back in.
+3. On a second phone the Face ID button should say the phone is not set up yet until you set it up there too.
