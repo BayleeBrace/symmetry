@@ -5,6 +5,7 @@ import { PUSH_KINDS, type PushKind } from "@/lib/push-kinds";
 
 type Info = {
   configured: boolean;
+  problem?: string | null;
   notify: Record<string, boolean>;
   devices: number;
 };
@@ -93,6 +94,15 @@ export function NotificationSettings() {
         throw new Error(
           "Notifications were not allowed. You can turn them on in the phone's settings for this app.",
         );
+      // If the server's keys changed since this phone was enabled, start afresh.
+      const stale = await registration.pushManager.getSubscription();
+      if (stale) {
+        await api("/api/staff/notify", {
+          action: "forget",
+          endpoint: stale.endpoint,
+        }).catch(() => {});
+        await stale.unsubscribe().catch(() => {});
+      }
       const sub = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: key,
@@ -193,9 +203,9 @@ export function NotificationSettings() {
     <div className="notify">
       {!info.configured && (
         <p className="staff-error" role="alert">
-          Push is not set up on the server yet. Add VAPID_PUBLIC_KEY,
-          VAPID_PRIVATE_KEY and VAPID_CONTACT in Vercel and redeploy. Until then
-          nothing can be sent.
+          {info.problem ??
+            "Push is not set up on the server yet. Add VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY and VAPID_CONTACT in Vercel and redeploy."}{" "}
+          Until then nothing can be sent.
         </p>
       )}
       <section className="staff-panel">

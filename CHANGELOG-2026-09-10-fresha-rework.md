@@ -180,3 +180,8 @@ From Sean's screen recording of Fresha. Four things the Symmetry app now does th
 ### What to test
 1. Settings: five cards for the owner, three for a barber. Open each and come back.
 2. Notifications: the three facts at the bottom of Send a test. On your iPhone, the first should say Yes, the second Yes, the third web.push.apple.com. Send me a photo of that block and of the message after a test.
+
+## Push keys check (11 Sep)
+
+- The Notifications page now checks the VAPID keys in Vercel and says exactly what is wrong with them (the failed queue showed "Vapid private key should be 32 bytes long when decoded", so the private key was pasted wrongly). A fresh pair is in `vercel-env.txt`.
+- Enabling a phone after the keys change now starts the phone's registration afresh instead of failing on the old one.

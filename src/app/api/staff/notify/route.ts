@@ -3,7 +3,7 @@ import { after } from "next/server";
 import { requireStaff } from "@/lib/staff";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { PUSH_KINDS, type PushKind } from "@/lib/push-kinds";
-import { pushConfigured, sendStaffPush } from "@/lib/staff-push";
+import { pushConfigured, sendStaffPush, vapidProblem } from "@/lib/staff-push";
 import { sameOrigin, privateJson, publicError } from "@/lib/security";
 
 const kinds = PUSH_KINDS.map((k) => k.id) as [PushKind, ...PushKind[]];
@@ -39,7 +39,8 @@ export async function GET() {
         .eq("staff_user", staff.user_id),
     ]);
     return privateJson({
-      configured: pushConfigured(),
+      configured: pushConfigured() && !vapidProblem(),
+      problem: vapidProblem(),
       notify: (me as { notify?: Record<string, boolean> } | null)?.notify ?? {},
       devices: count ?? 0,
     });
@@ -76,10 +77,8 @@ export async function POST(req: Request) {
       return privateJson({ ok: true });
     }
     // A test goes to this account's phones whatever the choices say.
-    if (!pushConfigured())
-      throw new Error(
-        "Push is not set up yet: add VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY in Vercel and redeploy.",
-      );
+    const problem = vapidProblem();
+    if (problem) throw new Error(problem);
     const { count } = await db
       .from("push_subscriptions")
       .select("id", { count: "exact", head: true })

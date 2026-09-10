@@ -32,6 +32,26 @@ import {
 export const pushConfigured = () =>
   Boolean(process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY);
 
+/** A plain-English reason the keys in Vercel cannot work, or null when they look right. */
+export function vapidProblem() {
+  const pub = process.env.VAPID_PUBLIC_KEY?.trim() ?? "";
+  const priv = process.env.VAPID_PRIVATE_KEY?.trim() ?? "";
+  if (!pub || !priv)
+    return "VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY are not set in Vercel.";
+  const bytes = (v: string) => {
+    try {
+      return Buffer.from(v, "base64url").length;
+    } catch {
+      return 0;
+    }
+  };
+  if (bytes(priv) !== 32)
+    return `VAPID_PRIVATE_KEY in Vercel is not a valid key (${priv.length} characters, decodes to ${bytes(priv)} bytes, needs 32). Paste the 43-character value from vercel-env.txt again with nothing before or after it, then redeploy.`;
+  if (bytes(pub) !== 65)
+    return `VAPID_PUBLIC_KEY in Vercel is not a valid key (${pub.length} characters, decodes to ${bytes(pub)} bytes, needs 65). Paste the 87-character value again, then redeploy.`;
+  return null;
+}
+
 type Member = {
   user_id: string;
   role: string;
