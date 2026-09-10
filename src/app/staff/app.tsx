@@ -47,6 +47,8 @@ export function StaffApp() {
   const [section, setSection] = useState<Section>("calendar");
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("account");
   const [prefill, setPrefill] = useState<BookPrefill | null>(null);
+  // The plus in the tab bar opens the calendar's Add menu from any section.
+  const [addOpen, setAddOpen] = useState(false);
   const [faceId] = useState(
     () => typeof window !== "undefined" && browserSupportsWebAuthn(),
   );
@@ -228,7 +230,14 @@ export function StaffApp() {
   return (
     <Shell
       section={section}
-      onSection={setSection}
+      onSection={(next) => {
+        setSection(next);
+        setAddOpen(false);
+      }}
+      onAdd={() => {
+        setSection("calendar");
+        setAddOpen(true);
+      }}
       owner={owner}
       name={name}
       onSignOut={async () => {
@@ -260,6 +269,8 @@ export function StaffApp() {
           onState={updateCal}
           prefill={prefill}
           onPrefillUsed={() => setPrefill(null)}
+          addOpen={addOpen}
+          onAddOpen={setAddOpen}
         />
       )}
       {section === "clients" && (

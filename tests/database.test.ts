@@ -246,6 +246,14 @@ test("database rejects blocked moves, enforces fees and keeps rejected batches a
   await db.exec(
     await readFile("supabase/migrations/20260910210000_payouts.sql", "utf8"),
   );
+  // Squeeze-ins: safe to run twice, since it rebuilds the no-overlap rules by name.
+  for (let i = 0; i < 2; i++)
+    await db.exec(
+      await readFile(
+        "supabase/migrations/20260911090000_squeeze_in.sql",
+        "utf8",
+      ),
+    );
   // Ticking the reminder box records the wording the customer saw.
   const { rows: laterDays } = await db.query<{ d: string }>(
     `select ((now() at time zone 'Europe/London')::date+n)::text d from generate_series(15,28) n where extract(isodow from (now() at time zone 'Europe/London')::date+n)=2 limit 1`,
@@ -283,6 +291,36 @@ test("database rejects blocked moves, enforces fees and keeps rejected batches a
     [consented.rows[0].id, again.rows[0].id],
   );
   assert.equal(owners[0].n, 1);
+  // Staff can squeeze a trim in over a taken slot; anything else still cannot overlap.
+  const { rows: cutRows } = await db.query<{
+    id: string;
+    service_id: string;
+    duration: number;
+    price_pence: number;
+  }>(
+    `select b.id, sp.service_id, sp.duration, sp.price_pence from public.barbers b join public.service_prices sp on sp.barber_id=b.id join public.services s on s.id=sp.service_id where b.slug='sean' and s.slug='cut'`,
+  );
+  const cut = cutRows[0];
+  const overlapAt600 = (squeezed: boolean) =>
+    db.query(
+      `insert into public.bookings (group_id,barber_id,service_id,local_date,start_minute,duration,price_pence,source,squeezed) values ($1,$2,$3,$4,600,$5,$6,'walk_in',$7)`,
+      [
+        again.rows[0].id,
+        cut.id,
+        cut.service_id,
+        laterDays[0].d,
+        cut.duration,
+        cut.price_pence,
+        squeezed,
+      ],
+    );
+  await assert.rejects(overlapAt600(false));
+  await overlapAt600(true);
+  const { rows: at600 } = await db.query<{ n: number }>(
+    `select count(*)::int n from public.bookings where barber_id=$1 and local_date=$2 and start_minute=600 and status='booked'`,
+    [cut.id, laterDays[0].d],
+  );
+  assert.equal(at600[0].n, 2);
   await db.query(
     `update public.bookings set status='done', paid_by='card' where group_id=$1`,
     [again.rows[0].id],

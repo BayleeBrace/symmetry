@@ -46,12 +46,132 @@ const actions = z.discriminatedUnion("action", [
     barber: z.string(),
     service: z.string(),
     date: z.string().refine(validDate),
-    time: z.number().int(),
+    time: z.number().int().min(0).max(1439),
     name: z.string().min(2).max(100),
     email: z.email().or(z.literal("")),
     phone: z.string().max(30),
+    // Book over a taken slot on purpose; the calendar draws the two side by side.
+    squeeze: z.boolean().optional(),
+    // A regular: the same trim every N weeks, this many times in all.
+    repeat: z
+      .object({
+        every: z.number().int().min(1).max(4),
+        times: z.number().int().min(2).max(12),
+      })
+      .optional(),
   }),
 ]);
+
+const WALK_IN = "Walk-in";
+
+/**
+ * A trim added by staff goes straight into the diary. The database trigger
+ * still checks hours, shifts, blocks and the date; the no-overlap rule is
+ * skipped only for a trim marked squeezed.
+ */
+async function addStaffTrims(
+  db: ReturnType<typeof createAdminClient>,
+  p: Extract<z.infer<typeof actions>, { action: "walkin" }>,
+) {
+  const { data: barber } = await db
+    .from("barbers")
+    .select("id")
+    .eq("slug", p.barber)
+    .eq("active", true)
+    .maybeSingle();
+  if (!barber) throw new Error("Choose a chair");
+  const { data: service } = await db
+    .from("services")
+    .select("id")
+    .eq("slug", p.service)
+    .eq("active", true)
+    .maybeSingle();
+  if (!service) throw new Error("Choose a service");
+  const { data: price } = await db
+    .from("service_prices")
+    .select("duration,price_pence")
+    .eq("barber_id", barber.id)
+    .eq("service_id", service.id)
+    .eq("active", true)
+    .maybeSingle();
+  if (!price) throw new Error("No price is set for this chair and service");
+
+  // Reuse a client only on an exact match, the same rule as online bookings.
+  // Walk-ins without details share one hidden "Walk-in" record.
+  const name = p.name.trim();
+  const email = p.email.trim().toLowerCase();
+  const phone = p.phone.trim();
+  const walkIn = name === WALK_IN && !email && !phone;
+  let customerId: string | null = null;
+  if (walkIn || (email && phone)) {
+    const { data: existing } = await db
+      .from("customers")
+      .select("id")
+      .ilike("name", name)
+      .eq("email", email)
+      .eq("phone", phone)
+      .is("auth_user_id", null)
+      .is("directory_parent_id", null)
+      .order("created_at")
+      .limit(1)
+      .maybeSingle();
+    customerId = existing?.id ?? null;
+  }
+  if (!customerId) {
+    const { data: made, error } = await db
+      .from("customers")
+      .insert({ name, email, phone_country: "GB", phone })
+      .select("id")
+      .single();
+    if (error || !made) throw new Error("The client could not be saved");
+    customerId = made.id;
+  }
+  const token = createHash("sha256").update(randomBytes(32)).digest("hex");
+  const { data: group, error: groupError } = await db
+    .from("booking_groups")
+    .insert({ customer_id: customerId, manage_token_hash: token })
+    .select("id")
+    .single();
+  if (groupError || !group) throw new Error("The booking could not be saved");
+
+  const dates = p.repeat
+    ? Array.from({ length: p.repeat.times }, (_, i) =>
+        addDays(p.date, i * p.repeat!.every * 7),
+      )
+    : [p.date];
+  let made = 0;
+  let firstError = "";
+  for (const date of dates) {
+    const { error } = await db.from("bookings").insert({
+      group_id: group.id,
+      barber_id: barber.id,
+      service_id: service.id,
+      local_date: date,
+      start_minute: p.time,
+      duration: price.duration,
+      price_pence: price.price_pence,
+      source: "walk_in",
+      ...(p.squeeze ? { squeezed: true } : {}),
+    });
+    if (!error) {
+      made++;
+      continue;
+    }
+    if (!firstError)
+      firstError =
+        error.code === "23P01"
+          ? "That time is taken. Pick another, or squeeze it in."
+          : /squeezed/.test(error.message)
+            ? "Squeeze-ins need the 20260911090000_squeeze_in migration first."
+            : error.message.replace(/^.*?: /, "") ||
+              "That slot is unavailable. Check working hours and existing bookings.";
+  }
+  if (!made) {
+    await db.from("booking_groups").delete().eq("id", group.id);
+    throw new Error(firstError || "The booking could not be saved");
+  }
+  return { ok: true, made, skipped: dates.length - made };
+}
 export async function GET(req: Request) {
   try {
     const staff = await requireStaff();
@@ -177,32 +297,7 @@ export async function POST(req: Request) {
     const staff = await requireStaff();
     const p = actions.parse(await req.json());
     const db = createAdminClient();
-    if (p.action === "walkin") {
-      const { data: b } = await db
-        .from("barbers")
-        .select("id")
-        .eq("slug", p.barber)
-        .single();
-      if (!b) throw new Error("Choose a chair");
-      const token = createHash("sha256").update(randomBytes(32)).digest("hex");
-      const { data: g, error } = await db.rpc("create_booking_group", {
-        p_customer_name: p.name,
-        p_email: p.email,
-        p_phone_country: "GB",
-        p_phone: p.phone,
-        p_marketing: false,
-        p_manage_token_hash: token,
-        p_appointments: [
-          { barber: p.barber, service: p.service, date: p.date, time: p.time },
-        ],
-      });
-      if (error)
-        throw new Error(
-          "That slot is unavailable. Check working hours and existing bookings.",
-        );
-      await db.from("bookings").update({ source: "walk_in" }).eq("group_id", g);
-      return privateJson({ ok: true });
-    }
+    if (p.action === "walkin") return privateJson(await addStaffTrims(db, p));
     if (p.action === "block") {
       const { error } = await db.from("diary_blocks").insert({
         barber_id: p.barber,

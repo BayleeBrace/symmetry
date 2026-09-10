@@ -97,11 +97,15 @@ export const SECTIONS: {
   },
 ];
 
-const PHONE_TABS: Section[] = ["calendar", "clients", "sales"];
+/** Phone tab bar: two tabs, the plus in the middle, one tab, then More. */
+const LEFT_TABS: Section[] = ["calendar", "clients"];
+const RIGHT_TABS: Section[] = ["sales"];
+const PHONE_TABS = [...LEFT_TABS, ...RIGHT_TABS];
 
 export function Shell({
   section,
   onSection,
+  onAdd,
   owner,
   name,
   onSignOut,
@@ -109,6 +113,7 @@ export function Shell({
 }: {
   section: Section;
   onSection: (section: Section) => void;
+  onAdd: () => void;
   owner: boolean;
   name: string;
   onSignOut: () => void;
@@ -121,6 +126,17 @@ export function Shell({
     onSection(id);
     setMore(false);
   };
+  const tab = (s: (typeof SECTIONS)[number]) => (
+    <button
+      key={s.id}
+      type="button"
+      aria-pressed={section === s.id && !more}
+      onClick={() => pick(s.id)}
+    >
+      {s.icon}
+      <span>{s.label}</span>
+    </button>
+  );
   return (
     <div className="staff-app">
       <nav className="rail" aria-label="Staff sections">
@@ -153,19 +169,21 @@ export function Shell({
       <div className="staff-main">{children}</div>
 
       <nav className="tabbar" aria-label="Staff sections">
-        {visible
-          .filter((s) => PHONE_TABS.includes(s.id))
-          .map((s) => (
-            <button
-              key={s.id}
-              type="button"
-              aria-pressed={section === s.id && !more}
-              onClick={() => pick(s.id)}
-            >
-              {s.icon}
-              <span>{s.label}</span>
-            </button>
-          ))}
+        {visible.filter((s) => LEFT_TABS.includes(s.id)).map(tab)}
+        <button
+          type="button"
+          className="tab-add"
+          aria-label="Add an appointment or blocked time"
+          onClick={() => {
+            setMore(false);
+            onAdd();
+          }}
+        >
+          <span className="tab-add-mark" aria-hidden="true">
+            +
+          </span>
+        </button>
+        {visible.filter((s) => RIGHT_TABS.includes(s.id)).map(tab)}
         <button
           type="button"
           aria-pressed={more || moreSections.some((s) => s.id === section)}

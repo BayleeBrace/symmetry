@@ -169,7 +169,6 @@
 }
 .tabbar,
 .more-sheet,
-.fab,
 .date-strip {
   display: none;
 }
@@ -667,6 +666,100 @@
   white-space: nowrap;
   pointer-events: none;
   font-variant-numeric: tabular-nums;
+}
+
+/* "Select time": the plus placeholder and its bar, the Fresha way */
+.place-bar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 12px;
+  padding: 10px 12px 10px 16px;
+  border-radius: 8px;
+  background: var(--black);
+  color: var(--white);
+}
+.place-bar-text {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  font-size: 0.95rem;
+}
+.place-bar-text small {
+  color: rgba(239, 235, 227, 0.72);
+  font-size: 0.78rem;
+}
+.place-next {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--bone);
+  border-radius: 999px;
+  background: var(--bone);
+  color: var(--black);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.place-cancel {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--white);
+  font: inherit;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.place-cancel:hover {
+  background: rgba(239, 235, 227, 0.16);
+}
+.trim.place-card {
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 0;
+  border: 2px dashed var(--black);
+  border-left-width: 2px;
+  background: rgba(255, 255, 255, 0.92);
+  cursor: grab;
+}
+.trim.place-card.is-dragging {
+  cursor: grabbing;
+}
+.place-plus {
+  font-size: 1.6rem;
+  line-height: 1;
+}
+.place-when {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+}
+.place-time {
+  position: absolute;
+  right: 3px;
+  z-index: 6;
+  transform: translateY(-50%);
+  padding: 1px 7px;
+  border: 1.5px solid var(--black);
+  border-radius: 999px;
+  background: var(--white);
+  color: var(--black) !important;
+  font-size: 0.66rem !important;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Overlapping trims (squeeze-ins) share the column */
+.trim.is-lane {
+  padding: 4px 6px;
+  border-left-width: 3px;
 }
 .off-hours {
   position: absolute;
@@ -1221,6 +1314,40 @@
 }
 .client-results small {
   color: var(--muted);
+}
+.client-quick {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+  font-size: 0.8rem;
+}
+.chip-button {
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--black);
+  border-radius: 999px;
+  background: var(--white);
+  color: var(--black);
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.chip-button:hover {
+  background: var(--bone);
+}
+.squeeze-box {
+  padding: 12px 14px;
+  border: 1px solid var(--black);
+  border-radius: 6px;
+  background: var(--bone);
+}
+.squeeze-box p {
+  margin: 0 0 10px;
+  font-size: 0.92rem;
+}
+.squeeze-box .form-actions {
+  margin-top: 0;
 }
 .inline-editor {
   max-width: 640px;
@@ -1939,7 +2066,7 @@
     left: 0;
     z-index: 35;
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     height: calc(var(--tabbar) + env(safe-area-inset-bottom));
     padding-bottom: env(safe-area-inset-bottom);
     border-top: 1px solid var(--line);
@@ -1960,6 +2087,26 @@
   }
   .tabbar button[aria-pressed="true"] {
     color: var(--black);
+  }
+  .tabbar .tab-add {
+    display: grid;
+    place-items: center;
+  }
+  .tab-add-mark {
+    display: grid;
+    place-items: center;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: var(--black);
+    color: var(--white);
+    font-size: 1.9rem;
+    font-weight: 300;
+    line-height: 1;
+    box-shadow: 0 8px 20px rgba(22, 22, 22, 0.22);
+  }
+  .tabbar .tab-add:active .tab-add-mark {
+    transform: scale(0.94);
   }
   .more-sheet {
     position: fixed;
@@ -1998,34 +2145,45 @@
     text-decoration: underline;
     text-underline-offset: 0.3em;
   }
-  .fab {
-    position: fixed;
-    right: 16px;
-    bottom: calc(var(--tabbar) + 16px + env(safe-area-inset-bottom));
-    z-index: 29;
-    display: grid;
-    place-items: center;
-    width: 56px;
-    height: 56px;
-    border: 0;
-    border-radius: 50%;
-    background: var(--black);
-    color: var(--white);
-    font-size: 2rem;
-    line-height: 1;
-    box-shadow: 0 10px 24px rgba(22, 22, 22, 0.25);
-    cursor: pointer;
-  }
   .cal-add .button-primary {
     display: none;
   }
+  /* The Add menu rises from the plus in the tab bar */
   .menu,
   .add-menu-host .menu {
     position: fixed;
     top: auto;
-    right: 16px;
-    bottom: calc(var(--tabbar) + 84px + env(safe-area-inset-bottom));
+    right: auto;
+    left: 50%;
+    bottom: calc(var(--tabbar) + 14px + env(safe-area-inset-bottom));
     z-index: 36;
+    min-width: 240px;
+    transform: translateX(-50%);
+    border-radius: 10px;
+  }
+  .add-menu-host .menu button {
+    min-height: 48px;
+    font-size: 1rem;
+  }
+  .place-bar {
+    top: max(8px, env(safe-area-inset-top));
+    margin-bottom: 8px;
+    padding: 8px 8px 8px 14px;
+  }
+  .place-bar-text {
+    font-size: 0.9rem;
+  }
+  .place-bar-text small {
+    display: none;
+  }
+  .place-plus {
+    font-size: 1.3rem;
+  }
+  .place-when {
+    font-size: 0.58rem;
+  }
+  .trim.is-lane {
+    padding: 2px 4px;
   }
   .sec-head {
     margin-bottom: 12px;

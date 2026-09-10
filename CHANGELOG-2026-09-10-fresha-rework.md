@@ -92,6 +92,8 @@ The staff side now works the way Fresha does, in Symmetry's colours. Base: the b
 
 - **The plus button works again on phones.** Its menu had ended up inside the panel the sliders icon hides.
 - **Payouts.** A new section for the owner: pick this week, last week, this month or any dates; every barber's trims, sales, card and cash, their share, rent and cash kept, and what is owed. "Mark paid" per barber or "Pay everyone", with a history and Undo. "Bank file" gives a CSV for a bulk payment. Rules per barber (share of sales, weekly chair rent, keeps cash, optional bank details) live under each name. Barbers see their own figures and what has been paid to them under "Your pay". Details in `handover/PAYOUTS.md`.
+- Chair rent is charged once per calendar week whatever the payout period, and never twice in the same week. The rules form leads with rent, since that is the shop's arrangement.
+- Barbers keep the cash they take on the day by default, so a payout is the card side of their share. If you had already run the payouts migration, run `alter table public.payout_rules alter column keeps_cash set default true;` once.
 - Needs migration `20260910210000_payouts.sql`.
 
 ### What to test
@@ -100,3 +102,23 @@ The staff side now works the way Fresha does, in Symmetry's colours. Base: the b
 3. Mark Travis paid with a note, then Undo. Pay everyone, then check the list at the bottom.
 4. Bank file: with sort code and account saved for one barber, the CSV has their line.
 5. Sign in as Travis: Your pay shows only his figures and payouts, no rules, no buttons.
+
+## The Fresha flow (11 Sep)
+
+From Sean's screen recording of Fresha. Four things the Symmetry app now does the same way.
+
+- **The plus is in the middle of the tab bar.** Calendar, Clients, plus, Sales, More. The floating button in the corner is gone. Tap the plus from any section and the calendar opens with the menu: New appointment, Walk-in now, Blocked time.
+- **Select time.** New appointment drops a dashed plus on the chair you are looking at (your own chair when the whole shop is showing), at the next free quarter hour, with a black "Select time" bar above the diary and the time in a pill on the rail. Hold and drag the plus to another time or chair, or tap a gap to move it there. Tap the plus, or Next, to fill in the rest. The X, Escape, or changing the day cancels.
+- **Walk-in.** A Walk-in button under the client field (and "Walk-in now" in the plus menu) books the trim with no name or number. Walk-ins share one hidden record, so they never clutter the Clients list.
+- **Squeeze in.** The time list now shows every quarter hour the chair is working, with taken ones marked "(taken, squeeze in)". Pick one and the button reads Squeeze in; it asks once, naming who is already in that slot, then books it alongside. The two trims sit side by side in the column, in day and week view, the way Fresha draws them. Online bookings still cannot overlap anything. The sheet shows a "Squeezed in" chip.
+- **Repeat.** For a regular: Repeat every week, 2, 3 or 4 weeks, 2 to 12 times. Each date goes in as its own trim; any date already taken is skipped and the message says how many.
+- Blocked time from the plus menu starts on the chair you are looking at.
+- Needs migration `20260911090000_squeeze_in.sql` (adds `bookings.squeezed` and rebuilds the no-overlap rules to allow it). Without it, a squeeze-in is refused with a message saying so; everything else works.
+
+### What to test
+1. On the phone, tap the plus in the tab bar. Pick New appointment. A dashed plus should land on your chair with a "Select time" bar above. Hold it and drag it down two slots, then across into Travis's column. The pill on the rail should follow.
+2. Tap a gap lower down: the plus should jump there. Tap the plus: the drawer opens with that chair and time.
+3. Tap Walk-in in the drawer, pick a service, save. The trim should say Walk-in, and Clients should not list a "Walk-in" client.
+4. Open the drawer on a time that is already taken (the list says "taken, squeeze in"). Save, confirm, and the two trims should share the column side by side. Open the new one: the sheet shows "Squeezed in".
+5. Book a regular: Repeat every week, 4 times. Four trims on the same weekday and time. Then try again on the same time: it should say the dates were taken and skipped.
+6. Try to drag an ordinary trim onto a taken slot: it still bounces back.

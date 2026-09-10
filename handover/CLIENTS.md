@@ -11,3 +11,7 @@ The migration keeps every customer row. Identical guest records (same name, emai
 It also adds `bookings.paid_by` (card, cash or other), set from Checkout in the calendar, which the Sales section reports on.
 
 Historical Fresha bookings still need a separate import; the Clients section shows what is in this app's database.
+
+## Walk-ins
+
+The calendar's one-tap Walk-in (the button under the client field, or "Walk-in now" in the plus menu) books a trim with no name or number. Those trims all belong to one hidden client called "Walk-in", which the Clients list leaves out. Give a walk-in a real name and number instead and they become a normal client.

@@ -15,10 +15,13 @@ import {
   type Context,
   type Diary,
   OPEN_STATUSES,
+  WALK_IN,
   chairHours,
   dayLabel,
   dayNumber,
+  freeTimes,
   initials,
+  laneLayout,
   serviceTint,
   shortDay,
   timeRange,
@@ -32,12 +35,13 @@ import {
   BookingSheet,
   DayTimeline,
   OffHours,
+  type Placement,
   TrimCard,
   historyView,
   serviceLabel,
 } from "./timeline";
 import { attachDrag, type DragDrop } from "./drag";
-import { BlockedTime, NewAppointment } from "./forms";
+import { type BlockPrefill, BlockedTime, NewAppointment } from "./forms";
 
 export type BookPrefill = {
   client?: { name: string; email: string; phone: string };
@@ -55,8 +59,11 @@ export type CalendarState = {
 
 type Drawer =
   | { kind: "new"; prefill: BookPrefill }
-  | { kind: "block"; date: string }
+  | { kind: "block"; prefill: BlockPrefill }
   | null;
+
+/** How long the "select time" placeholder is drawn before a service is chosen. */
+const PLACE_MINUTES = 30;
 
 export function Calendar({
   ctx,
@@ -66,6 +73,8 @@ export function Calendar({
   onState,
   prefill,
   onPrefillUsed,
+  addOpen,
+  onAddOpen,
 }: {
   ctx: Context;
   act: Act;
@@ -74,6 +83,8 @@ export function Calendar({
   onState: (next: Partial<CalendarState>) => void;
   prefill: BookPrefill | null;
   onPrefillUsed: () => void;
+  addOpen: boolean;
+  onAddOpen: (open: boolean) => void;
 }) {
   const today = shopToday();
   const chairs = [...ctx.barbers]
@@ -90,12 +101,14 @@ export function Calendar({
 
   const [data, setData] = useState<Diary | null>(null);
   const [loadError, setLoadError] = useState("");
-  const [addOpen, setAddOpen] = useState(false);
+  const setAddOpen = onAddOpen;
   const [toolsOpen, setToolsOpen] = useState(false);
   const [stripOpen, setStripOpen] = useState(false);
   const [drawer, setDrawer] = useState<Drawer>(() =>
     prefill ? { kind: "new", prefill } : null,
   );
+  // "Select time": a plus placeholder on the day that can be dragged, or moved by tapping a gap.
+  const [placing, setPlacing] = useState<Placement | null>(null);
   const [notice, setNotice] = useState("");
   const dateInput = useRef<HTMLInputElement>(null);
 
@@ -175,10 +188,16 @@ export function Calendar({
     });
   };
 
+  // Any change of day, view or chair ends a "select time" in progress.
+  const go = (next: Partial<CalendarState>) => {
+    setPlacing(null);
+    onState(next);
+  };
   const step = (direction: 1 | -1) =>
-    onState({ date: addDays(date, direction * (view === "week" ? 7 : 1)) });
+    go({ date: addDays(date, direction * (view === "week" ? 7 : 1)) });
   const openNew = (extra: BookPrefill = {}) => {
     setAddOpen(false);
+    setPlacing(null);
     setDrawer({
       kind: "new",
       prefill: {
@@ -188,8 +207,17 @@ export function Calendar({
       },
     });
   };
+  const openBlock = (extra: Partial<BlockPrefill> = {}) => {
+    setAddOpen(false);
+    setPlacing(null);
+    setDrawer({
+      kind: "block",
+      prefill: { date, barberId: teamId ?? undefined, ...extra },
+    });
+  };
   const closeDrawer = () => {
     setDrawer(null);
+    setPlacing(null);
     onPrefillUsed();
   };
 
@@ -200,6 +228,48 @@ export function Calendar({
         ? data
         : null;
 
+  /** The next quarter hour a chair is free from now (or from opening on another day). */
+  const nextFree = (barberId: string) => {
+    if (!dayData) return null;
+    const hours = chairHours(dayData, date, barberId);
+    if (!hours) return null;
+    const earliest =
+      date === today ? Math.ceil(shopMinute() / 15) * 15 : hours[0];
+    const free = freeTimes(dayData, date, barberId, PLACE_MINUTES).free;
+    return (
+      free.find((m) => m >= earliest) ??
+      Math.max(hours[0], Math.min(earliest, hours[1] - PLACE_MINUTES))
+    );
+  };
+  /** Fresha's "select time": drop a plus on the day, drag it about, then fill in the trim. */
+  const startPlacing = () => {
+    setAddOpen(false);
+    const chair =
+      barbers.find((b) => b.id === (teamId ?? ownChair?.id)) ?? barbers[0];
+    const minute = chair ? nextFree(chair.id) : null;
+    if (view !== "day" || !chair || minute === null) {
+      openNew();
+      return;
+    }
+    setPlacing({ barberId: chair.id, minute });
+  };
+  const finishPlacing = () => {
+    if (!placing) return;
+    openNew({ barberId: placing.barberId, minute: placing.minute, date });
+  };
+  const placingChair = placing
+    ? chairs.find((c) => c.id === placing.barberId)
+    : undefined;
+
+  useEffect(() => {
+    if (!placing) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setPlacing(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [placing]);
+
   return (
     <section className="staff-calendar" aria-label="Calendar">
       <div className="cal-bar">
@@ -207,7 +277,7 @@ export function Calendar({
           <button
             type="button"
             className="btn-quiet"
-            onClick={() => onState({ date: today })}
+            onClick={() => go({ date: today })}
           >
             Today
           </button>
@@ -272,9 +342,7 @@ export function Calendar({
             type="date"
             aria-label="Date"
             value={date}
-            onChange={(e) =>
-              e.target.value && onState({ date: e.target.value })
-            }
+            onChange={(e) => e.target.value && go({ date: e.target.value })}
           />
         </div>
         <button
@@ -313,7 +381,7 @@ export function Calendar({
                       : team
                 }
                 onChange={(e) =>
-                  onState({
+                  go({
                     team:
                       e.target.value === "all"
                         ? "all"
@@ -337,14 +405,14 @@ export function Calendar({
             <button
               type="button"
               aria-pressed={view === "day"}
-              onClick={() => onState({ view: "day" })}
+              onClick={() => go({ view: "day" })}
             >
               Day
             </button>
             <button
               type="button"
               aria-pressed={view === "week"}
-              onClick={() => onState({ view: "week" })}
+              onClick={() => go({ view: "week" })}
             >
               Week
             </button>
@@ -354,7 +422,7 @@ export function Calendar({
               type="button"
               className="button-primary"
               aria-expanded={addOpen}
-              onClick={() => setAddOpen((o) => !o)}
+              onClick={() => setAddOpen(!addOpen)}
             >
               Add
             </button>
@@ -366,20 +434,52 @@ export function Calendar({
         <div className="add-menu-host">
           <div className="menu-backdrop" onClick={() => setAddOpen(false)} />
           <div className="menu" role="menu">
-            <button type="button" role="menuitem" onClick={() => openNew()}>
+            <button type="button" role="menuitem" onClick={startPlacing}>
               New appointment
             </button>
             <button
               type="button"
               role="menuitem"
               onClick={() => {
-                setAddOpen(false);
-                setDrawer({ kind: "block", date });
+                const chair =
+                  barbers.find((b) => b.id === (teamId ?? ownChair?.id)) ??
+                  barbers[0];
+                openNew({
+                  client: { name: WALK_IN, email: "", phone: "" },
+                  barberId: chair?.id,
+                  minute: (chair && nextFree(chair.id)) ?? undefined,
+                });
               }}
             >
+              Walk-in now
+            </button>
+            <button type="button" role="menuitem" onClick={() => openBlock()}>
               Blocked time
             </button>
           </div>
+        </div>
+      )}
+
+      {placing && (
+        <div className="place-bar" role="status">
+          <span className="place-bar-text">
+            Select time
+            <small>
+              {placingChair?.name ?? "Chair"} at {clock(placing.minute)}. Drag
+              the plus or tap a gap, then tap it to carry on.
+            </small>
+          </span>
+          <button type="button" className="place-next" onClick={finishPlacing}>
+            Next
+          </button>
+          <button
+            type="button"
+            className="place-cancel"
+            aria-label="Stop selecting a time"
+            onClick={() => setPlacing(null)}
+          >
+            ×
+          </button>
         </div>
       )}
 
@@ -391,7 +491,7 @@ export function Calendar({
               type="button"
               aria-pressed={d === date}
               className={d === today ? "is-today" : ""}
-              onClick={() => onState({ date: d })}
+              onClick={() => go({ date: d })}
             >
               <span>{weekdayShort(d).slice(0, 1)}</span>
               <strong>{dayNumber(d)}</strong>
@@ -433,6 +533,9 @@ export function Calendar({
           onWalkIn={(barber, minute) =>
             openNew({ barberId: barber.id, minute, date })
           }
+          placement={placing}
+          onPlace={(barberId, minute) => setPlacing({ barberId, minute })}
+          onPlaceDone={finishPlacing}
         />
       ) : weekBarber ? (
         <WeekGrid
@@ -447,15 +550,6 @@ export function Calendar({
           }
         />
       ) : null}
-
-      <button
-        type="button"
-        className="fab"
-        aria-label="Add"
-        onClick={() => setAddOpen((o) => !o)}
-      >
-        +
-      </button>
 
       {drawer?.kind === "new" && (
         <>
@@ -482,7 +576,7 @@ export function Calendar({
           <BlockedTime
             chairs={barbers.length ? barbers : chairs}
             cached={data}
-            date={drawer.date}
+            prefill={drawer.prefill}
             busy={busy}
             act={run}
             onClose={closeDrawer}
@@ -607,6 +701,7 @@ function WeekGrid({
         {days.map((day) => {
           const dayHours = chairHours(diary, day, barber.id);
           const dayBookings = bookings.filter((b) => b.local_date === day);
+          const lanes = laneLayout(dayBookings);
           const dayBlocks = blocks.filter((b) => b.local_date === day);
           const dayOff = dayBlocks.find((b) => b.duration >= 1440);
           const closed = !dayHours || Boolean(dayOff);
@@ -697,6 +792,7 @@ function WeekGrid({
                     selected={selected?.id === booking.id}
                     top={top(booking.start_minute)}
                     height={height(booking.duration)}
+                    lane={lanes.get(booking.id)}
                     onClick={() =>
                       setSelected({ kind: "booking", id: booking.id })
                     }

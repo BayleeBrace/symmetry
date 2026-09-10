@@ -23,6 +23,7 @@ type Item = {
   unrecordedPence: number;
   grossPence: number;
   rentPence: number;
+  rentWeeks: number;
   cashKeptPence: number;
   netPence: number;
   paid: {
@@ -168,10 +169,10 @@ export function Payouts({ ctx }: { ctx: Context }) {
       )}
       <p className="staff-muted">
         {periodLabel}. Sales are the booked prices of trims checked out on each
-        chair. Card and cash come from Checkout.
-        {owner
-          ? " Set each barber's share, rent and whether they keep cash under their name."
-          : ""}
+        chair, card and cash as chosen at Checkout. Cash stays with the barber,
+        chair rent is taken once per week, and the rest of the card takings is
+        what the shop pays over.
+        {owner ? " Set each barber’s rent under their name." : ""}
       </p>
       {error && (
         <p className="staff-error" role="alert">
@@ -290,10 +291,17 @@ export function Payouts({ ctx }: { ctx: Context }) {
                         <dt>Share</dt>
                         <dd>{pounds(i.grossPence)}</dd>
                       </div>
-                      {i.rentPence > 0 && (
+                      {i.rule.weekly_rent_pence > 0 && (
                         <div>
-                          <dt>Rent</dt>
-                          <dd>-{pounds(i.rentPence)}</dd>
+                          <dt>
+                            Rent
+                            {i.rentWeeks > 1 ? ` (${i.rentWeeks} weeks)` : ""}
+                          </dt>
+                          <dd>
+                            {i.rentPence > 0
+                              ? `-${pounds(i.rentPence)}`
+                              : "Already charged"}
+                          </dd>
                         </div>
                       )}
                       {i.cashKeptPence > 0 && (
@@ -472,6 +480,16 @@ function RuleForm({
       }}
     >
       <label>
+        Chair rent per week (pounds)
+        <input
+          name="rent"
+          type="number"
+          min="0"
+          step="0.5"
+          defaultValue={rule.weekly_rent_pence / 100}
+        />
+      </label>
+      <label>
         Share of sales they keep (%)
         <input
           name="share"
@@ -480,16 +498,6 @@ function RuleForm({
           max="100"
           required
           defaultValue={rule.share_percent}
-        />
-      </label>
-      <label>
-        Chair rent per week (pounds, 0 for none)
-        <input
-          name="rent"
-          type="number"
-          min="0"
-          step="0.5"
-          defaultValue={rule.weekly_rent_pence / 100}
         />
       </label>
       <label className="check wide">

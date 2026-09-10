@@ -17,6 +17,7 @@ import {
   customerOf,
   freeTimes,
   initials,
+  laneLayout,
   pounds,
   serviceTint,
   shortDay,
@@ -25,6 +26,20 @@ import {
 import { attachDrag, type DragDrop } from "./drag";
 
 type Selection = { kind: "booking" | "block"; id: string } | null;
+/** Where the "select time" plus sits: a chair and a start minute. */
+export type Placement = { barberId: string; minute: number };
+const PLACE_MINUTES = 30;
+/** A trim's share of the column when it overlaps others. */
+export type Lane = { lane: number; lanes: number } | undefined;
+
+function laneStyle(lane: Lane): CSSProperties {
+  if (!lane || lane.lanes <= 1) return {};
+  return {
+    left: `calc(${(lane.lane / lane.lanes) * 100}% + ${lane.lane ? 2 : 0}px)`,
+    right: "auto",
+    width: `calc(${100 / lane.lanes}% - ${lane.lane ? 2 : 0}px)`,
+  };
+}
 export type HistoryView = {
   visits: number;
   noShows: number;
@@ -64,6 +79,7 @@ export function TrimCard({
   selected,
   top,
   height,
+  lane,
   onClick,
 }: {
   booking: Booking;
@@ -72,6 +88,7 @@ export function TrimCard({
   selected: boolean;
   top: string;
   height: string;
+  lane?: Lane;
   onClick: () => void;
 }) {
   const customer = customerOf(booking);
@@ -79,8 +96,8 @@ export function TrimCard({
   return (
     <button
       type="button"
-      className={`trim svc-${tint} status-${booking.status} ${booking.duration <= 20 ? "is-short" : booking.duration <= 30 ? "is-compact" : ""} ${selected ? "is-selected" : ""}`}
-      style={{ top, height }}
+      className={`trim svc-${tint} status-${booking.status} ${booking.duration <= 20 ? "is-short" : booking.duration <= 30 ? "is-compact" : ""} ${selected ? "is-selected" : ""} ${lane && lane.lanes > 1 ? "is-lane" : ""}`}
+      style={{ top, height, ...laneStyle(lane) }}
       data-id={booking.id}
       data-version={booking.updated_at}
       data-start={booking.start_minute}
@@ -148,6 +165,9 @@ export function DayTimeline({
   act,
   onMove,
   onWalkIn,
+  placement,
+  onPlace,
+  onPlaceDone,
 }: {
   diary: Diary;
   barbers: Barber[];
@@ -156,6 +176,9 @@ export function DayTimeline({
   act: Act;
   onMove: (drop: DragDrop) => void;
   onWalkIn: (barber: Barber, minute: number) => void;
+  placement?: Placement | null;
+  onPlace?: (barberId: string, minute: number) => void;
+  onPlaceDone?: () => void;
 }) {
   const [selected, setSelected] = useState<Selection>(null);
   const [behind, setBehind] = useState<string | null>(null);
@@ -203,11 +226,14 @@ export function DayTimeline({
   for (let h = start; h <= end; h += 60) hourMarks.push(h);
 
   // Drag a trim to another time or chair. Handlers live in refs so a refresh mid-drag does not tear it down.
+  // The "select time" plus is dragged the same way and reports as id "new".
   const gridRef = useRef<HTMLDivElement>(null);
   const dropRef = useRef<(drop: DragDrop) => void>(() => {});
+  const placeRef = useRef<(barberId: string, minute: number) => void>(() => {});
   const busyRef = useRef(busy);
   useEffect(() => {
     dropRef.current = onMove;
+    placeRef.current = onPlace ?? (() => {});
     busyRef.current = busy;
   });
   useEffect(() => {
@@ -221,8 +247,13 @@ export function DayTimeline({
         [...el.querySelectorAll<HTMLElement>(".chair-day[data-key]")].map(
           (column) => ({ key: column.dataset.key ?? "", el: column }),
         ),
-      canDrag: (card) => card.dataset.open === "1" && !busyRef.current,
-      onDrop: (drop) => dropRef.current(drop),
+      canDrag: (card) =>
+        card.dataset.id === "new" ||
+        (card.dataset.open === "1" && !busyRef.current),
+      onDrop: (drop) =>
+        drop.id === "new"
+          ? placeRef.current(drop.column, drop.minute)
+          : dropRef.current(drop),
     });
   }, [start, end, rows]);
 
@@ -317,11 +348,17 @@ export function DayTimeline({
               {clock(h)}
             </span>
           ))}
+          {placement && (
+            <span className="place-time" style={{ top: top(placement.minute) }}>
+              {clock(placement.minute)}
+            </span>
+          )}
         </div>
         {barbers.map((barber) => {
           const bookings = bookingsToday.filter(
             (b) => b.barber_id === barber.id,
           );
+          const lanes = laneLayout(bookings);
           const active = bookings.filter((b) =>
             OPEN_STATUSES.includes(b.status),
           );
@@ -416,9 +453,20 @@ export function DayTimeline({
                       Math.floor((event.clientY - rect.top) / rowPx),
                     ) *
                       15;
+                  if (placement && onPlace) {
+                    onPlace(
+                      barber.id,
+                      Math.min(minute, Math.max(start, end - PLACE_MINUTES)),
+                    );
+                    return;
+                  }
                   onWalkIn(barber, Math.min(minute, end - 15));
                 }}
-                title="Tap a gap to add an appointment. Hold a trim to move it."
+                title={
+                  placement
+                    ? "Tap where the new appointment goes."
+                    : "Tap a gap to add an appointment. Hold a trim to move it."
+                }
               >
                 {!dayOff && (
                   <OffHours
@@ -470,11 +518,36 @@ export function DayTimeline({
                     selected={selected?.id === booking.id}
                     top={top(booking.start_minute)}
                     height={height(booking.duration)}
+                    lane={lanes.get(booking.id)}
                     onClick={() =>
                       setSelected({ kind: "booking", id: booking.id })
                     }
                   />
                 ))}
+                {placement?.barberId === barber.id && (
+                  <button
+                    type="button"
+                    className="trim place-card"
+                    style={{
+                      top: top(placement.minute),
+                      height: height(PLACE_MINUTES),
+                    }}
+                    data-id="new"
+                    data-version=""
+                    data-start={placement.minute}
+                    data-duration={PLACE_MINUTES}
+                    data-open="1"
+                    onClick={onPlaceDone}
+                    aria-label={`New appointment with ${barber.name} at ${clock(placement.minute)}. Drag to change the time, tap to carry on.`}
+                  >
+                    <span className="place-plus" aria-hidden="true">
+                      +
+                    </span>
+                    <span className="place-when">
+                      {clock(placement.minute)}
+                    </span>
+                  </button>
+                )}
               </div>
             </section>
           );
@@ -584,6 +657,9 @@ export function BookingSheet({
         )}
         {booking.source === "walk_in" && (
           <span className="status-chip is-quiet">Walk-in</span>
+        )}
+        {booking.squeezed && (
+          <span className="status-chip is-quiet">Squeezed in</span>
         )}
       </p>
       <div className="sheet-service">

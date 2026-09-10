@@ -106,7 +106,9 @@ export async function GET(req: Request) {
     let query = db
       .from("customers")
       .select(fields, { count: "exact" })
-      .is("directory_parent_id", null);
+      .is("directory_parent_id", null)
+      // The one-tap "Walk-in" client from the calendar is not a real record.
+      .neq("name", "Walk-in");
     if (term)
       query = query.or(
         `name.ilike.%${term}%,email.ilike.%${term}%,phone.ilike.%${term.replace(/\s/g, "")}%`,

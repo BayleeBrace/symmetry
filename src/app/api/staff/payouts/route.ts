@@ -3,7 +3,7 @@ import { requireStaff } from "@/lib/staff";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { privateJson, publicError, sameOrigin } from "@/lib/security";
 import { addDays, shopToday, validDate } from "@/lib/booking-data";
-import { computePayout, daysInRange } from "@/lib/payouts-calc";
+import { computePayout, daysInRange, rentWeeksDue } from "@/lib/payouts-calc";
 
 type Rule = {
   barber_id: string;
@@ -62,7 +62,7 @@ const defaults = (barber_id: string): Rule => ({
   barber_id,
   share_percent: 100,
   weekly_rent_pence: 0,
-  keeps_cash: false,
+  keeps_cash: true,
   bank_name: "",
   bank_sort_code: "",
   bank_account: "",
@@ -112,11 +112,12 @@ export async function GET(req: Request) {
       db.from("staff_members").select("barber_id,role").eq("active", true),
       db.from("payout_rules").select("*"),
       trims,
+      // Every payout that touches this period's weeks, so rent is never charged twice in a week.
       db
         .from("payouts")
         .select("*")
-        .eq("period_start", from)
-        .eq("period_end", to),
+        .gte("period_end", addDays(from, -7))
+        .lte("period_start", addDays(to, 7)),
       history,
     ]);
     if (
@@ -146,16 +147,29 @@ export async function GET(req: Request) {
         const salesPence = sum(mine);
         const cardPence = sum(mine.filter((t) => t.paid_by === "card"));
         const cashPence = sum(mine.filter((t) => t.paid_by === "cash"));
+        const record =
+          paid.data.find(
+            (p) =>
+              p.barber_id === b.id &&
+              p.period_start === from &&
+              p.period_end === to,
+          ) ?? null;
+        const rentWeeks = rentWeeksDue(
+          from,
+          to,
+          paid.data.filter(
+            (p) => p.barber_id === b.id && (!record || p.id !== record.id),
+          ),
+        );
         const figures = computePayout({
           salesPence,
           cardPence,
           cashPence,
           sharePercent: rule.share_percent,
           weeklyRentPence: rule.weekly_rent_pence,
+          rentWeeks,
           keepsCash: rule.keeps_cash,
-          days,
         });
-        const record = paid.data.find((p) => p.barber_id === b.id) ?? null;
         return {
           barber: { id: b.id, name: b.name, owner: ownerChairs.has(b.id) },
           rule: owner
@@ -177,6 +191,7 @@ export async function GET(req: Request) {
             mine.filter((t) => t.paid_by !== "card" && t.paid_by !== "cash"),
           ),
           ...figures,
+          rentWeeks,
           paid: record
             ? {
                 id: record.id,

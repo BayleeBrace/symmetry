@@ -35,6 +35,7 @@ export type Booking = {
   updated_at: string;
   late_minutes: number;
   paid_by?: PaidBy | null;
+  squeezed?: boolean;
   source?: string;
   barbers: { name: string; slug: string } | null;
   services: { name: string } | null;
@@ -212,10 +213,49 @@ export function canonicalServiceName(
   return SERVICES.find((s) => s.id === slug)?.name ?? fallback;
 }
 
+/** The one-tap client for someone who walks in off the street. Hidden from the Clients list. */
+export const WALK_IN = "Walk-in";
+
+/**
+ * Side-by-side lanes for trims that overlap, the way Fresha draws a
+ * squeeze-in: every trim in a run of overlapping trims gets a lane, and the
+ * run's lane count, so the cards share the column width.
+ */
+export function laneLayout<
+  T extends { id: string; start_minute: number; duration: number },
+>(items: T[]) {
+  const sorted = [...items].sort(
+    (a, b) => a.start_minute - b.start_minute || b.duration - a.duration,
+  );
+  const out = new Map<string, { lane: number; lanes: number }>();
+  let run: { id: string; lane: number }[] = [];
+  let laneEnds: number[] = [];
+  let runEnd = -1;
+  const flush = () => {
+    for (const r of run)
+      out.set(r.id, { lane: r.lane, lanes: laneEnds.length });
+    run = [];
+    laneEnds = [];
+  };
+  for (const item of sorted) {
+    if (item.start_minute >= runEnd) flush();
+    let lane = laneEnds.findIndex((end) => end <= item.start_minute);
+    if (lane < 0) {
+      lane = laneEnds.length;
+      laneEnds.push(0);
+    }
+    laneEnds[lane] = item.start_minute + item.duration;
+    runEnd = Math.max(runEnd, item.start_minute + item.duration);
+    run.push({ id: item.id, lane });
+  }
+  flush();
+  return out;
+}
+
 export function customerOf(booking: Booking): Customer {
   return (
     booking.booking_groups?.customers ?? {
-      name: "Walk-in",
+      name: WALK_IN,
       email: null,
       phone: null,
       preferences: null,
