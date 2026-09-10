@@ -85,4 +85,5 @@ The staff side now works the way Fresha does, in Symmetry's colours. Base: the b
 - **Splash screen** while the diary opens: monogram, Symmetry, a soft pulse. No more grey "Opening the diary…" text.
 - **One-row calendar header on phones.** Today, arrows, the date with a caret, and a sliders icon. Tap the date for the week strip; tap the sliders for the chair filter and Day or Week. Desktop is unchanged.
 - **Calendar look.** Avatars centred above each column, a divider between chairs, rounded cards with a deeper edge in the service colour and a bolder client name.
+- **Current-time bar** runs across every chair with the time on the rail, in oxblood. The diary opens scrolled to it. Only on today, of course.
 - **The messages notice** now says plainly what is up: how many messages are waiting, and that the once-a-minute sender (the Vercel cron with NOTIFICATIONS_ENABLED) is not running when the number keeps growing.
