@@ -257,3 +257,4 @@ From Sean's screen recording of Fresha. Four things the Symmetry app now does th
 - The website's prices page, booking page and waitlist form now read the names and prices the owner set, not the old fixed list. Renames show up on the site on the next load.
 - Splash: the SY monogram is gone; wordmark, cut and note only.
 - The "Running behind" panel no longer runs off the left when only one chair is showing.
+- **Rebook.** Open a cancelled or no-show trim and tap Rebook (or Book again on a finished one): New appointment opens with the client, chair, trim and slot filled in, ready to save or change.
