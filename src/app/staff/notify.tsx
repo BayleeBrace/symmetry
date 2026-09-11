@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { staffApi as api } from "@/lib/staff-client";
 import { PUSH_KINDS, type PushKind } from "@/lib/push-kinds";
 import { toast } from "./toast";
-import { Loading } from "./loading";
+import { Loading } from "./spinner";
 
 type Info = {
   configured: boolean;

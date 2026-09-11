@@ -9,7 +9,7 @@ import {
   WEEKDAYS,
   initials,
 } from "./types";
-import { Loading } from "./loading";
+import { Loading } from "./spinner";
 
 type Row = {
   barber: {

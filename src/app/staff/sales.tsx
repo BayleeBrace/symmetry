@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { staffApi as api } from "@/lib/staff-client";
 import { addDays, clock, shopToday } from "@/lib/booking-data";
 import { type Context, pounds, shortDay, weekStart } from "./types";
-import { Loading } from "./loading";
+import { Loading } from "./spinner";
 
 type Row = {
   id: string;

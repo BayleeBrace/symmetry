@@ -169,6 +169,7 @@ export function DayTimeline({
   placement,
   onPlace,
   onPlaceDone,
+  onRebook,
 }: {
   diary: Diary;
   barbers: Barber[];
@@ -180,6 +181,7 @@ export function DayTimeline({
   placement?: Placement | null;
   onPlace?: (barberId: string, minute: number) => void;
   onPlaceDone?: () => void;
+  onRebook?: (booking: Booking) => void;
 }) {
   const [selected, setSelected] = useState<Selection>(null);
   const [behind, setBehind] = useState<string | null>(null);
@@ -557,6 +559,10 @@ export function DayTimeline({
               act={act}
               today={today}
               onClose={() => setSelected(null)}
+              onRebook={(b) => {
+                setSelected(null);
+                onRebook?.(b);
+              }}
             />
           )}
           {selectedBlock && (
@@ -592,6 +598,7 @@ export function BookingSheet({
   today,
   diary,
   onClose,
+  onRebook,
 }: {
   booking: Booking;
   serviceName: string;
@@ -602,6 +609,7 @@ export function BookingSheet({
   today: string;
   diary?: Diary;
   onClose: () => void;
+  onRebook?: (booking: Booking) => void;
 }) {
   const customer = customerOf(booking);
   const isOpen = OPEN_STATUSES.includes(booking.status);
@@ -719,6 +727,17 @@ export function BookingSheet({
           {customer.email && (
             <a href={`mailto:${customer.email}`}>{customer.email}</a>
           )}
+        </div>
+      )}
+      {!isOpen && onRebook && (
+        <div className="sheet-actions">
+          <button
+            type="button"
+            className="button-primary"
+            onClick={() => onRebook(booking)}
+          >
+            {booking.status === "done" ? "Book again" : "Rebook"}
+          </button>
         </div>
       )}
       {isOpen && !checkout && (

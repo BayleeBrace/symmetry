@@ -93,7 +93,9 @@ export function NewAppointment({
   const [barberId, setBarberId] = useState(
     prefill.barberId ?? options[0]?.id ?? "",
   );
-  const [serviceId, setServiceId] = useState(ctx.services[0]?.id ?? "");
+  const [serviceId, setServiceId] = useState(
+    prefill.serviceId ?? ctx.services[0]?.id ?? "",
+  );
   const [date, setDate] = useState(prefill.date ?? shopToday());
   const [time, setTime] = useState<number | null>(prefill.minute ?? null);
   const [name, setName] = useState(prefill.client?.name ?? "");

@@ -212,7 +212,8 @@ export function canonicalServiceName(
   slug: string | undefined,
   fallback: string,
 ) {
-  return SERVICES.find((s) => s.id === slug)?.name ?? fallback;
+  // The catalogue name wins; the code list only fills a blank.
+  return fallback || SERVICES.find((s) => s.id === slug)?.name || "Trim";
 }
 
 /** The one-tap client for someone who walks in off the street. Hidden from the Clients list. */

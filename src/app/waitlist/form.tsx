@@ -4,9 +4,11 @@ import { BARBERS, SERVICES, shopToday, addDays } from "@/lib/booking-data";
 export function WaitlistForm({
   token,
   leave,
+  services = SERVICES,
 }: {
   token?: string;
   leave?: boolean;
+  services?: { id: string; name: string }[];
 }) {
   const [message, setMessage] = useState("");
   const [failed, setFailed] = useState(false);
@@ -73,7 +75,7 @@ export function WaitlistForm({
           <label>
             Trim
             <select name="service">
-              {SERVICES.map((s) => (
+              {services.map((s) => (
                 <option value={s.id} key={s.id}>
                   {s.name}
                 </option>

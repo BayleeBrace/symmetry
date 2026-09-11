@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { staffApi as api } from "@/lib/staff-client";
-import { Loading } from "./loading";
+import { Loading } from "./spinner";
 
 type Automation = {
   key: string;

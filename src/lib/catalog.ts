@@ -23,7 +23,9 @@ export async function getCatalog() {
     throw new Error("Prices and hours could not load");
   const result: Service[] = services.data.map((s) => ({
     id: s.slug,
-    name: SERVICES.find((known) => known.id === s.slug)?.name || s.name,
+    // The name the owner set in the catalogue, with the code list only as a fallback.
+    name:
+      s.name || SERVICES.find((known) => known.id === s.slug)?.name || s.slug,
     barbers: Object.fromEntries(
       barbers.data
         .map((b) => {

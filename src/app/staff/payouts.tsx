@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { staffApi as api } from "@/lib/staff-client";
 import { addDays, shopToday } from "@/lib/booking-data";
 import { type Context, initials, pounds, shortDay, weekStart } from "./types";
-import { Loading } from "./loading";
+import { Loading } from "./spinner";
 
 type Rule = {
   barber_id: string;

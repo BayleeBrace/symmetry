@@ -2114,6 +2114,31 @@ html[data-staff-page][data-staff-theme="dark"] body {
 .grid-table td button.is-off {
   color: var(--muted);
 }
+.catalogue-table tr.is-hidden th,
+.catalogue-table tr.is-hidden td {
+  opacity: 0.55;
+}
+.svc-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--black);
+  font: inherit;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 0.3em;
+  text-decoration-color: var(--line);
+  cursor: pointer;
+}
+.svc-name.is-editing {
+  text-decoration-color: var(--black);
+}
+.catalogue-table td button.is-off small {
+  font-style: italic;
+}
 .catalogue-table td button strong {
   display: block;
   font-weight: 400;
@@ -2977,6 +3002,10 @@ html[data-staff-page][data-staff-theme="dark"] body {
   }
   .chair:first-child .chair-behind {
     right: -120px;
+    left: 0;
+  }
+  .chair:first-child:last-child .chair-behind {
+    right: 0;
     left: 0;
   }
   .hour-rail span {

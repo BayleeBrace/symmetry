@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { staffApi as api } from "@/lib/staff-client";
 import { toast } from "./toast";
-import { Loading } from "./loading";
+import { Loading } from "./spinner";
 
 type ReadinessData = {
   checks: { label: string; ready: boolean }[];

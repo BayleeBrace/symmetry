@@ -5,7 +5,7 @@ import { clock, money } from "@/lib/booking-data";
 import { type Context, initials, shortDay } from "./types";
 import { type Waiting, WaitingRow } from "./forms";
 import { toast } from "./toast";
-import { Loading } from "./loading";
+import { Loading } from "./spinner";
 
 /** Everyone waiting for a day in the next two months, day by day. */
 function WaitingList({ onBack }: { onBack: () => void }) {

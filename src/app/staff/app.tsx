@@ -219,7 +219,6 @@ export function StaffApp() {
         aria-label="Opening the diary"
       >
         <div className="splash-stage">
-          <img className="splash-mono" src="/symmetry-monogram.svg" alt="" />
           <div className="splash-mark">
             <img src="/symmetry-wordmark.svg" alt="Symmetry" />
           </div>

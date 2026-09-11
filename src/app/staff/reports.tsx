@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { staffApi as api } from "@/lib/staff-client";
 import { pounds, shortDay } from "./types";
-import { Loading } from "./loading";
+import { Loading } from "./spinner";
 
 type Report = {
   period: string;

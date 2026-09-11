@@ -7,7 +7,7 @@ import { Readiness } from "./readiness";
 import { type Theme, THEME_LABEL, applyTheme, readTheme } from "./theme";
 import { NotificationSettings } from "./notify";
 import { toast } from "./toast";
-import { Loading } from "./loading";
+import { Loading } from "./spinner";
 
 export type SettingsTab =
   "home" | "account" | "notify" | "appearance" | "policy" | "checks";

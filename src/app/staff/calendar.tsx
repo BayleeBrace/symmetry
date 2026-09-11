@@ -12,11 +12,13 @@ import {
   type Act,
   type Barber,
   type Block,
+  type Booking,
   type Context,
   type Diary,
   OPEN_STATUSES,
   WALK_IN,
   chairHours,
+  customerOf,
   dayLabel,
   dayNumber,
   freeTimes,
@@ -48,11 +50,12 @@ import {
   WaitlistForm,
 } from "./forms";
 import { toast } from "./toast";
-import { Loading } from "./loading";
+import { Loading } from "./spinner";
 
 export type BookPrefill = {
   client?: { name: string; email: string; phone: string };
   barberId?: string;
+  serviceId?: string;
   date?: string;
   minute?: number;
 };
@@ -220,6 +223,17 @@ export function Calendar({
     setDrawer({
       kind: "block",
       prefill: { date, barberId: teamId ?? undefined, ...extra },
+    });
+  };
+  /** A cancelled, no-show or finished trim booked again: same client, chair and trim, from that slot. */
+  const rebook = (b: Booking) => {
+    const c = customerOf(b);
+    openNew({
+      client: { name: c.name, email: c.email ?? "", phone: c.phone ?? "" },
+      barberId: b.barber_id,
+      serviceId: b.service_id,
+      date: b.local_date,
+      minute: b.start_minute,
     });
   };
   const closeDrawer = () => {
@@ -561,6 +575,7 @@ export function Calendar({
           onWalkIn={(barber, minute) =>
             openNew({ barberId: barber.id, minute, date })
           }
+          onRebook={rebook}
           placement={placing}
           onPlace={(barberId, minute) => setPlacing({ barberId, minute })}
           onPlaceDone={finishPlacing}
@@ -573,6 +588,7 @@ export function Calendar({
           busy={busy}
           act={quiet}
           onMove={(drop) => moveTrim(drop, "day")}
+          onRebook={rebook}
           onGap={(day, minute) =>
             openNew({ barberId: weekBarber.id, date: day, minute })
           }
@@ -644,6 +660,7 @@ function WeekGrid({
   act,
   onMove,
   onGap,
+  onRebook,
 }: {
   diary: Diary;
   barber: Barber;
@@ -652,6 +669,7 @@ function WeekGrid({
   act: Act;
   onMove: (drop: DragDrop) => void;
   onGap: (date: string, minute: number) => void;
+  onRebook?: (booking: Booking) => void;
 }) {
   const [selected, setSelected] = useState<Selection>(null);
   const [nowMinute, setNowMinute] = useState(() => shopMinute());
@@ -859,6 +877,10 @@ function WeekGrid({
               act={act}
               today={today}
               onClose={() => setSelected(null)}
+              onRebook={(b) => {
+                setSelected(null);
+                onRebook?.(b);
+              }}
             />
           )}
           {selectedBlock && (

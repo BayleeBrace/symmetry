@@ -249,3 +249,11 @@ From Sean's screen recording of Fresha. Four things the Symmetry app now does th
 ## Loading
 
 - Every "Loading..." across the staff app (Clients, Sales, Payouts, Team, Reports, Marketing, Settings, the diary itself) is now a thin line with a sweep and a quiet word in small caps, the same cut as the splash. Reduced motion shows a still line.
+
+## Catalogue: the whole menu, live on the website
+
+- **Add a service** (name, starting price and timing, applied to every chair), **rename** it, **move it up or down** the menu, **hide** it (off the website and the diary, history kept) or **delete** it (only if no booking ever used it). Tap a service name for these.
+- **Per chair:** tap a price to change the price and timing, or untick "Offered on this chair" so that barber does not do it. Hidden services show dimmed with a Hidden chip.
+- The website's prices page, booking page and waitlist form now read the names and prices the owner set, not the old fixed list. Renames show up on the site on the next load.
+- Splash: the SY monogram is gone; wordmark, cut and note only.
+- The "Running behind" panel no longer runs off the left when only one chair is showing.
