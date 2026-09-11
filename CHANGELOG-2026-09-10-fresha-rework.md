@@ -260,3 +260,5 @@ From Sean's screen recording of Fresha. Four things the Symmetry app now does th
 - **Rebook.** Open a cancelled or no-show trim and tap Rebook (or Book again on a finished one): New appointment opens with the client, chair, trim and slot filled in, ready to save or change.
 - **Loading is the wordmark now.** Between pages, a faint Symmetry wordmark with the full one drawn across it left to right, over and over, plus the quiet word. It takes the theme colour, so it is black on light and bone on dark. Reduced motion shows it still.
 - **Editors pop up on phones.** Renaming a service, changing a price, editing a client, the team and payout forms: on a phone the editor now rises from the bottom of the screen over the page, with a dimmed background, instead of sitting under the table where you had to scroll to find it. Desktop keeps them in place.
+- The "Running behind" panel now stays on screen whether one, two or three chairs are showing.
+- Catalogue editors tidied: a title with a close cross, one full-width Save, Move up, Move down and Hide in a row of three, Delete on its own line.

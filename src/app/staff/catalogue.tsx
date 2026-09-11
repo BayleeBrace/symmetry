@@ -14,6 +14,29 @@ import { toast } from "./toast";
 
 type Row = Service & { active: boolean };
 
+/** The top of every editor: what it is about, and a way out. */
+function EditorHead({
+  title,
+  onClose,
+}: {
+  title: string;
+  onClose: () => void;
+}) {
+  return (
+    <div className="editor-head">
+      <p className="editor-title">{title}</p>
+      <button
+        type="button"
+        className="editor-close"
+        aria-label="Close"
+        onClick={onClose}
+      >
+        ×
+      </button>
+    </div>
+  );
+}
+
 /**
  * The owner's menu: every service, hidden ones too, with a price and timing
  * per chair. Anything changed here is what the website and the booking page
@@ -70,6 +93,11 @@ export function Catalogue({
       return false;
     }
   };
+  const closeAll = () => {
+    setEdit(null);
+    setPicked(null);
+    setAdding(false);
+  };
 
   const barbers = [...ctx.barbers]
     .filter((b) => b.active !== false)
@@ -90,9 +118,8 @@ export function Catalogue({
           type="button"
           className="button-primary"
           onClick={() => {
+            closeAll();
             setAdding(true);
-            setPicked(null);
-            setEdit(null);
           }}
         >
           Add a service
@@ -103,71 +130,6 @@ export function Catalogue({
         change it for that chair. The website and the booking page pick up every
         change straight away. Prices in pounds.
       </p>
-
-      {adding && (
-        <form
-          className="staff-form inline-editor"
-          onSubmit={async (event) => {
-            event.preventDefault();
-            const form = new FormData(event.currentTarget);
-            const ok = await change(
-              {
-                action: "service_add",
-                name: String(form.get("name")).trim(),
-                price_pence: Math.round(Number(form.get("price")) * 100),
-                duration: Number(form.get("duration")),
-              },
-              `${String(form.get("name")).trim()} added to every chair.`,
-            );
-            if (ok) setAdding(false);
-          }}
-        >
-          <p className="wide editor-title">New service</p>
-          <label className="wide">
-            Name
-            <input name="name" required minLength={2} maxLength={60} />
-          </label>
-          <label>
-            Price on every chair (pounds)
-            <input
-              name="price"
-              type="number"
-              step="0.5"
-              min="0"
-              required
-              defaultValue="20"
-            />
-          </label>
-          <label>
-            Duration (minutes)
-            <input
-              name="duration"
-              type="number"
-              step="5"
-              min="5"
-              max="480"
-              required
-              defaultValue="30"
-            />
-          </label>
-          <p className="price-hint">
-            Every chair offers it at this price to start with. Change any chair
-            afterwards by tapping its price.
-          </p>
-          <div className="form-actions">
-            <button type="submit" className="button-primary" disabled={busy}>
-              Add service
-            </button>
-            <button
-              type="button"
-              className="text-button"
-              onClick={() => setAdding(false)}
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      )}
 
       {!data ? (
         <Loading>Loading the catalogue</Loading>
@@ -195,10 +157,9 @@ export function Catalogue({
                       type="button"
                       className={`svc-name ${picked?.id === service.id ? "is-editing" : ""}`}
                       onClick={() => {
+                        closeAll();
                         setPicked(service);
                         setName(service.name);
-                        setEdit(null);
-                        setAdding(false);
                       }}
                     >
                       {service.name}
@@ -219,9 +180,8 @@ export function Catalogue({
                           type="button"
                           className={`${on ? "is-editing" : ""} ${off ? "is-off" : ""}`}
                           onClick={() => {
+                            closeAll();
                             setEdit({ barber, service });
-                            setPicked(null);
-                            setAdding(false);
                           }}
                         >
                           {price ? (
@@ -247,6 +207,64 @@ export function Catalogue({
         </div>
       )}
 
+      {adding && (
+        <form
+          className="staff-form inline-editor"
+          onSubmit={async (event) => {
+            event.preventDefault();
+            const form = new FormData(event.currentTarget);
+            const ok = await change(
+              {
+                action: "service_add",
+                name: String(form.get("name")).trim(),
+                price_pence: Math.round(Number(form.get("price")) * 100),
+                duration: Number(form.get("duration")),
+              },
+              `${String(form.get("name")).trim()} added to every chair.`,
+            );
+            if (ok) setAdding(false);
+          }}
+        >
+          <EditorHead title="New service" onClose={closeAll} />
+          <label className="wide">
+            Name
+            <input name="name" required minLength={2} maxLength={60} />
+          </label>
+          <label>
+            Price on every chair
+            <input
+              name="price"
+              type="number"
+              step="0.5"
+              min="0"
+              required
+              defaultValue="20"
+            />
+          </label>
+          <label>
+            Minutes
+            <input
+              name="duration"
+              type="number"
+              step="5"
+              min="5"
+              max="480"
+              required
+              defaultValue="30"
+            />
+          </label>
+          <p className="price-hint">
+            Every chair offers it at this price to start with. Change any chair
+            afterwards by tapping its price.
+          </p>
+          <div className="form-actions">
+            <button type="submit" className="button-primary" disabled={busy}>
+              Add service
+            </button>
+          </div>
+        </form>
+      )}
+
       {current && (
         <form
           key={current.id}
@@ -260,7 +278,7 @@ export function Catalogue({
               );
           }}
         >
-          <p className="wide editor-title">{current.name}</p>
+          <EditorHead title={current.name} onClose={closeAll} />
           <label className="wide">
             Name
             <input
@@ -271,7 +289,7 @@ export function Catalogue({
               onChange={(e) => setName(e.target.value)}
             />
           </label>
-          <div className="form-actions wide">
+          <div className="form-actions">
             <button
               type="submit"
               className="button-primary"
@@ -279,6 +297,8 @@ export function Catalogue({
             >
               Save name
             </button>
+          </div>
+          <div className="editor-row">
             <button
               type="button"
               className="button-secondary"
@@ -326,6 +346,8 @@ export function Catalogue({
             >
               {current.active ? "Hide" : "Show"}
             </button>
+          </div>
+          <div className="editor-quiet">
             <button
               type="button"
               className="text-button"
@@ -344,14 +366,7 @@ export function Catalogue({
                 if (ok) setPicked(null);
               }}
             >
-              Delete
-            </button>
-            <button
-              type="button"
-              className="text-button"
-              onClick={() => setPicked(null)}
-            >
-              Close
+              Delete this service
             </button>
           </div>
         </form>
@@ -378,11 +393,12 @@ export function Catalogue({
             if (ok) setEdit(null);
           }}
         >
-          <p className="wide editor-title">
-            {edit.service.name} with {edit.barber.name}
-          </p>
+          <EditorHead
+            title={`${edit.service.name} with ${edit.barber.name}`}
+            onClose={closeAll}
+          />
           <label>
-            Price (pounds)
+            Price
             <input
               name="price"
               type="number"
@@ -393,7 +409,7 @@ export function Catalogue({
             />
           </label>
           <label>
-            Duration (minutes)
+            Minutes
             <input
               name="duration"
               type="number"
@@ -415,13 +431,6 @@ export function Catalogue({
           <div className="form-actions">
             <button type="submit" className="button-primary" disabled={busy}>
               Save
-            </button>
-            <button
-              type="button"
-              className="text-button"
-              onClick={() => setEdit(null)}
-            >
-              Cancel
             </button>
           </div>
         </form>

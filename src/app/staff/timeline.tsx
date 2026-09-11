@@ -344,7 +344,7 @@ export function DayTimeline({
             </span>
           )}
         </div>
-        {barbers.map((barber) => {
+        {barbers.map((barber, index) => {
           const bookings = bookingsToday.filter(
             (b) => b.barber_id === barber.id,
           );
@@ -366,6 +366,15 @@ export function DayTimeline({
             <section
               key={barber.id}
               className={`chair ${own === barber.id ? "is-own" : ""}`}
+              data-pos={
+                barbers.length === 1
+                  ? "only"
+                  : index === 0
+                    ? "first"
+                    : index === barbers.length - 1
+                      ? "last"
+                      : "mid"
+              }
               aria-label={`${barber.name}: ${active.length} trims`}
             >
               <header className="chair-head">
