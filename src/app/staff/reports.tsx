@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { staffApi as api } from "@/lib/staff-client";
 import { pounds, shortDay } from "./types";
+import { Loading } from "./loading";
 
 type Report = {
   period: string;
@@ -33,12 +34,7 @@ export function Reports() {
     }, 0);
     return () => clearTimeout(t);
   }, []);
-  if (!report)
-    return (
-      <p role="status" className="staff-muted">
-        {error || "Adding it up…"}
-      </p>
-    );
+  if (!report) return <Loading>{error || "Adding it up…"}</Loading>;
   const days = Object.entries(report.days ?? {}).sort(([a], [b]) =>
     a < b ? 1 : -1,
   );

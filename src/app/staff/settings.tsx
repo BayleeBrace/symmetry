@@ -7,6 +7,7 @@ import { Readiness } from "./readiness";
 import { type Theme, THEME_LABEL, applyTheme, readTheme } from "./theme";
 import { NotificationSettings } from "./notify";
 import { toast } from "./toast";
+import { Loading } from "./loading";
 
 export type SettingsTab =
   "home" | "account" | "notify" | "appearance" | "policy" | "checks";
@@ -160,12 +161,7 @@ function PolicyForm({ act, busy }: { act: Act; busy: boolean }) {
     const t = setTimeout(reload, 0);
     return () => clearTimeout(t);
   }, [reload]);
-  if (!policy)
-    return (
-      <p role="status" className="staff-muted">
-        {error || "Loading…"}
-      </p>
-    );
+  if (!policy) return <Loading>{error || "Loading…"}</Loading>;
   return (
     <div className="staff-panel settings-block">
       <p className="staff-muted">

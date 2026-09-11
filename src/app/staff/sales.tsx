@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { staffApi as api } from "@/lib/staff-client";
 import { addDays, clock, shopToday } from "@/lib/booking-data";
 import { type Context, pounds, shortDay, weekStart } from "./types";
+import { Loading } from "./loading";
 
 type Row = {
   id: string;
@@ -100,9 +101,7 @@ export function Sales({ ctx }: { ctx: Context }) {
         </p>
       )}
       {!current ? (
-        <p role="status" className="staff-muted">
-          Adding it up…
-        </p>
+        <Loading>Adding it up…</Loading>
       ) : (
         <>
           <div className="stat-row">

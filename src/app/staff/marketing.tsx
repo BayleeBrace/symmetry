@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { staffApi as api } from "@/lib/staff-client";
+import { Loading } from "./loading";
 
 type Automation = {
   key: string;
@@ -40,9 +41,7 @@ export function Marketing() {
         </p>
       )}
       {!data ? (
-        <p role="status" className="staff-muted">
-          Loading…
-        </p>
+        <Loading>Loading…</Loading>
       ) : (
         <>
           <div className="stat-row">

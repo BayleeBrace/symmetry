@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { staffApi as api } from "@/lib/staff-client";
 import { toast } from "./toast";
+import { Loading } from "./loading";
 
 type ReadinessData = {
   checks: { label: string; ready: boolean }[];
@@ -62,12 +63,7 @@ export function Readiness() {
       setBusy(false);
     }
   };
-  if (!data)
-    return (
-      <p role="status" className="staff-muted">
-        {error || "Checking setup…"}
-      </p>
-    );
+  if (!data) return <Loading>{error || "Checking setup…"}</Loading>;
   const ready = data.checks.filter((check) => check.ready).length;
   const counts = data.counts ?? { stale: 0, pending: 0, failed: 0 };
   return (

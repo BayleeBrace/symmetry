@@ -245,3 +245,7 @@ From Sean's screen recording of Fresha. Four things the Symmetry app now does th
 ## Your own chair first
 
 - The calendar now opens on the signed-in barber's own chair rather than the whole shop. Pick All chairs from the sliders icon to see everyone; that choice is remembered on the phone. An owner without a chair of their own still sees the whole shop.
+
+## Loading
+
+- Every "Loading..." across the staff app (Clients, Sales, Payouts, Team, Reports, Marketing, Settings, the diary itself) is now a thin line with a sweep and a quiet word in small caps, the same cut as the splash. Reduced motion shows a still line.

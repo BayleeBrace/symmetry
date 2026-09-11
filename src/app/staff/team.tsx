@@ -9,6 +9,7 @@ import {
   WEEKDAYS,
   initials,
 } from "./types";
+import { Loading } from "./loading";
 
 type Row = {
   barber: {
@@ -114,12 +115,7 @@ function Members() {
       setBusy(false);
     }
   }
-  if (!team)
-    return (
-      <p role="status" className="staff-muted">
-        {error || "Loading the team…"}
-      </p>
-    );
+  if (!team) return <Loading>{error || "Loading the team…"}</Loading>;
   return (
     <div className="members">
       <p className="staff-muted">
@@ -132,11 +128,7 @@ function Members() {
           {error}
         </p>
       )}
-      {notice && (
-        <p className="staff-muted" role="status">
-          {notice}
-        </p>
-      )}
+      {notice && <Loading>{notice}</Loading>}
       <div className="team-list">
         {team.map(({ barber, account }) => (
           <article className="team-row" key={barber.id}>
@@ -343,12 +335,7 @@ function Shifts({ ctx, act, busy }: { ctx: Context; act: Act; busy: boolean }) {
     const t = setTimeout(reload, 0);
     return () => clearTimeout(t);
   }, [reload]);
-  if (!schedules)
-    return (
-      <p role="status" className="staff-muted">
-        {error || "Loading shifts…"}
-      </p>
-    );
+  if (!schedules) return <Loading>{error || "Loading shifts…"}</Loading>;
   const barbers = [...ctx.barbers]
     .filter((b) => b.active !== false)
     .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));

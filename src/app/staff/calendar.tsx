@@ -48,6 +48,7 @@ import {
   WaitlistForm,
 } from "./forms";
 import { toast } from "./toast";
+import { Loading } from "./loading";
 
 export type BookPrefill = {
   client?: { name: string; email: string; phone: string };
@@ -548,9 +549,7 @@ export function Calendar({
       )}
 
       {!dayData ? (
-        <p role="status" className="staff-muted">
-          Opening the diary…
-        </p>
+        <Loading>Opening the diary…</Loading>
       ) : view === "day" ? (
         <DayTimeline
           diary={dayData}

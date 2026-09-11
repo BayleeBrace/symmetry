@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { staffApi as api } from "@/lib/staff-client";
 import { addDays, shopToday } from "@/lib/booking-data";
 import { type Context, initials, pounds, shortDay, weekStart } from "./types";
+import { Loading } from "./loading";
 
 type Rule = {
   barber_id: string;
@@ -179,15 +180,9 @@ export function Payouts({ ctx }: { ctx: Context }) {
           {error}
         </p>
       )}
-      {notice && (
-        <p className="staff-muted" role="status">
-          {notice}
-        </p>
-      )}
+      {notice && <Loading>{notice}</Loading>}
       {!current ? (
-        <p role="status" className="staff-muted">
-          Adding it up…
-        </p>
+        <Loading>Adding it up…</Loading>
       ) : (
         <>
           {owner && (

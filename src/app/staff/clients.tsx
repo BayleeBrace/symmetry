@@ -5,6 +5,7 @@ import { clock, money } from "@/lib/booking-data";
 import { type Context, initials, shortDay } from "./types";
 import { type Waiting, WaitingRow } from "./forms";
 import { toast } from "./toast";
+import { Loading } from "./loading";
 
 /** Everyone waiting for a day in the next two months, day by day. */
 function WaitingList({ onBack }: { onBack: () => void }) {
@@ -55,9 +56,7 @@ function WaitingList({ onBack }: { onBack: () => void }) {
         </p>
       )}
       {!rows ? (
-        <p role="status" className="staff-muted">
-          Loading…
-        </p>
+        <Loading>Loading…</Loading>
       ) : rows.length === 0 ? (
         <p className="staff-muted">Nobody is waiting.</p>
       ) : (
@@ -199,9 +198,7 @@ export function Clients({
           </p>
         )}
         {!client ? (
-          <p role="status" className="staff-muted">
-            Loading…
-          </p>
+          <Loading>Loading…</Loading>
         ) : (
           <>
             <header className="client-head">
@@ -463,9 +460,7 @@ export function Clients({
         </p>
       )}
       {!rows ? (
-        <p role="status" className="staff-muted">
-          Loading…
-        </p>
+        <Loading>Loading…</Loading>
       ) : (
         <>
           <p className="staff-muted">

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { staffApi as api } from "@/lib/staff-client";
 import { PUSH_KINDS, type PushKind } from "@/lib/push-kinds";
 import { toast } from "./toast";
+import { Loading } from "./loading";
 
 type Info = {
   configured: boolean;
@@ -185,12 +186,7 @@ export function NotificationSettings() {
     }
   };
 
-  if (!info)
-    return (
-      <p role="status" className="staff-muted">
-        {error || "Checking…"}
-      </p>
-    );
+  if (!info) return <Loading>{error || "Checking…"}</Loading>;
 
   return (
     <div className="notify">
