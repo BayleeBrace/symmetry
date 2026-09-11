@@ -2829,6 +2829,34 @@ html[data-staff-page][data-staff-theme="dark"] body {
   .trim.is-lane {
     padding: 2px 4px;
   }
+  /* Editors pop up as a sheet on phones instead of sitting under a long table */
+  .inline-editor {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 42;
+    max-height: 84svh;
+    max-width: none;
+    margin: 0;
+    padding: 18px 16px calc(20px + env(safe-area-inset-bottom));
+    overflow: auto;
+    border-radius: 18px 18px 0 0;
+    background: var(--white);
+    box-shadow: 0 -12px 40px rgba(22, 22, 22, 0.3);
+    animation: editor-up 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .inline-editor::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background: rgba(22, 22, 22, 0.38);
+  }
+  .inline-editor .editor-title {
+    margin-top: 0;
+    font-size: 1.1rem;
+  }
   .sec-head {
     margin-bottom: 12px;
   }
@@ -3160,4 +3188,20 @@ html[data-staff-page][data-staff-theme="dark"] body {
 }
 .wait-day + .wait-day {
   margin-top: 8px;
+}
+
+@keyframes editor-up {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .inline-editor {
+    animation: none;
+  }
 }
