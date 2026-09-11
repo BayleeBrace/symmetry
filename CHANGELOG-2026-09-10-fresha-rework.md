@@ -258,3 +258,4 @@ From Sean's screen recording of Fresha. Four things the Symmetry app now does th
 - Splash: the SY monogram is gone; wordmark, cut and note only.
 - The "Running behind" panel no longer runs off the left when only one chair is showing.
 - **Rebook.** Open a cancelled or no-show trim and tap Rebook (or Book again on a finished one): New appointment opens with the client, chair, trim and slot filled in, ready to save or change.
+- **Loading is the wordmark now.** Between pages, a faint Symmetry wordmark with the full one drawn across it left to right, over and over, plus the quiet word. It takes the theme colour, so it is black on light and bone on dark. Reduced motion shows it still.
