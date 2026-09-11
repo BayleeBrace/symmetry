@@ -1815,6 +1815,62 @@ html[data-staff-page][data-staff-theme="dark"] body {
     opacity: 0.6;
   }
 }
+/* Reports: bar rows and the two side-by-side panels */
+.report-panels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+  margin: 18px 0;
+}
+.report-panels .staff-panel {
+  max-width: none;
+  margin: 0;
+}
+.bars {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.bars li {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.86rem;
+}
+.bar-label {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.bar-track {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--bone);
+}
+.bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--black);
+}
+.bar-value {
+  min-width: 2em;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.bar-value small {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+.reports .sec-head {
+  margin-bottom: 12px;
+}
+.reports .sec-head h2 {
+  margin: 0;
+}
 /* Editor sheets: a header with a close, tidy rows of equal buttons */
 .editor-head {
   grid-column: 1 / -1;

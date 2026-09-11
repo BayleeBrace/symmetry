@@ -27,9 +27,40 @@ const fields = "id,name,email,phone,phone_country,preferences,created_at";
 // Every signed-in barber can look clients up and see their history; only the owner can edit details.
 export async function GET(req: Request) {
   try {
-    await requireStaff();
+    const staff = await requireStaff();
     const db = createAdminClient();
     const params = new URL(req.url).searchParams;
+    // The whole client list as a spreadsheet, for the owner.
+    if (params.get("format") === "csv") {
+      if (staff.role !== "owner")
+        throw new Error("Only the owner can download the client list");
+      const { data: all, error } = await db
+        .from("customers")
+        .select("name,email,phone,preferences,created_at")
+        .is("directory_parent_id", null)
+        .neq("name", "Walk-in")
+        .order("name")
+        .limit(20000);
+      if (error) throw new Error("Clients could not load");
+      const cell = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+      const lines = (all || []).map((c) =>
+        [c.name, c.phone, c.email, c.preferences, c.created_at.slice(0, 10)]
+          .map(cell)
+          .join(","),
+      );
+      return new Response(
+        ["Name,Mobile,Email,Notes,Client since", ...lines].join("\r\n") +
+          "\r\n",
+        {
+          headers: {
+            "Content-Type": "text/csv; charset=utf-8",
+            "Content-Disposition":
+              'attachment; filename="symmetry-clients.csv"',
+            "Cache-Control": "private, no-store",
+          },
+        },
+      );
+    }
     const page = z.coerce
       .number()
       .int()

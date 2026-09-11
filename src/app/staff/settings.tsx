@@ -10,7 +10,13 @@ import { toast } from "./toast";
 import { Loading } from "./spinner";
 
 export type SettingsTab =
-  "home" | "account" | "notify" | "appearance" | "policy" | "checks";
+  | "home"
+  | "account"
+  | "notify"
+  | "appearance"
+  | "policy"
+  | "checks"
+  | "exports";
 
 type Policy = {
   cancellation_hours: number;
@@ -53,7 +59,47 @@ const PAGES: {
     detail: "Set-up checks and the message queue.",
     owner: true,
   },
+  {
+    id: "exports",
+    title: "Your data",
+    detail: "Download clients and bookings as spreadsheets.",
+    owner: true,
+  },
 ];
+
+/** The shop's own data, as CSV files that open in Excel or Numbers. */
+function Exports() {
+  return (
+    <section className="staff-panel">
+      <h2>Your data.</h2>
+      <p>
+        Everything the app holds, as spreadsheets. Best done on a computer: a
+        phone may open the file in a new tab instead of saving it.
+      </p>
+      <div className="form-actions">
+        <a className="button-secondary" href="/api/staff/customers?format=csv">
+          Download clients
+        </a>
+        <a
+          className="button-secondary"
+          href="/api/staff/reports?format=csv&days=365"
+        >
+          Download bookings, last year
+        </a>
+        <a
+          className="button-secondary"
+          href="/api/staff/reports?format=csv&days=730"
+        >
+          Bookings, two years
+        </a>
+      </div>
+      <p className="staff-muted">
+        Clients: name, mobile, email, notes, client since. Bookings: date, time,
+        client, chair, trim, status, price, how it was paid, any fee charged.
+      </p>
+    </section>
+  );
+}
 
 export function SettingsSection({
   owner,
@@ -112,6 +158,7 @@ export function SettingsSection({
       {page.id === "appearance" && <Appearance />}
       {page.id === "policy" && <PolicyForm act={act} busy={busy} />}
       {page.id === "checks" && <Readiness />}
+      {page.id === "exports" && <Exports />}
     </section>
   );
 }

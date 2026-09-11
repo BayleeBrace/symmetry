@@ -262,3 +262,8 @@ From Sean's screen recording of Fresha. Four things the Symmetry app now does th
 - **Editors pop up on phones.** Renaming a service, changing a price, editing a client, the team and payout forms: on a phone the editor now rises from the bottom of the screen over the page, with a dimmed background, instead of sitting under the table where you had to scroll to find it. Desktop keeps them in place.
 - The "Running behind" panel now stays on screen whether one, two or three chairs are showing.
 - Catalogue editors tidied: a title with a close cross, one full-width Save, Move up, Move down and Hide in a row of three, Delete on its own line.
+
+## Reports that answer questions, and your own data
+
+- **Reports** now has a period switch (30 days, 3 months, a year) and answers the real questions: the no-show rate overall and per chair, how many clients came back for another trim in the period, the busiest hours as a bar chart, and each day of the week with trims per open day, so the quietest day is obvious. The per-day list shows the last fortnight.
+- **Your data** under Settings (owner): download the client list, and every booking for the last year or two years, as CSV files that open in Excel or Numbers. Sean is never locked in.
