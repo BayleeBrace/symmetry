@@ -2,17 +2,32 @@
 
 An audit of the public website, booking flow, customer pages, share images, staff app, server routes and database. It was checked against the brand handover of 2 November 2026 (`CURRENT-DECISIONS.md`, the master prompt, Edition 01) and the existing repository decisions.
 
-## Decisions kept as they are
+## Decisions
 
-- **Sentence case stays.** The handover asks for lowercase headings and labels, but Sean asked for sentence case on 7 September 2026 (see `CHANGELOG-2026-09-07-staff-and-copy.md`). Nothing in the handover records him reversing that, so the site was not changed. If lowercase is wanted after all, that is one deliberate pass across copy and service names.
+- **Lowercase headings and labels.** Baylee chose the brand handover's rule over the sentence case Sean asked for on 7 September (`CHANGELOG-2026-09-07-staff-and-copy.md`).
+  - **Lowercase:** headings, eyebrows, buttons, navigation, form labels, table headers, email headings and buttons, and the canonical service names ("fade", "cut and beard").
+  - **Sentence case:** full sentences, messages and email subject lines.
+  - **Capitals kept:** people, places, days, months, brand names and postcodes.
+  - It applies across the website, booking flow, customer pages, share images, emails and the staff app. Mention it to Sean, since it reverses his request.
 - **Staff warning bands and the dark-mode oxblood** (`#c8737d`) were requested for legibility and stay. The pink and lilac service colours were not requested and were replaced (see the staff section).
-- **The phone number is still unconfirmed.** `SHOP_PHONE` remains empty until Sean confirms 01834 811351 or another number.
+- **The phone number is still unconfirmed.** `SHOP_PHONE` stays empty until Sean confirms 01834 811351 or another number.
+
+## Before deploying
+
+Apply these two migrations to the database, staging first, in this order:
+
+1. `supabase/migrations/20261102120000_audit_fixes.sql`. Safe to run twice.
+   - Returning customers keep their notes.
+   - Normal trims can't be booked over a squeeze-in.
+   - One confirmation goes out per booking rather than per trim.
+   - **Apply it before or with the code.** Without it, each trim still sends its own confirmation, and each one would list the whole booking.
+2. `supabase/migrations/20261102130000_lowercase_service_names.sql`. Renames services and barber roles to lowercase, but only where the name is still the September default; anything renamed in the catalogue is kept.
 
 ## Public website
 
 - **Search and share metadata.** The root layout no longer sets a site-wide canonical URL or `og:url`. Before, every page without its own (waitlist, bookings, staff, the 404) told search engines and share cards that it was the home page. Privacy and cancellation policy have their own descriptions.
 - **Contact email.** `info@symmetrywales.com` is the default shop email (confirmed in the handover). It now shows on the home, hours and policy pages, the footer and the structured data, and transactional email replies go to it. `SHOP_EMAIL` still overrides it.
-- **Teaser.** While the site is locked, the teaser now says where the shop is and keeps the old name for recognition: "Formerly Studio 4 Barbers. 4 Brewery Terrace, Saundersfoot. @symmetry.wales".
+- **Teaser.** While the site is locked, the teaser now says where the shop is and keeps the old name for recognition: "formerly Studio 4 Barbers. 4 Brewery Terrace, Saundersfoot. @symmetry.wales".
 - **Readability.** Body copy on the public pages is 17px on phones and 18px on desktop. It was 16px Jost Light, below the brand's 17–18px. The following were 12–12.5px and are now larger:
   - desktop navigation
   - hero address
@@ -34,3 +49,68 @@ An audit of the public website, booking flow, customer pages, share images, staf
 - **The mobile number field has an accessible name.** Its label wrapped both the country select and the input, so screen readers announced the input without a name.
 - **More country codes.** The list grew from 6 to 30 countries. The UK is still the default.
 - **Spacing fixes.** "Any barber" times read "Sean · 24", not "Sean ·24". The booking management page reads "45 min · 22", not "45 min ·22".
+
+## Lowercase pass
+
+- **Public pages:** headings, eyebrows, navigation, buttons, footer links, labels and taglines, e.g. "same chairs. new name.", "your chair.", "croeso.", "prices.", "come by.", "diolch.".
+- **Price table:** uses d / t / s columns with a "d Dylan · t Travis · s Sean" legend and "prices in pounds.".
+- **Booking flow and customer pages:** step labels, headings, form labels, buttons, repeat options and period names.
+- **Share images and emails:** share image titles are lowercase. Email headings lower only their first letter, so "your Symmetry booking." keeps its capital; email buttons are lowercase and subject lines stay in sentence case.
+- **Service names and roles:** service names are lowercase in code, and the migration above renames them in the database. Barber roles read "owner, barber", "senior barber" and "junior barber".
+- **Staff app:** headings, tabs, buttons, form labels and status chips are lowercase. Messages stay in sentence case.
+
+## Staff app
+
+- **Fresh data.** The diary and payouts ignore answers that arrive after you've moved on, so a slow day no longer replaces the one you're looking at. A sign-in that expires during the background refresh now shows the sign-in screen instead of stale data.
+- **Checkout and clients.** Checkout always sends the price typed at the till. Picking an existing client reuses them instead of creating a duplicate.
+- **New appointments.** The form shows diary errors with "try again". It only offers what the chosen chair does, and limits repeats to the 120-day diary with an accurate message.
+- **Settings, reports and payouts.**
+  - Settings can't save an empty policy field as 0%.
+  - Reports and payouts show loading and errors when switching period.
+  - An impossible payout range says so instead of spinning forever.
+  - Success notices are toasts, not permanent spinners.
+- **Sheets and editors.** Opening one moves focus in, Escape closes the top one, and focus goes back to what opened it. Editors on phones have a real backdrop that closes them and a close button. Pull-to-refresh no longer fires inside an editor. Phones get a date picker.
+- **Tap targets and visibility.**
+  - Small controls have 44px tap areas.
+  - Small card text passes contrast in dark mode.
+  - Logos are visible in dark mode.
+  - The tab bar respects the iPhone safe area.
+  - Sign-out forgets the phone's notifications.
+- **Brand.** Slate and stone service colours replace pink and lilac. Selected states are black and white, and there is no synthetic bold.
+
+## Server and database
+
+- **Card setup.**
+  - Only the tab that started a booking gets the manage link back after card setup; anyone else is told it's in their email.
+  - Stripe is told "done" for setups that can never succeed, so it stops retrying.
+  - Times are checked for clashes before the customer enters a card.
+- **Bookings and messages.**
+  - Returning customers keep their notes.
+  - A normal trim can't go over a squeeze-in.
+  - One confirmation per booking, listing every trim.
+  - Customer messages still go out if the waitlist step fails.
+  - Waitlist offers go round everyone before anyone gets a second.
+- **Reports and exports.** Reports, sales, payouts, rebook reminders and the client CSV read past the 1000-row limit. CSV exports can't carry spreadsheet formulas. Charged late-cancellation fees count in sales.
+- **Small fixes.**
+  - Weekly hours changes are only blocked by bookings they would strand.
+  - Push can move to a returning customer's new booking.
+  - No duplicate "running late" push.
+  - Unsubscribe links ask before stopping, so mail scanners can't unsubscribe people.
+  - The waitlist works in preview.
+  - Landlines are refused for the mobile field.
+  - Message wording is tidied, with one deadline format ("Tue, 10 November 2026 at 9:00").
+
+## Checks
+
+- **Automated:** 28 tests pass, including new database tests for notes, squeeze-in overlaps and one confirmation per booking. Lint (no errors), TypeScript, Prettier and the production build pass.
+- **Browser:** public pages and the full preview booking flow were checked with Playwright and axe at 375px and 1440px, with no accessibility violations and no horizontal scroll.
+
+## Still needs real accounts or devices
+
+- **Staff app:** could only be type-checked and read, not used, because there is no Supabase here. Sign in on a phone and try the diary, checkout, a new appointment, editors and dark mode.
+- **Payments and messages:** card setup, the webhook and email/SMS delivery need the Stripe test mode and Resend trial in `LAUNCH-CHECKS.md`.
+- **Real iPhone:** date picker, safe areas, pull-to-refresh and booking scroll.
+- **Known gaps:**
+  - The rebook step's customer, consent and upcoming-trim lookups are not paged yet.
+  - Per-client stats in the staff client list still stop at 2000 rows.
+  - Customer history in the diary still stops at 3000 rows.

@@ -15,7 +15,12 @@ import { getCatalog } from "./catalog";
 import { shopContact } from "./shop-contact";
 import { busyFor } from "./availability";
 import { fetchAll } from "./paging";
-import { bookingText, sentence, waitlistOfferText } from "./message-copy";
+import {
+  bookingText,
+  heading,
+  sentence,
+  waitlistOfferText,
+} from "./message-copy";
 import { offerOrder } from "./waitlist-order";
 import type { BusyPeriod } from "./booking-data";
 const escape = (s: string) =>
@@ -126,7 +131,7 @@ export async function processNotifications() {
           url =
             review ||
             `${siteUrl()}/book?barber=${barber.slug}&service=${service.slug}`;
-          text = `Thanks for coming in, ${first}. ${service.name} with ${barber.name} on ${fullDate(b.local_date)}. ${review ? "If you have a minute, a Google review helps a small shop more than you would think." : "Book your next one whenever suits."} See you in a few weeks.`;
+          text = `Thanks for coming in, ${first}. Your ${service.name} with ${barber.name} on ${fullDate(b.local_date)}. ${review ? "If you have a minute, a Google review helps a small shop more than you would think." : "Book your next one whenever suits."} See you in a few weeks.`;
         } else if (job.kind === "delayed") {
           text = `${barber.name} is running about ${job.payload.minutes} minutes behind for your ${clock(b.start_minute)} trim today. Sorry for the wait; there is nothing you need to do.`;
         } else {
@@ -204,7 +209,7 @@ export async function processNotifications() {
           .split("\n")
           .map((line) => `<p>${escape(line)}</p>`)
           .join("");
-        const html = `<div style="background:#efebe3;color:#161616;padding:36px;font:16px Arial,sans-serif"><img src="${escape(siteUrl())}/wordmark-email.png" width="320" height="112" alt="Symmetry" style="display:block;width:320px;max-width:100%;height:auto" /><h1 style="font:normal 28px Arial,sans-serif">${escape(sentence(subject))}</h1>${paragraphs}<p><a href="${escape(url!)}" style="display:inline-block;background:#161616;color:#fff;padding:14px 20px;text-decoration:none">${job.kind === "waitlist_verify" ? "Confirm request" : job.kind === "thanks" ? (process.env.GOOGLE_REVIEW_URL ? "Leave a review" : "Book again") : job.kind === "nudge" ? "Book my usual" : job.kind === "waitlist_alert" ? "Book a trim" : "View details"}</a></p><p>4 Brewery Terrace, Saundersfoot</p>${job.kind === "nudge" ? `<p style="font-size:13px;color:#5a5650">You asked us to remind you when you are due. <a href="${escape(job.payload.stop)}" style="color:#5a5650">Stop these reminders</a>.</p>` : ""}</div>`;
+        const html = `<div style="background:#efebe3;color:#161616;padding:36px;font:16px Arial,sans-serif"><img src="${escape(siteUrl())}/wordmark-email.png" width="320" height="112" alt="Symmetry" style="display:block;width:320px;max-width:100%;height:auto" /><h1 style="font:normal 28px Arial,sans-serif">${escape(heading(subject))}</h1>${paragraphs}<p><a href="${escape(url!)}" style="display:inline-block;background:#161616;color:#fff;padding:14px 20px;text-decoration:none">${job.kind === "waitlist_verify" ? "confirm request" : job.kind === "thanks" ? (process.env.GOOGLE_REVIEW_URL ? "leave a review" : "book again") : job.kind === "nudge" ? "book my usual" : job.kind === "waitlist_alert" ? "book a trim" : "view details"}</a></p><p>4 Brewery Terrace, Saundersfoot</p>${job.kind === "nudge" ? `<p style="font-size:13px;color:#5a5650">You asked us to remind you when you are due. <a href="${escape(job.payload.stop)}" style="color:#5a5650">Stop these reminders</a>.</p>` : ""}</div>`;
         const response = await fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: {

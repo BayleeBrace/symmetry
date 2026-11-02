@@ -9,9 +9,9 @@ export default async function OpenGraphImage() {
   return createBrandedOgImage({
     eyebrow:
       process.env.SITE_LIVE === "true"
-        ? "Barbers in Saundersfoot"
-        : "Coming soon",
-    title: "Same chairs.\nNew name.",
-    detail: "Cuts, fades and beards in Saundersfoot.",
+        ? "barbers in Saundersfoot"
+        : "coming soon",
+    title: "same chairs.\nnew name.",
+    detail: "cuts, fades and beards in Saundersfoot.",
   });
 }

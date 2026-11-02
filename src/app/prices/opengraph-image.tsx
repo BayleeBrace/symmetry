@@ -7,8 +7,8 @@ export const contentType = "image/jpeg";
 
 export default function OpenGraphImage() {
   return createBrandedOgImage({
-    eyebrow: "Cuts, fades and beards",
-    title: "Prices.",
+    eyebrow: "cuts, fades and beards",
+    title: "prices.",
     detail: "Sean · Travis · Dylan",
   });
 }

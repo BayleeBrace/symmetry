@@ -2,6 +2,10 @@
 
 A mobile-first Symmetry website and bespoke booking app for GitHub, Vercel and Supabase. This package updates the existing app; it has not been deployed or connected to live payment or messaging accounts.
 
+## Latest: whole-site audit, 2 November 2026
+
+See `CHANGELOG-2026-11-02-site-audit.md`. It covers lowercase headings and labels, readability, booking fixes, staff app fixes and server fixes. Apply `supabase/migrations/20261102120000_audit_fixes.sql` and then `20261102130000_lowercase_service_names.sql` before or with the deploy.
+
 ## This update
 
 - Editable cancellation policy: free until six hours before, then 50% late cancellation and 100% no-show. Sean must confirm these settings before live bookings are enabled.

@@ -9,6 +9,16 @@ export function sentence(text: string) {
   return /[.?!…]$/.test(s) ? s : s + ".";
 }
 
+/**
+ * An email heading in the brand's lowercase style: the subject as a sentence,
+ * with only its first letter lowered, so names such as Symmetry keep capitals.
+ * The subject line itself stays in sentence case.
+ */
+export function heading(text: string) {
+  const s = sentence(text);
+  return s.charAt(0).toLowerCase() + s.slice(1);
+}
+
 /** One trim as the site writes it: "Tue, 10 November 2026 at 9:00". */
 export type TrimText = { when: string; service: string; barber: string };
 

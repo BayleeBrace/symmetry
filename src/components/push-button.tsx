@@ -41,7 +41,7 @@ export function PushButton({ token }: { token?: string }) {
           }
         }}
       >
-        Enable notifications
+        enable notifications
       </button>
       {message && (
         <span

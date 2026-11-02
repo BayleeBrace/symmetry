@@ -25,10 +25,10 @@ export function Recovery() {
       }}
     >
       <label>
-        Booking email
+        booking email
         <input name="email" type="email" required />
       </label>
-      <button>Send my booking link</button>
+      <button>send my booking link</button>
       <p
         role={failed ? "alert" : "status"}
         className={failed ? "form-error" : ""}
@@ -71,8 +71,8 @@ export function SetupComplete({ session }: { session: string }) {
     <>
       <p role="status">{message}</p>
       <p>
-        <a href="/bookings">Check my bookings</a> ·{" "}
-        <a href="/book">Return to my saved trims</a>
+        <a href="/bookings">check my bookings</a> ·{" "}
+        <a href="/book">return to my saved trims</a>
       </p>
     </>
   );

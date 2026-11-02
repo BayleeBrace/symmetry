@@ -23,7 +23,7 @@ export function OpeningHours({ hours }: { hours: typeof OPENING_HOURS }) {
                   <time dateTime={inputTime(h[1])}>{hourWord(h[1])}</time>
                 </>
               ) : (
-                "Closed"
+                "closed"
               )}
             </dd>
           </div>

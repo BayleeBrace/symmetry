@@ -39,11 +39,11 @@ export function WaitlistForm({
       {!token && (
         <>
           <label>
-            Email
+            email
             <input name="email" type="email" required />
           </label>
           <label>
-            Preferred date
+            preferred date
             <input
               name="date"
               type="date"
@@ -53,7 +53,7 @@ export function WaitlistForm({
             />
           </label>
           <label>
-            Or any day until (optional)
+            or any day until (optional)
             <input
               name="until"
               type="date"
@@ -62,9 +62,9 @@ export function WaitlistForm({
             />
           </label>
           <label>
-            Barber
+            barber
             <select name="barber">
-              <option value="any">Any barber</option>
+              <option value="any">any barber</option>
               {Object.entries(BARBERS).map(([id, b]) => (
                 <option key={id} value={id}>
                   {b.name}
@@ -73,7 +73,7 @@ export function WaitlistForm({
             </select>
           </label>
           <label>
-            Trim
+            trim
             <select name="service">
               {services.map((s) => (
                 <option value={s.id} key={s.id}>
@@ -91,9 +91,9 @@ export function WaitlistForm({
       <button>
         {token
           ? leave
-            ? "Leave the waitlist"
-            : "Confirm waitlist request"
-          : "Join the waitlist"}
+            ? "leave the waitlist"
+            : "confirm waitlist request"
+          : "join the waitlist"}
       </button>
       <p
         role={failed ? "alert" : "status"}

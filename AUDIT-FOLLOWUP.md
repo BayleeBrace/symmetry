@@ -33,7 +33,13 @@
 
 ## Copy rule
 
-Proper capitalisation throughout, at Sean's request (7 September 2026): sentence case for sentences, headings, buttons and labels; capitals for names, places, days and months (Sean, Saundersfoot, 4 Brewery Terrace, Monday). Uppercase tracked labels keep their treatment. Do not invent barber biographies or claims about every cut. See CHANGELOG-2026-09-07-staff-and-copy.md.
+Updated 2 November 2026: lowercase headings and labels, as the brand handover asks. This replaces the sentence-case rule of 7 September 2026.
+
+- **Lowercase:** headings, eyebrows, buttons, navigation, form labels, table headers and the canonical service names ("fade", "cut and beard").
+- **Sentence case:** full sentences, messages and email subject lines.
+- **Capitals kept:** people, places, days, months, brand names and postcodes (Sean, Saundersfoot, Monday, Symmetry, SA69 9HG).
+
+Uppercase tracked labels keep their CSS treatment. Do not invent barber biographies or claims about every cut. See CHANGELOG-2026-11-02-site-audit.md.
 
 ## Verification
 

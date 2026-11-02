@@ -129,11 +129,11 @@ export function ManageBookings({ token }: { token: string }) {
       )}
       <div className="manage-links">
         <a href={"/api/calendar?token=" + encodeURIComponent(token)}>
-          Add all to calendar
+          add all to calendar
         </a>
         <PushButton token={token} />
       </div>
-      <p className="price-note">Prices in pounds.</p>
+      <p className="price-note">prices in pounds.</p>
       <div className="managed-booking-list">
         {group.appointments.map((a) => {
           const active =
@@ -158,14 +158,14 @@ export function ManageBookings({ token }: { token: string }) {
                 <a
                   href={`/book?barber=${a.barber.slug}&service=${a.service.slug}`}
                 >
-                  Book my usual
+                  book my usual
                 </a>
                 {active && (
                   <>
                     <a
                       href={`/api/calendar?token=${encodeURIComponent(token)}&booking=${a.id}`}
                     >
-                      Add to calendar
+                      add to calendar
                     </a>
                     <button
                       disabled={busy}
@@ -180,7 +180,7 @@ export function ManageBookings({ token }: { token: string }) {
                         );
                       }}
                     >
-                      Change trim
+                      change trim
                     </button>
                     <button
                       disabled={busy}
@@ -214,7 +214,7 @@ export function ManageBookings({ token }: { token: string }) {
                           });
                       }}
                     >
-                      Cancel
+                      cancel
                     </button>
                     {a.date === shopToday() && (
                       <button
@@ -222,7 +222,7 @@ export function ManageBookings({ token }: { token: string }) {
                         aria-expanded={late === a.id}
                         onClick={() => setLate(late === a.id ? "" : a.id)}
                       >
-                        Running late?
+                        running late?
                       </button>
                     )}
                   </>
@@ -249,14 +249,14 @@ export function ManageBookings({ token }: { token: string }) {
                     ))}
                   </div>
                   <button disabled={busy} onClick={() => setLate("")}>
-                    Never mind
+                    never mind
                   </button>
                 </div>
               )}
               {move === a.id && (
                 <div className="move-panel">
                   <label>
-                    Barber
+                    barber
                     <select
                       value={barber}
                       onChange={(e) => {
@@ -276,7 +276,7 @@ export function ManageBookings({ token }: { token: string }) {
                     </select>
                   </label>
                   <label>
-                    Trim
+                    trim
                     <select
                       value={service}
                       onChange={(e) => {
@@ -294,7 +294,7 @@ export function ManageBookings({ token }: { token: string }) {
                     </select>
                   </label>
                   <label>
-                    Date
+                    date
                     <input
                       type="date"
                       min={shopToday()}
@@ -329,7 +329,7 @@ export function ManageBookings({ token }: { token: string }) {
                     )}
                   </div>
                   <button disabled={busy} onClick={() => setMove("")}>
-                    Keep existing trim
+                    keep existing trim
                   </button>
                 </div>
               )}
@@ -345,14 +345,14 @@ export function ManageBookings({ token }: { token: string }) {
         }}
       >
         <label>
-          Your preferences
+          your preferences
           <textarea
             maxLength={1000}
             value={preferences}
             onChange={(e) => setPreferences(e.target.value)}
           />
         </label>
-        <button disabled={busy}>Save notes</button>
+        <button disabled={busy}>save notes</button>
       </form>
       <p>
         After moving or cancelling a trim, update any calendar entry you
