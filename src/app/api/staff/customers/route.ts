@@ -104,13 +104,18 @@ export async function GET(req: Request) {
           .order("start_minute", { ascending: !past })
           .order("id")
           .range(page * 20, page * 20 + 19),
-        db
-          .from("bookings")
-          .select(
-            "status,price_pence,local_date,booking_groups!inner(customer_id)",
-          )
-          .eq("booking_groups.customer_id", id)
-          .limit(2000),
+        // Every booking they have had, a page at a time, so the totals count
+        // all of them rather than stopping at the 1000-row limit.
+        fetchAll((start, end) =>
+          db
+            .from("bookings")
+            .select(
+              "status,price_pence,local_date,booking_groups!inner(customer_id)",
+            )
+            .eq("booking_groups.customer_id", id)
+            .order("id")
+            .range(start, end),
+        ),
       ]);
       if (bookings.error || all.error)
         throw new Error("Booking history could not load");

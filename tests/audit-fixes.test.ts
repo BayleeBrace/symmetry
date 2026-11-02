@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { csvCell } from "../src/lib/csv.ts";
-import { fetchAll } from "../src/lib/paging.ts";
+import { fetchAll, forChunks } from "../src/lib/paging.ts";
 import {
   bookingText,
   sentence,
@@ -44,6 +44,27 @@ test("paging keeps asking until a short page, and stops at the cap", async () =>
       : { data: rows.slice(0, 1000), error: null },
   );
   assert.equal(failing.error, "down");
+});
+
+test("long id lists are asked a slice at a time, every id exactly once", async () => {
+  const ids = Array.from({ length: 400 }, (_, i) => `id-${i}`);
+  const slices: number[] = [];
+  const all = await forChunks(ids, async (chunk) => {
+    slices.push(chunk.length);
+    return { data: chunk.map((id) => id.toUpperCase()), error: null };
+  });
+  assert.deepEqual(slices, [150, 150, 100]);
+  assert.equal(all.data.length, 400);
+  assert.equal(new Set(all.data).size, 400);
+  const none = await forChunks([], async () => ({ data: [1], error: null }));
+  assert.deepEqual(none.data, []);
+  const failing = await forChunks(ids, async (chunk) =>
+    chunk[0] === "id-150"
+      ? { data: [], error: "down" }
+      : { data: chunk, error: null },
+  );
+  assert.equal(failing.error, "down");
+  assert.equal(failing.data.length, 150);
 });
 
 test("waitlist offers go round everyone for a day before anyone is asked again", () => {

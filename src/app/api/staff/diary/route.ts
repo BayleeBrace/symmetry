@@ -18,6 +18,7 @@ import {
   parseDate,
 } from "@/lib/booking-data";
 import { getCatalog } from "@/lib/catalog";
+import { fetchAll, forChunks } from "@/lib/paging";
 import { sameOrigin, privateJson, publicError } from "@/lib/security";
 const actions = z.discriminatedUnion("action", [
   z.object({
@@ -281,14 +282,21 @@ export async function GET(req: Request) {
       .order("created_at", { ascending: false })
       .limit(30);
     // What each customer on the page has done before: visits, no shows, last trim.
+    // The shared "Walk-in" record is left out: its history is everyone's, so a
+    // count would mean nothing, and its thousands of visits would crowd out the
+    // real clients' history.
     const customerIds = [
       ...new Set(
         rows.data
-          .map(
-            (b) =>
-              (b.booking_groups as unknown as { customer_id?: string } | null)
-                ?.customer_id,
-          )
+          .map((b) => {
+            const group = b.booking_groups as unknown as {
+              customer_id?: string;
+              customers?: { name?: string } | null;
+            } | null;
+            return group?.customers?.name === WALK_IN
+              ? undefined
+              : group?.customer_id;
+          })
           .filter((id): id is string => Boolean(id)),
       ),
     ];
@@ -303,17 +311,26 @@ export async function GET(req: Request) {
     for (const id of customerIds)
       history[id] = { visits: 0, noShows: 0, last: null };
     if (customerIds.length) {
-      const { data: past } = await db
-        .from("bookings")
-        .select(
-          "local_date,status,barber_id,service_id,booking_groups!inner(customer_id)",
-        )
-        .in("booking_groups.customer_id", customerIds)
-        .in("status", ["done", "no_show"])
-        .lt("local_date", date)
-        .order("local_date", { ascending: false })
-        .limit(3000);
-      for (const b of past || []) {
+      // A week of clients can be a few hundred ids: a slice at a time keeps the
+      // URL short, and paging counts every past visit, newest first per client.
+      const { data: past } = await forChunks(customerIds, (chunk) =>
+        fetchAll(
+          (start, end) =>
+            db
+              .from("bookings")
+              .select(
+                "local_date,status,barber_id,service_id,booking_groups!inner(customer_id)",
+              )
+              .in("booking_groups.customer_id", chunk)
+              .in("status", ["done", "no_show"])
+              .lt("local_date", date)
+              .order("local_date", { ascending: false })
+              .order("id")
+              .range(start, end),
+          { max: 20000 },
+        ),
+      );
+      for (const b of past) {
         const h =
           history[
             (b.booking_groups as unknown as { customer_id: string }).customer_id

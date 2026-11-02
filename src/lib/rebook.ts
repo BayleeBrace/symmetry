@@ -3,7 +3,7 @@ import { createAdminClient } from "./supabase/admin";
 import { signLink, siteUrl } from "./security";
 import { addDays, shopMinute, shopToday } from "./booking-data";
 import { daysBetween, reminderDue, usualGapDays } from "./rebook-gap";
-import { fetchAll } from "./paging";
+import { fetchAll, forChunks } from "./paging";
 
 type Last = { date: string; barber_id: string; service_id: string };
 type Embedded = { customer_id: string };
@@ -66,19 +66,42 @@ export async function queueRebookNudges() {
     .map(([id]) => id);
   if (!due.length) return { queued: 0 };
 
+  // Everyone due can be hundreds of people: ask a slice of them at a time
+  // (short URLs) and page each slice (past the 1000-row limit).
   const [customers, consents, upcoming, barbers, services] = await Promise.all([
-    db.from("customers").select("id,name,email,last_nudged_at").in("id", due),
-    db
-      .from("email_marketing_consents")
-      .select("customer_id,granted,recorded_at")
-      .in("customer_id", due)
-      .order("recorded_at", { ascending: false }),
-    db
-      .from("bookings")
-      .select("booking_groups!inner(customer_id)")
-      .in("booking_groups.customer_id", due)
-      .in("status", ["booked", "arrived"])
-      .gte("local_date", today),
+    forChunks(due, (ids) =>
+      fetchAll((start, end) =>
+        db
+          .from("customers")
+          .select("id,name,email,last_nudged_at")
+          .in("id", ids)
+          .order("id")
+          .range(start, end),
+      ),
+    ),
+    forChunks(due, (ids) =>
+      fetchAll((start, end) =>
+        db
+          .from("email_marketing_consents")
+          .select("customer_id,granted,recorded_at")
+          .in("customer_id", ids)
+          .order("recorded_at", { ascending: false })
+          .order("id")
+          .range(start, end),
+      ),
+    ),
+    forChunks(due, (ids) =>
+      fetchAll((start, end) =>
+        db
+          .from("bookings")
+          .select("booking_groups!inner(customer_id)")
+          .in("booking_groups.customer_id", ids)
+          .in("status", ["booked", "arrived"])
+          .gte("local_date", today)
+          .order("id")
+          .range(start, end),
+      ),
+    ),
     db.from("barbers").select("id,slug,name"),
     db.from("services").select("id,slug,name"),
   ]);

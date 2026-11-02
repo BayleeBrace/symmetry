@@ -97,7 +97,13 @@ On a fresh database, apply it after the earlier migrations, in filename order.
 - **Staff app:** could only be type-checked and read, not used, because there is no Supabase here. Sign in on a phone and try the diary, checkout, a new appointment, editors and dark mode.
 - **Payments and messages:** card setup, the webhook and email/SMS delivery need the Stripe test mode and Resend trial in `LAUNCH-CHECKS.md`.
 - **Real iPhone:** date picker, safe areas, pull-to-refresh and booking scroll.
-- **Known gaps:**
-  - The rebook step's customer, consent and upcoming-trim lookups are not paged yet.
-  - Per-client stats in the staff client list still stop at 2000 rows.
-  - Customer history in the diary still stops at 3000 rows.
+
+## Follow-up: the last row limits (2 November 2026)
+
+The three places that could still stop counting are fixed:
+
+- **Rebook reminders.** Customer details, reminder consent and upcoming trims are looked up a slice of customers at a time, then a page at a time. Before, everyone due went in one request, which gets too long with a few hundred people and was capped at 1000 rows.
+- **Client profile totals.** Visits, spend, no-shows, cancellations and upcoming trims count every booking, not just the first 1000.
+- **Diary history.** "First visit", visit counts and "Last time" count every past visit for the clients on screen, in slices and pages. The shared "Walk-in" record is left out: its history is everyone's, so walk-ins no longer show a meaningless visit count, and it can't crowd out real clients' history.
+
+A new `forChunks` helper in `src/lib/paging.ts` does the slicing, with a unit test.

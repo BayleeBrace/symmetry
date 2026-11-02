@@ -22,3 +22,23 @@ export async function fetchAll<T, E>(
   }
   return { data: rows, error: null };
 }
+
+/**
+ * Runs `run` over a long list of ids a slice at a time. PostgREST puts an
+ * .in() filter in the request URL, and a few hundred uuids make that URL too
+ * long for the server, so the list is split and the answers joined. Each id
+ * lands in exactly one slice, so anything ordered per id stays in order.
+ */
+export async function forChunks<T, E>(
+  ids: string[],
+  run: (chunk: string[]) => PromiseLike<{ data: T[]; error: E | null }>,
+  size = 150,
+): Promise<{ data: T[]; error: E | null }> {
+  const rows: T[] = [];
+  for (let i = 0; i < ids.length; i += size) {
+    const { data, error } = await run(ids.slice(i, i + size));
+    if (error) return { data: rows, error };
+    rows.push(...data);
+  }
+  return { data: rows, error: null };
+}
