@@ -1,5 +1,5 @@
 "use client";
-import { DRAFT_KEY } from "@/lib/booking-draft";
+import { DRAFT_KEY, SETUP_KEY } from "@/lib/booking-draft";
 import { useEffect, useState } from "react";
 export function Recovery() {
   const [message, setMessage] = useState("");
@@ -41,18 +41,29 @@ export function Recovery() {
 export function SetupComplete({ session }: { session: string }) {
   const [message, setMessage] = useState("Confirming your trim…");
   useEffect(() => {
+    let completion = "";
+    try {
+      completion = sessionStorage.getItem(SETUP_KEY) || "";
+    } catch {}
     fetch("/api/stripe/complete", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ session }),
+      body: JSON.stringify({ session, completion }),
     })
       .then(async (r) => {
         const d = await r.json();
         if (!r.ok) throw new Error(d.error);
         try {
           sessionStorage.removeItem(DRAFT_KEY);
+          sessionStorage.removeItem(SETUP_KEY);
         } catch {}
-        location.replace("/bookings?token=" + encodeURIComponent(d.token));
+        // Only the tab that made the booking is sent straight to it.
+        if (d.token)
+          location.replace("/bookings?token=" + encodeURIComponent(d.token));
+        else
+          setMessage(
+            "Your trim is booked. Your booking link is in your email.",
+          );
       })
       .catch((e) => setMessage(e.message));
   }, [session]);

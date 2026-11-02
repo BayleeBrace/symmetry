@@ -384,5 +384,142 @@ test("database rejects blocked moves, enforces fees and keeps rejected batches a
     [again.rows[0].id],
   );
   assert.ok(updatedEvents[0].n >= 1);
+  // Audit fixes: replaces three functions whole, so safe to run twice.
+  for (let i = 0; i < 2; i++)
+    await db.exec(
+      await readFile(
+        "supabase/migrations/20261102120000_audit_fixes.sql",
+        "utf8",
+      ),
+    );
+  const { rows: farDays } = await db.query<{ d: string }>(
+    `select ((now() at time zone 'Europe/London')::date+n)::text d from generate_series(29,42) n where extract(isodow from (now() at time zone 'Europe/London')::date+n)=2 limit 1`,
+  );
+  const far = farDays[0].d;
+  const book = (token: string, name: string, items: unknown[]) =>
+    db.query<{ id: string }>(
+      `select public.create_booking_group($1,$2,'GB','+447700900125',false,$3,$4::jsonb) id`,
+      [
+        name,
+        name.toLowerCase().replace(/ /g, ".") + "@example.com",
+        token.repeat(64),
+        JSON.stringify(items),
+      ],
+    );
+  const squeezeIn = (group: string, start: number) =>
+    db.query(
+      `insert into public.bookings (group_id,barber_id,service_id,local_date,start_minute,duration,price_pence,source,squeezed) values ($1,$2,$3,$4,$5,$6,$7,'walk_in',true)`,
+      [
+        group,
+        cut.id,
+        cut.service_id,
+        far,
+        start,
+        cut.duration,
+        cut.price_pence,
+      ],
+    );
+  const taken = (e: unknown) => (e as { code?: string }).code === "23P01";
+  // A normal trim cannot go over a squeeze-in; a deliberate squeeze-in still can.
+  const base = (
+    await book("1", "Squeeze Base", [
+      { date: far, time: 600, barber: "sean", service: "cut" },
+    ])
+  ).rows[0].id;
+  const { rows: baseRows } = await db.query<{ id: string }>(
+    `select id from public.bookings where group_id=$1`,
+    [base],
+  );
+  await squeezeIn(base, 600);
+  await squeezeIn(base, 720);
+  await assert.rejects(
+    book("2", "Over Squeeze", [
+      { date: far, time: 720, barber: "sean", service: "cut" },
+    ]),
+    taken,
+  );
+  await assert.rejects(
+    db.query(`update public.bookings set start_minute=705 where id=$1`, [
+      baseRows[0].id,
+    ]),
+    taken,
+    "a normal trim cannot be moved onto a squeeze-in",
+  );
+  // Moving a trim that already shares its slot with a squeeze-in, without touching another, is fine.
+  await db.query(`update public.bookings set start_minute=615 where id=$1`, [
+    baseRows[0].id,
+  ]);
+  await squeezeIn(base, 720);
+  // Trims booked together get one confirmation per channel; reminders stay per trim.
+  const basket = (
+    await book("3", "Basket Client", [
+      { date: far, time: 840, barber: "sean", service: "cut" },
+      { date: far, time: 900, barber: "sean", service: "cut" },
+      { date: addWeek(far), time: 600, barber: "sean", service: "cut" },
+    ])
+  ).rows[0].id;
+  const jobs = async (kind: string) =>
+    (
+      await db.query<{ channel: string; n: number }>(
+        `select channel, count(*)::int n from public.notification_jobs where group_id=$1 and kind=$2 group by channel order by channel`,
+        [basket, kind],
+      )
+    ).rows.map((r) => `${r.channel}:${r.n}`);
+  assert.deepEqual(await jobs("confirmed"), ["email:1", "push:1", "sms:1"]);
+  assert.deepEqual(await jobs("reminder"), ["email:3", "push:3", "sms:3"]);
+  // A later trim added to the same booking does not error or send a second confirmation.
+  await db.query(
+    `insert into public.bookings (group_id,barber_id,service_id,local_date,start_minute,duration,price_pence,source) values ($1,$2,$3,$4,960,$5,$6,'staff')`,
+    [basket, cut.id, cut.service_id, far, cut.duration, cut.price_pence],
+  );
+  assert.deepEqual(await jobs("confirmed"), ["email:1", "push:1", "sms:1"]);
+  // Cancelling one trim still tells the customer about that trim.
+  await db.query(
+    `update public.bookings set status='cancelled' where group_id=$1 and start_minute=900`,
+    [basket],
+  );
+  assert.deepEqual(await jobs("cancelled"), ["email:1", "push:1", "sms:1"]);
+  // A returning card customer who leaves the notes box empty keeps the team's notes.
+  await db.query(
+    `update public.customers set preferences='Grade 2 sides' where email='card@example.com'`,
+  );
+  const cardAttempt = async (token: string, time: number, notes?: string) => {
+    const id = (
+      await db.query<{ id: string }>(
+        `insert into public.booking_attempts(id,token_hash,payload) values(gen_random_uuid(),$1,$2::jsonb) returning id`,
+        [
+          token.repeat(64),
+          JSON.stringify({
+            ...payload,
+            customer: {
+              ...payload.customer,
+              ...(notes === undefined ? {} : { preferences: notes }),
+            },
+            appointments: [{ ...payload.appointments[0], date: far, time }],
+          }),
+        ],
+      )
+    ).rows[0].id;
+    await db.query(
+      `select public.finalize_card_booking($1,'cus_test','pm_test')`,
+      [id],
+    );
+    return (
+      await db.query<{ p: string }>(
+        `select preferences p from public.customers where email='card@example.com'`,
+      )
+    ).rows.map((r) => r.p);
+  };
+  assert.deepEqual(await cardAttempt("4", 600, ""), ["Grade 2 sides"]);
+  assert.deepEqual(await cardAttempt("5", 630, "  "), ["Grade 2 sides"]);
+  assert.deepEqual(await cardAttempt("6", 660), ["Grade 2 sides"]);
+  assert.deepEqual(await cardAttempt("7", 690, "Scissors on top"), [
+    "Scissors on top",
+  ]);
   await db.close();
 });
+const addWeek = (d: string) => {
+  const date = new Date(`${d}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + 7);
+  return date.toISOString().slice(0, 10);
+};

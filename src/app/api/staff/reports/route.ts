@@ -2,8 +2,8 @@ import { requireStaff } from "@/lib/staff";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { privateJson, publicError } from "@/lib/security";
 import { shopToday, addDays, clock, parseDate } from "@/lib/booking-data";
-
-const csvCell = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+import { csvCell } from "@/lib/csv";
+import { fetchAll } from "@/lib/paging";
 
 /**
  * The shop's numbers for a period: per chair, per day, the no-show and
@@ -23,18 +23,23 @@ export async function GET(req: Request) {
     );
     const from = addDays(shopToday(), -(days - 1));
     const to = shopToday();
-    let query = db
-      .from("bookings")
-      .select(
-        "id,status,price_pence,paid_by,barber_id,service_id,local_date,start_minute,duration,fee_pence,fee_status,source,barbers(name),services(name),booking_groups(customer_id,customers(name,email,phone))",
-      )
-      .gte("local_date", from)
-      .lte("local_date", to)
-      .order("local_date")
-      .order("start_minute")
-      .limit(20000);
-    if (staff.role !== "owner") query = query.eq("barber_id", staff.barber_id);
-    const { data, error } = await query;
+    // Every booking in the period, a page at a time (the API stops at 1000 a request).
+    const { data, error } = await fetchAll((start, end) => {
+      let query = db
+        .from("bookings")
+        .select(
+          "id,status,price_pence,paid_by,barber_id,service_id,local_date,start_minute,duration,fee_pence,fee_status,source,barbers(name),services(name),booking_groups(customer_id,customers(name,email,phone))",
+        )
+        .gte("local_date", from)
+        .lte("local_date", to);
+      if (staff.role !== "owner")
+        query = query.eq("barber_id", staff.barber_id);
+      return query
+        .order("local_date")
+        .order("start_minute")
+        .order("id")
+        .range(start, end);
+    });
     if (error) throw new Error("Reports could not load");
     type Row = (typeof data)[number] & {
       barbers: { name: string } | null;

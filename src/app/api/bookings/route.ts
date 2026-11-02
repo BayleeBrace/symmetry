@@ -4,6 +4,8 @@ import {
   parsePhoneNumberFromString,
   type CountryCode,
 } from "libphonenumber-js";
+// Full metadata, so the line type (mobile or landline) is known for every country.
+import { parsePhoneNumberFromString as parseWithTypes } from "libphonenumber-js/max";
 import {
   addDays,
   shopToday,
@@ -12,6 +14,7 @@ import {
   parseDate,
 } from "@/lib/booking-data";
 import { createAdminClient, hasSupabase } from "@/lib/supabase/admin";
+import { busyFor } from "@/lib/availability";
 import { getCatalog, getPolicy } from "@/lib/catalog";
 import { stripeClient } from "@/lib/stripe";
 import {
@@ -47,6 +50,17 @@ const schema = z.object({
     .min(1)
     .max(12),
 });
+// Numbers that are certainly not mobiles, so a text would never arrive.
+// Anything that might be a mobile (or whose type is unknown) is allowed.
+const NOT_MOBILE = new Set([
+  "FIXED_LINE",
+  "TOLL_FREE",
+  "PREMIUM_RATE",
+  "SHARED_COST",
+  "UAN",
+  "VOICEMAIL",
+  "PAGER",
+]);
 export async function POST(request: Request) {
   try {
     sameOrigin(request);
@@ -64,6 +78,8 @@ export async function POST(request: Request) {
     );
     if (!phone?.isValid())
       return privateJson({ error: "Enter a valid mobile number." }, 400);
+    if (NOT_MOBILE.has(parseWithTypes(phone.number)?.getType() ?? ""))
+      return privateJson({ error: "Enter a mobile number." }, 400);
     customer.phone = phone.number;
     const catalog = await getCatalog(),
       policy = await getPolicy();
@@ -119,6 +135,30 @@ export async function POST(request: Request) {
         { error: "Online booking is not open yet. Please contact the shop." },
         503,
       );
+    // The same busy check the times on the page come from, so a time taken
+    // since the page loaded is turned down before the customer adds a card.
+    const busy = new Map<string, Awaited<ReturnType<typeof busyFor>>>();
+    for (const a of normalised) {
+      const key = a.date + " " + a.barber;
+      if (!busy.has(key)) busy.set(key, await busyFor(a.date, a.barber));
+      if (
+        busy
+          .get(key)!
+          .some(
+            (b) =>
+              b.barber === a.barber &&
+              a.time < b.start + b.duration &&
+              a.time + a.duration > b.start,
+          )
+      )
+        return privateJson(
+          {
+            error:
+              "One of your trims has just been taken. Choose another time.",
+          },
+          409,
+        );
+    }
     const db = createAdminClient();
     const { data: existing, error: lookupError } = await db
       .from("booking_attempts")
@@ -170,7 +210,13 @@ export async function POST(request: Request) {
       .update({ stripe_session: session.id })
       .eq("id", requestId);
     if (saveError) throw new Error("Card setup could not be saved");
-    return privateJson({ mode: "card_setup", url: session.url });
+    // The tab keeps this token through the card page and hands it back, so
+    // only the browser that made the booking is given its manage link.
+    return privateJson({
+      mode: "card_setup",
+      url: session.url,
+      completion: token,
+    });
   } catch (error) {
     return publicError(error);
   }

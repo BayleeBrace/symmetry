@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { type ReactNode, useState } from "react";
 import { Toaster } from "./toast";
+import { useDialog } from "./dialog";
 
 export type Section =
   | "calendar"
@@ -198,28 +199,62 @@ export function Shell({
       </nav>
 
       {more && (
-        <>
-          <div className="sheet-backdrop" onClick={() => setMore(false)} />
-          <div className="more-sheet" role="dialog" aria-label="More">
-            <p className="more-who">{name}</p>
-            {moreSections.map((s) => (
-              <button
-                key={s.id}
-                type="button"
-                aria-pressed={section === s.id}
-                onClick={() => pick(s.id)}
-              >
-                {s.icon}
-                <span>{s.label}</span>
-              </button>
-            ))}
-            <Link href="/">Back to the site</Link>
-            <button type="button" className="more-signout" onClick={onSignOut}>
-              Sign out
+        <MoreSheet name={name} onClose={() => setMore(false)}>
+          {moreSections.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              aria-pressed={section === s.id}
+              onClick={() => pick(s.id)}
+            >
+              {s.icon}
+              <span>{s.label}</span>
             </button>
-          </div>
-        </>
+          ))}
+          <Link href="/">Back to the site</Link>
+          <button type="button" className="more-signout" onClick={onSignOut}>
+            Sign out
+          </button>
+        </MoreSheet>
       )}
     </div>
+  );
+}
+
+/** The phone's More tab: the other sections, the site and sign out, in a sheet from the bottom. */
+function MoreSheet({
+  name,
+  onClose,
+  children,
+}: {
+  name: string;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  const ref = useDialog<HTMLDivElement>(onClose);
+  return (
+    <>
+      <div className="sheet-backdrop" onClick={onClose} />
+      <div
+        ref={ref}
+        className="more-sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-label="More"
+      >
+        <div className="more-head">
+          <p className="more-who">{name}</p>
+          <button
+            type="button"
+            className="more-close"
+            aria-label="Close"
+            onClick={onClose}
+          >
+            ×
+          </button>
+        </div>
+        {children}
+      </div>
+    </>
   );
 }

@@ -21,7 +21,24 @@ test("six-hour deadline matches the supplied booking and crosses DST correctly",
     cancellationDeadline("2026-09-15", 830, 6).toISOString(),
     "2026-09-15T06:50:00.000Z",
   );
-  assert.match(deadlineLabel("2026-09-15", 830, 6), /07:50/);
+  // Written like the trim times on the site ("9:00"), in shop time.
+  assert.equal(
+    deadlineLabel("2026-09-15", 830, 6),
+    "Tue, 15 September 2026 at 7:50",
+  );
+  assert.equal(
+    deadlineLabel("2026-12-15", 600, 24),
+    "Mon, 14 December 2026 at 10:00",
+  );
+  // Eight hours before 8:00 BST on the day the clocks go forward is 23:00 GMT the night before.
+  assert.equal(
+    deadlineLabel("2026-03-29", 480, 8),
+    "Sat, 28 March 2026 at 23:00",
+  );
+  assert.equal(
+    deadlineLabel("2026-09-16", 365, 6),
+    "Wed, 16 September 2026 at 0:05",
+  );
   assert.equal(
     cancellationDeadline("2026-10-25", 480, 8).toISOString(),
     "2026-10-25T00:00:00.000Z",

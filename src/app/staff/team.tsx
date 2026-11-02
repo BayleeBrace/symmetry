@@ -10,6 +10,8 @@ import {
   initials,
 } from "./types";
 import { Loading } from "./spinner";
+import { toast } from "./toast";
+import { EditorHead, InlineEditor } from "./dialog";
 
 type Row = {
   barber: {
@@ -83,7 +85,6 @@ export function Team({
 function Members() {
   const [team, setTeam] = useState<Row[] | null>(null);
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const [creating, setCreating] = useState<string | null>(null);
   const [resetting, setResetting] = useState<string | null>(null);
@@ -102,12 +103,11 @@ function Members() {
   async function act(data: unknown, done: string) {
     setBusy(true);
     setError("");
-    setNotice("");
     try {
       await api("/api/staff/team", data);
       setCreating(null);
       setResetting(null);
-      setNotice(done);
+      toast(done);
       load();
     } catch (e) {
       setError((e as Error).message);
@@ -128,7 +128,6 @@ function Members() {
           {error}
         </p>
       )}
-      {notice && <Loading>{notice}</Loading>}
       <div className="team-list">
         {team.map(({ barber, account }) => (
           <article className="team-row" key={barber.id}>
@@ -209,8 +208,9 @@ function Members() {
               )}
             </div>
             {creating === barber.id && (
-              <form
-                className="staff-form inline-editor team-form"
+              <InlineEditor
+                className="team-form"
+                onClose={() => setCreating(null)}
                 onSubmit={(event) => {
                   event.preventDefault();
                   const form = new FormData(event.currentTarget);
@@ -225,7 +225,10 @@ function Members() {
                   );
                 }}
               >
-                <p className="wide editor-title">A sign-in for {barber.name}</p>
+                <EditorHead
+                  title={`A sign-in for ${barber.name}`}
+                  onClose={() => setCreating(null)}
+                />
                 <label>
                   Email
                   <input
@@ -261,11 +264,12 @@ function Members() {
                     Cancel
                   </button>
                 </div>
-              </form>
+              </InlineEditor>
             )}
             {account && resetting === account.user_id && (
-              <form
-                className="staff-form inline-editor team-form"
+              <InlineEditor
+                className="team-form"
+                onClose={() => setResetting(null)}
                 onSubmit={(event) => {
                   event.preventDefault();
                   const form = new FormData(event.currentTarget);
@@ -279,9 +283,10 @@ function Members() {
                   );
                 }}
               >
-                <p className="wide editor-title">
-                  New password for {barber.name}
-                </p>
+                <EditorHead
+                  title={`New password for ${barber.name}`}
+                  onClose={() => setResetting(null)}
+                />
                 <label className="wide">
                   New password (at least 8 characters)
                   <input
@@ -308,7 +313,7 @@ function Members() {
                     Cancel
                   </button>
                 </div>
-              </form>
+              </InlineEditor>
             )}
           </article>
         ))}
@@ -404,9 +409,9 @@ function Shifts({ ctx, act, busy }: { ctx: Context; act: Act; busy: boolean }) {
         </table>
       </div>
       {edit && (
-        <form
+        <InlineEditor
           key={`${edit.barber.id}-${edit.day}`}
-          className="staff-form inline-editor"
+          onClose={() => setEdit(null)}
           onSubmit={async (event) => {
             event.preventDefault();
             const form = new FormData(event.currentTarget);
@@ -422,9 +427,10 @@ function Shifts({ ctx, act, busy }: { ctx: Context; act: Act; busy: boolean }) {
             reload();
           }}
         >
-          <p className="wide editor-title">
-            {edit.barber.name} on {WEEKDAYS[edit.day - 1]}s
-          </p>
+          <EditorHead
+            title={`${edit.barber.name} on ${WEEKDAYS[edit.day - 1]}s`}
+            onClose={() => setEdit(null)}
+          />
           <label>
             Start
             <input
@@ -471,7 +477,7 @@ function Shifts({ ctx, act, busy }: { ctx: Context; act: Act; busy: boolean }) {
               Cancel
             </button>
           </div>
-        </form>
+        </InlineEditor>
       )}
     </div>
   );

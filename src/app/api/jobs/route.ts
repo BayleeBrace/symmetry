@@ -17,13 +17,21 @@ export async function GET(req: Request) {
   if (process.env.NOTIFICATIONS_ENABLED !== "true")
     return privateJson({ skipped: "Notifications are disabled", staff });
   try {
-    const waitlistAlerts = await checkWaitlist();
+    // Customer confirmations and reminders first. Each step after it is kept
+    // apart, so a waitlist or reminder problem never holds the queue up.
+    const notifications = await processNotifications();
+    const waitlistAlerts = await checkWaitlist().catch((e: Error) => ({
+      alerted: 0,
+      error: e.message,
+    }));
     const reminders = await queueRebookNudges().catch((e: Error) => ({
       queued: 0,
       error: e.message,
     }));
-    const notifications = await processNotifications();
-    const alerts = await alertDeliveryProblems();
+    const alerts = await alertDeliveryProblems().catch((e: Error) => ({
+      alerted: false,
+      error: e.message,
+    }));
     return privateJson({
       ...notifications,
       waitlistAlerts,

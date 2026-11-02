@@ -69,14 +69,16 @@ function Bars({
 
 export function Reports() {
   const [days, setDays] = useState<number>(30);
-  const [report, setReport] = useState<Report | null>(null);
+  const [loaded, setLoaded] = useState<Report | null>(null);
   const [error, setError] = useState("");
   useEffect(() => {
     let live = true;
     const t = setTimeout(() => {
       api("/api/staff/reports?days=" + days)
         .then((r) => {
-          if (live) setReport(r);
+          if (!live) return;
+          setLoaded(r);
+          setError("");
         })
         .catch((e) => {
           if (live) setError((e as Error).message);
@@ -87,7 +89,42 @@ export function Reports() {
       clearTimeout(t);
     };
   }, [days]);
-  if (!report) return <Loading>{error || "Adding it up…"}</Loading>;
+  // Switching period shows the new figures or nothing: never the old ones under the new button.
+  const report = loaded && loaded.days === days ? loaded : null;
+  const head = (
+    <header className="sec-head">
+      <h2>{report?.period ?? `Last ${days} days`}.</h2>
+      <div className="seg" role="group" aria-label="Period">
+        {PERIODS.map(([n, label]) => (
+          <button
+            key={n}
+            type="button"
+            aria-pressed={days === n}
+            onClick={() => {
+              if (n === days) return;
+              setError("");
+              setDays(n);
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+    </header>
+  );
+  if (!report)
+    return (
+      <div className="reports">
+        {head}
+        {error ? (
+          <p className="staff-error" role="alert">
+            {error}
+          </p>
+        ) : (
+          <Loading>Adding it up…</Loading>
+        )}
+      </div>
+    );
   const recent = Object.entries(report.dayCounts ?? {})
     .sort(([a], [b]) => (a < b ? 1 : -1))
     .slice(0, 14);
@@ -100,21 +137,12 @@ export function Reports() {
     : null;
   return (
     <div className="reports">
-      <header className="sec-head">
-        <h2>{report.period}.</h2>
-        <div className="seg" role="group" aria-label="Period">
-          {PERIODS.map(([n, label]) => (
-            <button
-              key={n}
-              type="button"
-              aria-pressed={days === n}
-              onClick={() => setDays(n)}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      </header>
+      {head}
+      {error && (
+        <p className="staff-error" role="alert">
+          {error}
+        </p>
+      )}
       <div className="stat-row">
         {[
           ["Trims in the diary", report.trims],

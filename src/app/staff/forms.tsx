@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { staffApi as api } from "@/lib/staff-client";
-import { addDays, clock, shopToday } from "@/lib/booking-data";
+import { addDays, clock, parseDate, shopToday } from "@/lib/booking-data";
 import {
   type Act,
   type Barber,
@@ -21,6 +21,7 @@ import {
   timeOptions,
 } from "./types";
 import type { BookPrefill } from "./calendar";
+import { useDialog } from "./dialog";
 
 type Client = {
   id: string;
@@ -35,6 +36,15 @@ export type BlockPrefill = {
   minute?: number;
 };
 
+/** Online and staff bookings both open this many days ahead; the database refuses later dates. */
+const HORIZON_DAYS = 120;
+
+function daysBetween(from: string, to: string) {
+  return Math.round(
+    (parseDate(to).getTime() - parseDate(from).getTime()) / 86400000,
+  );
+}
+
 const REPEAT_LABEL: Record<number, string> = {
   1: "every week",
   2: "every 2 weeks",
@@ -42,30 +52,61 @@ const REPEAT_LABEL: Record<number, string> = {
   4: "every 4 weeks",
 };
 
-/** The diary for one day: the calendar's copy when it covers the day, else fetched. */
+/**
+ * The diary for one day: the calendar's copy when it covers the day, else
+ * fetched. A failed fetch says so and can be tried again.
+ */
 function useDay(date: string, cached: Diary | null) {
-  const covered =
+  const covered = Boolean(
     cached &&
     date >= cached.date &&
     date <= (cached.to ?? cached.date) &&
-    (cached.hoursByDay ? date in cached.hoursByDay : cached.date === date);
-  const [fetched, setFetched] = useState<Diary | null>(null);
+    (cached.hoursByDay ? date in cached.hoursByDay : cached.date === date),
+  );
+  const [fetched, setFetched] = useState<{
+    date: string;
+    diary: Diary | null;
+    error: string;
+  } | null>(null);
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     if (covered) return;
     let live = true;
     api("/api/staff/diary?date=" + date)
       .then((d) => {
-        if (live) setFetched(d as Diary);
+        if (live) setFetched({ date, diary: d as Diary, error: "" });
       })
-      .catch(() => {
-        if (live) setFetched(null);
+      .catch((e) => {
+        if (live)
+          setFetched({
+            date,
+            diary: null,
+            error: (e as Error).message || "The diary could not load.",
+          });
       });
     return () => {
       live = false;
     };
-  }, [date, covered]);
-  if (covered) return cached;
-  return fetched && fetched.date === date ? fetched : null;
+  }, [date, covered, attempt]);
+  const retry = () => {
+    setFetched(null);
+    setAttempt((n) => n + 1);
+  };
+  if (covered) return { day: cached, error: "", retry };
+  const current = fetched?.date === date ? fetched : null;
+  return { day: current?.diary ?? null, error: current?.error ?? "", retry };
+}
+
+/** The diary could not be read: say so, and offer another go. */
+function DayError({ onRetry }: { onRetry: () => void }) {
+  return (
+    <p className="staff-error wide day-error" role="alert">
+      Could not check the diary for that day.{" "}
+      <button type="button" className="text-button" onClick={onRetry}>
+        Try again
+      </button>
+    </p>
+  );
 }
 
 export function NewAppointment({
@@ -102,15 +143,16 @@ export function NewAppointment({
   const [email, setEmail] = useState(prefill.client?.email ?? "");
   const [phone, setPhone] = useState(prefill.client?.phone ?? "");
   const [picked, setPicked] = useState<Client | null>(
-    prefill.client ? { id: "", ...prefill.client } : null,
+    prefill.client ? { ...prefill.client, id: prefill.client.id ?? "" } : null,
   );
   const [results, setResults] = useState<Client[]>([]);
   const [every, setEvery] = useState(0);
   const [times, setTimes] = useState(4);
   const [confirmSqueeze, setConfirmSqueeze] = useState(false);
   const [error, setError] = useState("");
-  const day = useDay(date, cached);
+  const { day, error: dayError, retry } = useDay(date, cached);
   const walkIn = picked?.name === WALK_IN;
+  const ref = useDialog<HTMLElement>(onClose);
 
   // Look up existing clients as the name is typed, so regulars are reused rather than duplicated.
   useEffect(() => {
@@ -133,10 +175,18 @@ export function NewAppointment({
   }, [name, picked]);
 
   const barber = allChairs.find((b) => b.id === barberId);
-  const service = ctx.services.find((s) => s.id === serviceId);
-  const price = ctx.prices.find(
-    (p) => p.barber_id === barberId && p.service_id === serviceId,
-  );
+  // Only what this chair offers: a price switched off as "Not offered" is not bookable.
+  const offeredPrice = (id: string) =>
+    ctx.prices.find(
+      (p) =>
+        p.barber_id === barberId && p.service_id === id && p.active !== false,
+    );
+  const offered = ctx.services.filter((s) => offeredPrice(s.id));
+  const serviceValue = offered.some((s) => s.id === serviceId)
+    ? serviceId
+    : (offered[0]?.id ?? "");
+  const service = offered.find((s) => s.id === serviceValue);
+  const price = offeredPrice(serviceValue);
   const duration = price?.duration ?? 30;
   const slots = day ? freeTimes(day, date, barberId, duration) : null;
   const hours = day ? hoursFor(day, date) : null;
@@ -167,8 +217,27 @@ export function NewAppointment({
             b.start_minute + b.duration > value,
         )
       : [];
-  const lastDate =
-    every > 0 ? addDays(date, (times - 1) * every * 7) : undefined;
+  // Repeats stop at the 120 days the diary opens ahead.
+  const horizon = addDays(shopToday(), HORIZON_DAYS);
+  const fits =
+    every > 0
+      ? Math.min(12, Math.floor(daysBetween(date, horizon) / (every * 7)) + 1)
+      : 0;
+  const repeatTimes = Math.min(times, fits);
+  const repeating = every > 0 && repeatTimes >= 2;
+  const lastDate = repeating
+    ? addDays(date, (repeatTimes - 1) * every * 7)
+    : undefined;
+  // A client picked from the list is booked onto their own record, unless their details were changed here.
+  const sameClient =
+    picked &&
+    picked.id &&
+    !walkIn &&
+    name.trim() === picked.name.trim() &&
+    email.trim() === (picked.email ?? "").trim() &&
+    phone.trim() === (picked.phone ?? "").trim()
+      ? picked.id
+      : undefined;
 
   const save = async (squeeze: boolean) => {
     if (!barber || !service || value === null) return;
@@ -184,17 +253,21 @@ export function NewAppointment({
         phone: walkIn ? "" : phone.trim(),
         barber: barber.slug,
         service: service.slug,
+        ...(sameClient ? { customer_id: sameClient } : {}),
         ...(squeeze ? { squeeze: true } : {}),
-        ...(every > 0 ? { repeat: { every, times } } : {}),
-      })) as { made?: number; skipped?: number } | undefined;
+        ...(repeating ? { repeat: { every, times: repeatTimes } } : {}),
+      })) as { made?: number; skipped?: number; beyond?: number } | undefined;
       const made = result?.made ?? 1;
       const skipped = result?.skipped ?? 0;
+      const beyond = result?.beyond ?? 0;
       let message = `Added ${name.trim()} with ${barber.name} at ${clock(value)} on ${dayLabel(date)}`;
-      if (every > 0 && made > 1)
+      if (repeating && made > 1)
         message += `, and ${made - 1} more ${REPEAT_LABEL[every]}`;
       message += ".";
       if (skipped > 0)
-        message += ` ${skipped} of the repeat dates ${skipped === 1 ? "was" : "were"} taken and skipped.`;
+        message += ` ${skipped} of the repeat dates ${skipped === 1 ? "was" : "were"} unavailable and skipped.`;
+      if (beyond > 0)
+        message += ` ${beyond} ${beyond === 1 ? "date was" : "dates were"} past the ${HORIZON_DAYS} days the diary opens ahead, so not added.`;
       onSaved(message);
     } catch (e) {
       setError((e as Error).message);
@@ -203,6 +276,7 @@ export function NewAppointment({
 
   return (
     <aside
+      ref={ref}
       className="sheet drawer"
       role="dialog"
       aria-modal="true"
@@ -334,10 +408,14 @@ export function NewAppointment({
         <label>
           Service
           <select
-            value={serviceId}
+            value={serviceValue}
+            disabled={offered.length === 0}
             onChange={(e) => setServiceId(e.target.value)}
           >
-            {ctx.services.map((s) => (
+            {offered.length === 0 && (
+              <option value="">Nothing offered on this chair</option>
+            )}
+            {offered.map((s) => (
               <option value={s.id} key={s.id}>
                 {canonicalServiceName(s.slug, s.name)}
               </option>
@@ -362,6 +440,7 @@ export function NewAppointment({
           <input
             type="date"
             required
+            max={horizon}
             value={date}
             onChange={(e) => e.target.value && setDate(e.target.value)}
           />
@@ -376,7 +455,11 @@ export function NewAppointment({
               setConfirmSqueeze(false);
             }}
           >
-            {!slots && <option value="">Checking the diary…</option>}
+            {!slots && (
+              <option value="">
+                {dayError ? "Could not check the diary" : "Checking the diary…"}
+              </option>
+            )}
             {slots && choices.length === 0 && (
               <option value="">
                 {slots.closed ? "Closed that day" : "No times today"}
@@ -392,6 +475,7 @@ export function NewAppointment({
             ))}
           </select>
         </label>
+        {dayError && <DayError onRetry={retry} />}
         <label>
           Repeat
           <select
@@ -405,14 +489,14 @@ export function NewAppointment({
             <option value={4}>Every 4 weeks</option>
           </select>
         </label>
-        {every > 0 && (
+        {every > 0 && fits >= 2 && (
           <label>
             How many times
             <select
-              value={times}
+              value={repeatTimes}
               onChange={(e) => setTimes(Number(e.target.value))}
             >
-              {Array.from({ length: 11 }, (_, i) => i + 2).map((n) => (
+              {Array.from({ length: fits - 1 }, (_, i) => i + 2).map((n) => (
                 <option key={n} value={n}>
                   {n} times
                 </option>
@@ -425,8 +509,13 @@ export function NewAppointment({
             ? `${pounds(price.price_pence)} pounds · ${duration} min with ${barber?.name ?? ""}`
             : "No price is set for this chair and service."}
           {hours ? "" : slots ? " The shop is closed that day." : ""}
-          {every > 0 && lastDate
+          {repeating && lastDate
             ? ` Same time ${REPEAT_LABEL[every]} until ${shortDay(lastDate)}. Dates already taken are skipped.`
+            : ""}
+          {every > 0 && fits < 12
+            ? fits >= 2
+              ? ` The diary opens ${HORIZON_DAYS} days ahead, so up to ${fits} times fit.`
+              : ` The diary opens ${HORIZON_DAYS} days ahead, so no repeat fits after this date.`
             : ""}
         </p>
         {confirmSqueeze && value !== null && (
@@ -510,14 +599,16 @@ export function BlockedTime({
   // A holiday: whole days from the date until this one.
   const [lastDay, setLastDay] = useState("");
   const [error, setError] = useState("");
-  const day = useDay(date, cached);
+  const { day, error: dayError, retry } = useDay(date, cached);
   const hours = day ? hoursFor(day, date) : null;
+  const ref = useDialog<HTMLElement>(onClose);
   const [open, close] = hours ?? [540, 1080];
   const fromValue = from ?? open;
   const range = kind === "day" && lastDay > date ? lastDay : "";
   const untilValue = until ?? Math.min(close, fromValue + 60);
   return (
     <aside
+      ref={ref}
       className="sheet drawer"
       role="dialog"
       aria-modal="true"
@@ -668,6 +759,7 @@ export function BlockedTime({
         {!hours && day && (
           <p className="price-hint">The shop is closed on this day already.</p>
         )}
+        {dayError && <DayError onRetry={retry} />}
         {error && (
           <p className="staff-error wide" role="alert">
             {error}
@@ -773,6 +865,7 @@ export function WaitlistForm({
   const [waiting, setWaiting] = useState<Waiting[] | null>(null);
   const [error, setError] = useState("");
   const [tick, setTick] = useState(0);
+  const ref = useDialog<HTMLElement>(onClose);
 
   useEffect(() => {
     let live = true;
@@ -818,6 +911,7 @@ export function WaitlistForm({
 
   return (
     <aside
+      ref={ref}
       className="sheet drawer"
       role="dialog"
       aria-modal="true"

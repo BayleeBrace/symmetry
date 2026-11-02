@@ -11,31 +11,9 @@ import {
 } from "./types";
 import { Loading } from "./spinner";
 import { toast } from "./toast";
+import { EditorHead, InlineEditor } from "./dialog";
 
 type Row = Service & { active: boolean };
-
-/** The top of every editor: what it is about, and a way out. */
-function EditorHead({
-  title,
-  onClose,
-}: {
-  title: string;
-  onClose: () => void;
-}) {
-  return (
-    <div className="editor-head">
-      <p className="editor-title">{title}</p>
-      <button
-        type="button"
-        className="editor-close"
-        aria-label="Close"
-        onClick={onClose}
-      >
-        ×
-      </button>
-    </div>
-  );
-}
 
 /**
  * The owner's menu: every service, hidden ones too, with a price and timing
@@ -208,8 +186,8 @@ export function Catalogue({
       )}
 
       {adding && (
-        <form
-          className="staff-form inline-editor"
+        <InlineEditor
+          onClose={closeAll}
           onSubmit={async (event) => {
             event.preventDefault();
             const form = new FormData(event.currentTarget);
@@ -235,7 +213,7 @@ export function Catalogue({
             <input
               name="price"
               type="number"
-              step="0.5"
+              step="0.01"
               min="0"
               required
               defaultValue="20"
@@ -262,13 +240,13 @@ export function Catalogue({
               Add service
             </button>
           </div>
-        </form>
+        </InlineEditor>
       )}
 
       {current && (
-        <form
+        <InlineEditor
           key={current.id}
-          className="staff-form inline-editor"
+          onClose={closeAll}
           onSubmit={async (event) => {
             event.preventDefault();
             if (name.trim() !== current.name)
@@ -369,13 +347,13 @@ export function Catalogue({
               Delete this service
             </button>
           </div>
-        </form>
+        </InlineEditor>
       )}
 
       {edit && (
-        <form
+        <InlineEditor
           key={`${edit.barber.id}-${edit.service.id}`}
-          className="staff-form inline-editor"
+          onClose={closeAll}
           onSubmit={async (event) => {
             event.preventDefault();
             const form = new FormData(event.currentTarget);
@@ -402,7 +380,7 @@ export function Catalogue({
             <input
               name="price"
               type="number"
-              step="0.5"
+              step="0.01"
               min="0"
               required
               defaultValue={editing ? editing.price_pence / 100 : ""}
@@ -433,7 +411,7 @@ export function Catalogue({
               Save
             </button>
           </div>
-        </form>
+        </InlineEditor>
       )}
     </section>
   );

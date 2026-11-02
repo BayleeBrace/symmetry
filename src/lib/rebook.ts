@@ -3,6 +3,7 @@ import { createAdminClient } from "./supabase/admin";
 import { signLink, siteUrl } from "./security";
 import { addDays, shopMinute, shopToday } from "./booking-data";
 import { daysBetween, reminderDue, usualGapDays } from "./rebook-gap";
+import { fetchAll } from "./paging";
 
 type Last = { date: string; barber_id: string; service_id: string };
 type Embedded = { customer_id: string };
@@ -27,16 +28,25 @@ export async function queueRebookNudges() {
     return { queued: 0, skipped: "Already ran today" };
   if (claimError) throw new Error("Reminder run could not be claimed");
 
-  const { data: done, error } = await db
-    .from("bookings")
-    .select("local_date,barber_id,service_id,booking_groups!inner(customer_id)")
-    .eq("status", "done")
-    .gte("local_date", addDays(today, -365))
-    .order("local_date")
-    .limit(5000);
+  // A year of finished trims, newest first and a page at a time, so each
+  // customer's last visit is always in the set even if the cap is reached.
+  const { data: done, error } = await fetchAll(
+    (start, end) =>
+      db
+        .from("bookings")
+        .select(
+          "local_date,barber_id,service_id,booking_groups!inner(customer_id)",
+        )
+        .eq("status", "done")
+        .gte("local_date", addDays(today, -365))
+        .order("local_date", { ascending: false })
+        .order("id")
+        .range(start, end),
+    { max: 20000 },
+  );
   if (error) throw new Error("Reminder history could not load");
   const byCustomer = new Map<string, { dates: string[]; last: Last }>();
-  for (const b of done || []) {
+  for (const b of done) {
     const id = (b.booking_groups as unknown as Embedded).customer_id;
     const visit = {
       date: b.local_date,
@@ -48,7 +58,7 @@ export async function queueRebookNudges() {
       last: visit,
     };
     entry.dates.push(b.local_date);
-    if (b.local_date >= entry.last.date) entry.last = visit;
+    if (b.local_date > entry.last.date) entry.last = visit;
     byCustomer.set(id, entry);
   }
   const due = [...byCustomer]

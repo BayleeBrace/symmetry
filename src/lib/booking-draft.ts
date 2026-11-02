@@ -1,5 +1,7 @@
 import { z } from "zod";
 export const DRAFT_KEY = "symmetry-booking-draft-v1";
+/** The token proving this tab started the card setup, kept for the return from Stripe. */
+export const SETUP_KEY = "symmetry-card-setup-v1";
 const trim = z.object({
   date: z.iso.date(),
   barber: z.enum(["sean", "travis", "dylan"]),

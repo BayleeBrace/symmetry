@@ -6,6 +6,7 @@ import { type Context, initials, shortDay } from "./types";
 import { type Waiting, WaitingRow } from "./forms";
 import { toast } from "./toast";
 import { Loading } from "./spinner";
+import { EditorHead, InlineEditor } from "./dialog";
 
 /** Everyone waiting for a day in the next two months, day by day. */
 function WaitingList({ onBack }: { onBack: () => void }) {
@@ -117,7 +118,12 @@ export function Clients({
   onBook,
 }: {
   ctx: Context;
-  onBook: (client: { name: string; email: string; phone: string }) => void;
+  onBook: (client: {
+    id: string;
+    name: string;
+    email: string;
+    phone: string;
+  }) => void;
 }) {
   const owner = ctx.staff.role === "owner";
   const [showWaiting, setShowWaiting] = useState(false);
@@ -230,6 +236,7 @@ export function Clients({
                   className="button-primary"
                   onClick={() =>
                     onBook({
+                      id: client.id,
                       name: client.name,
                       email: client.email,
                       phone: client.phone,
@@ -274,8 +281,8 @@ export function Clients({
               <p className="sheet-notes">{client.preferences}</p>
             )}
             {editing && draft && (
-              <form
-                className="staff-form inline-editor"
+              <InlineEditor
+                onClose={() => setEditing(false)}
                 onSubmit={async (e) => {
                   e.preventDefault();
                   setSaving(true);
@@ -302,6 +309,10 @@ export function Clients({
                   }
                 }}
               >
+                <EditorHead
+                  title={`Details for ${client.name}`}
+                  onClose={() => setEditing(false)}
+                />
                 <label>
                   Name
                   <input
@@ -367,7 +378,7 @@ export function Clients({
                     Cancel
                   </button>
                 </div>
-              </form>
+              </InlineEditor>
             )}
             <div className="seg" role="group" aria-label="Appointments">
               {(["upcoming", "past"] as const).map((p) => (

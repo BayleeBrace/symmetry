@@ -4,6 +4,8 @@ import { requireStaff } from "@/lib/staff";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sameOrigin, privateJson, publicError } from "@/lib/security";
 import { shopToday, shopMinute } from "@/lib/booking-data";
+import { csvCell } from "@/lib/csv";
+import { fetchAll } from "@/lib/paging";
 
 const profile = z.object({
   name: z.string().trim().min(2).max(100),
@@ -34,18 +36,20 @@ export async function GET(req: Request) {
     if (params.get("format") === "csv") {
       if (staff.role !== "owner")
         throw new Error("Only the owner can download the client list");
-      const { data: all, error } = await db
-        .from("customers")
-        .select("name,email,phone,preferences,created_at")
-        .is("directory_parent_id", null)
-        .neq("name", "Walk-in")
-        .order("name")
-        .limit(20000);
+      const { data: all, error } = await fetchAll((start, end) =>
+        db
+          .from("customers")
+          .select("name,email,phone,preferences,created_at")
+          .is("directory_parent_id", null)
+          .neq("name", "Walk-in")
+          .order("name")
+          .order("id")
+          .range(start, end),
+      );
       if (error) throw new Error("Clients could not load");
-      const cell = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-      const lines = (all || []).map((c) =>
+      const lines = all.map((c) =>
         [c.name, c.phone, c.email, c.preferences, c.created_at.slice(0, 10)]
-          .map(cell)
+          .map(csvCell)
           .join(","),
       );
       return new Response(

@@ -54,8 +54,11 @@ export async function POST(req: Request) {
       .select("group_id,staff_user")
       .eq("endpoint", u.href)
       .maybeSingle();
+    // A customer's phone moves on to their newest booking. A phone never
+    // crosses between a customer and the team, or between team members.
     if (
       existing &&
+      !(existing.group_id && group_id) &&
       (existing.group_id !== group_id || existing.staff_user !== staff_user)
     )
       throw new Error(

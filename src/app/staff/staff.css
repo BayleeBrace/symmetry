@@ -5,14 +5,20 @@
   --svc-0: #f6e3c6;
   --svc-1: #cfe9e4;
   --svc-2: #d9e4f7;
-  --svc-3: #f4d6df;
-  --svc-4: #e7dcf3;
+  /* Slate and stone: no pinks. Muted text on every tint is 4.5:1 or more. */
+  --svc-3: #d1d9de;
+  --svc-4: #e1d8c8;
   --svc-5: #eee9d2;
   --svc-6: #dfe9d6;
   --hatch-a: #f5f2ec;
   --hatch-b: #e6e1d8;
   --block-hatch: #e4dfd6;
   --glass-edge: rgba(255, 255, 255, 0.6);
+  /* Small text on appointment cards: darker grey in light, lighter in dark, 4.5:1 on every tint. */
+  --card-muted: #625d58;
+  /* The rail is dark in both themes; selected is white on it. */
+  --rail-on: #ffffff;
+  --rail-edge: transparent;
   --rail: 84px;
   --tabbar: 64px;
   --head: 86px;
@@ -32,14 +38,17 @@ html[data-staff-theme="dark"] .staff-page {
   --svc-0: #5b4629;
   --svc-1: #254740;
   --svc-2: #2b3a52;
-  --svc-3: #4f2f3a;
-  --svc-4: #3c3050;
+  --svc-3: #333d44;
+  --svc-4: #4a433a;
   --svc-5: #454026;
   --svc-6: #2f4030;
   --hatch-a: #1c1b1a;
   --hatch-b: #2a2826;
   --block-hatch: #35322e;
   --glass-edge: rgba(255, 255, 255, 0.12);
+  --card-muted: #c9c3b9;
+  --rail-on: #efebe3;
+  --rail-edge: rgba(239, 235, 227, 0.16);
   color-scheme: dark;
 }
 /* The ground behind the page (overscroll, the iPhone status bar area) matches too. */
@@ -62,25 +71,53 @@ html[data-staff-page][data-staff-theme="dark"] body {
     --svc-0: #5b4629;
     --svc-1: #254740;
     --svc-2: #2b3a52;
-    --svc-3: #4f2f3a;
-    --svc-4: #3c3050;
+    --svc-3: #333d44;
+    --svc-4: #4a433a;
     --svc-5: #454026;
     --svc-6: #2f4030;
     --hatch-a: #1c1b1a;
     --hatch-b: #2a2826;
     --block-hatch: #35322e;
     --glass-edge: rgba(255, 255, 255, 0.12);
+    --card-muted: #c9c3b9;
+    --rail-on: #efebe3;
+    --rail-edge: rgba(239, 235, 227, 0.16);
     color-scheme: dark;
   }
 }
+/* The sign-in monogram: dark artwork on the light page, the white one on the dark. */
+.on-dark {
+  display: none;
+}
+html[data-staff-theme="dark"] .staff-page .on-light {
+  display: none;
+}
+html[data-staff-theme="dark"] .staff-page .on-dark {
+  display: inline;
+}
+@media (prefers-color-scheme: dark) {
+  html:not([data-staff-theme="light"]) .staff-page .on-light {
+    display: none;
+  }
+  html:not([data-staff-theme="light"]) .staff-page .on-dark {
+    display: inline;
+  }
+}
+/* The skip link lands here; the whole page needs no focus ring. */
+.staff-page:focus {
+  outline: none;
+}
+/* With viewport-fit=cover, a phone on its side keeps the rail and the page clear of the notch */
 .staff-app {
   display: grid;
-  grid-template-columns: var(--rail) minmax(0, 1fr);
+  grid-template-columns:
+    calc(var(--rail) + env(safe-area-inset-left, 0px))
+    minmax(0, 1fr);
   min-height: 100svh;
 }
 .staff-main {
   min-width: 0;
-  padding: 22px 28px 80px;
+  padding: 22px max(28px, env(safe-area-inset-right, 0px)) 80px 28px;
 }
 .staff-shell {
   padding: 40px;
@@ -246,8 +283,10 @@ html[data-staff-page][data-staff-theme="dark"] body {
   display: flex;
   flex-direction: column;
   height: 100svh;
-  background: var(--black);
-  color: var(--bone);
+  padding-left: env(safe-area-inset-left, 0px);
+  border-right: 1px solid var(--rail-edge);
+  background: #161616;
+  color: #efebe3;
 }
 .rail-mark {
   display: grid;
@@ -259,7 +298,7 @@ html[data-staff-page][data-staff-theme="dark"] body {
   height: 36px;
   padding: 7px;
   border-radius: 50%;
-  background: var(--bone);
+  background: #efebe3;
 }
 .rail-items {
   display: grid;
@@ -275,7 +314,7 @@ html[data-staff-page][data-staff-theme="dark"] body {
   border: 0;
   border-radius: 6px;
   background: transparent;
-  color: color-mix(in srgb, var(--white) 70%, transparent);
+  color: rgba(255, 255, 255, 0.7);
   font: inherit;
   font-size: 0.6rem;
   letter-spacing: 0.08em;
@@ -283,11 +322,11 @@ html[data-staff-page][data-staff-theme="dark"] body {
   cursor: pointer;
 }
 .rail-items button:hover {
-  color: var(--bone);
+  color: #efebe3;
 }
 .rail-items button[aria-pressed="true"] {
-  background: var(--bone);
-  color: var(--black);
+  background: var(--rail-on);
+  color: #161616;
 }
 .rail-foot {
   display: grid;
@@ -299,7 +338,7 @@ html[data-staff-page][data-staff-theme="dark"] body {
 }
 .rail-who {
   overflow: hidden;
-  color: color-mix(in srgb, var(--white) 70%, transparent);
+  color: rgba(255, 255, 255, 0.7);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -307,7 +346,7 @@ html[data-staff-page][data-staff-theme="dark"] body {
   min-height: 32px;
   border: 0;
   background: transparent;
-  color: var(--bone);
+  color: #efebe3;
   font: inherit;
   font-size: 0.68rem;
   text-decoration: underline;
@@ -316,7 +355,8 @@ html[data-staff-page][data-staff-theme="dark"] body {
 }
 .tabbar,
 .more-sheet,
-.date-strip {
+.date-jump,
+.editor-backdrop {
   display: none;
 }
 
@@ -897,6 +937,12 @@ html[data-staff-page][data-staff-theme="dark"] body {
   white-space: nowrap;
   cursor: pointer;
 }
+/* A tap area of 44px around the small pill */
+.chair-behind-toggle::after {
+  content: "";
+  position: absolute;
+  inset: -12px -4px;
+}
 .chair-behind-toggle:hover,
 .chair-behind-toggle[aria-expanded="true"] {
   border-color: var(--black);
@@ -1110,6 +1156,16 @@ html[data-staff-page][data-staff-theme="dark"] body {
   color: color-mix(in srgb, var(--white) 72%, transparent);
   font-size: 0.78rem;
 }
+.place-next,
+.place-cancel {
+  position: relative;
+}
+.place-next::after,
+.place-cancel::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+}
 .place-next {
   min-height: 36px;
   padding: 0 14px;
@@ -1197,16 +1253,13 @@ html[data-staff-page][data-staff-theme="dark"] body {
   font-size: 0.8rem;
 }
 .trim-time {
-  color: var(--muted);
+  color: var(--card-muted);
   font-size: 0.72rem;
   letter-spacing: 0.06em;
   font-variant-numeric: tabular-nums;
 }
-.trim-name {
-  font-weight: 500;
-}
 .trim-service {
-  color: var(--muted);
+  color: var(--card-muted);
   font-size: 0.8rem;
 }
 .trim.is-short {
@@ -1698,7 +1751,13 @@ html[data-staff-page][data-staff-theme="dark"] body {
   font-size: 0.58rem;
 }
 .client-picked .text-button {
+  position: relative;
   min-height: 28px;
+}
+.client-picked .text-button::after {
+  content: "";
+  position: absolute;
+  inset: -8px -6px;
 }
 .client-results {
   position: absolute;
@@ -1744,6 +1803,7 @@ html[data-staff-page][data-staff-theme="dark"] body {
   font-size: 0.8rem;
 }
 .chip-button {
+  position: relative;
   min-height: 30px;
   padding: 0 12px;
   border: 1px solid var(--black);
@@ -1753,6 +1813,11 @@ html[data-staff-page][data-staff-theme="dark"] body {
   font: inherit;
   font-size: 0.8rem;
   cursor: pointer;
+}
+.chip-button::after {
+  content: "";
+  position: absolute;
+  inset: -7px 0;
 }
 .chip-button:hover {
   background: var(--bone);
@@ -1884,8 +1949,9 @@ html[data-staff-page][data-staff-theme="dark"] body {
   margin: 0;
 }
 .editor-close {
-  width: 36px;
-  height: 36px;
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
   border: 0;
   border-radius: 50%;
   background: transparent;
@@ -1905,11 +1971,13 @@ html[data-staff-page][data-staff-theme="dark"] body {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
+/* Narrow phones: the words wrap inside the button rather than spill out of it */
 .editor-row .button-secondary {
-  padding-right: 6px;
-  padding-left: 6px;
+  padding: 8px 6px;
   font-size: 0.8rem;
-  white-space: nowrap;
+  line-height: 1.25;
+  text-align: center;
+  overflow-wrap: anywhere;
 }
 .editor-quiet {
   grid-column: 1 / -1;
@@ -1965,6 +2033,7 @@ html[data-staff-page][data-staff-theme="dark"] body {
   }
 }
 .waiting-pill {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -1981,6 +2050,11 @@ html[data-staff-page][data-staff-theme="dark"] body {
 .waiting-pill span {
   font-size: 1.1rem;
   line-height: 1;
+}
+.waiting-pill::after {
+  content: "";
+  position: absolute;
+  inset: -6px 0;
 }
 .date-strip button {
   position: relative;
@@ -2041,7 +2115,7 @@ html[data-staff-page][data-staff-theme="dark"] body {
   white-space: nowrap;
 }
 .wait-list .text-button {
-  min-height: 32px;
+  min-height: 44px;
   font-size: 0.82rem;
 }
 .squeeze-box {
@@ -2069,10 +2143,11 @@ html[data-staff-page][data-staff-theme="dark"] body {
 }
 
 /* Sign in */
+/* Padding, not margin: a top margin collapses through main and shows the bone page behind */
 .staff-signin {
   max-width: 420px;
-  margin: 8vh auto 0;
-  padding: 0 20px 40px;
+  margin: 0 auto;
+  padding: 8vh 20px 40px;
 }
 .signin-mark {
   width: 44px;
@@ -2879,12 +2954,28 @@ html[data-staff-page][data-staff-theme="dark"] body {
     text-decoration: none;
   }
   .more-sheet button[aria-pressed="true"] {
-    background: var(--bone);
+    background: var(--black);
+    color: var(--white);
+  }
+  .more-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 0 0 4px;
   }
   .more-who {
-    margin: 0 8px 6px;
+    margin: 0 8px;
     color: var(--muted);
     font-size: 0.8rem;
+  }
+  .more-sheet .more-close {
+    justify-content: center;
+    width: 44px;
+    min-height: 44px;
+    padding: 0;
+    font-size: 1.6rem;
+    line-height: 1;
   }
   .more-signout {
     text-decoration: underline;
@@ -2947,11 +3038,11 @@ html[data-staff-page][data-staff-theme="dark"] body {
     box-shadow: 0 -12px 40px rgba(22, 22, 22, 0.3);
     animation: editor-up 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
   }
-  .inline-editor::before {
-    content: "";
+  .editor-backdrop {
+    display: block;
     position: fixed;
     inset: 0;
-    z-index: -1;
+    z-index: 41;
     background: rgba(22, 22, 22, 0.38);
   }
   .inline-editor .editor-title {
@@ -2983,16 +3074,24 @@ html[data-staff-page][data-staff-theme="dark"] body {
     gap: 4px;
   }
   .cal-nav .btn-quiet {
-    min-height: 38px;
+    min-height: 44px;
     padding: 0 10px;
     font-size: 0.78rem;
   }
+  /* 40px drawn, 44px to tap */
   .cal-arrow {
-    width: 34px;
-    height: 38px;
+    position: relative;
+    width: 40px;
+    height: 44px;
+  }
+  .cal-arrow::after {
+    content: "";
+    position: absolute;
+    inset: 0 -2px;
   }
   .cal-date {
     flex: 1;
+    min-height: 44px;
     padding: 0 4px;
     font-size: 0.98rem;
     text-align: center;
@@ -3012,8 +3111,8 @@ html[data-staff-page][data-staff-theme="dark"] body {
     display: grid;
     flex: 0 0 auto;
     place-items: center;
-    width: 40px;
-    height: 38px;
+    width: 44px;
+    height: 44px;
     border: 1px solid var(--line);
     background: var(--white);
     cursor: pointer;
@@ -3050,11 +3149,43 @@ html[data-staff-page][data-staff-theme="dark"] body {
   .cal-tools.is-open .cal-seg button {
     flex: 1;
   }
+  .date-jump {
+    display: block;
+    margin: 0 0 10px;
+  }
   .date-strip {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
     gap: 4px;
-    margin: 0 0 10px;
+    margin: 0 0 4px;
+  }
+  /* The words sit on a real, see-through date field, so the tap opens the phone's picker */
+  .strip-pick {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    color: var(--black);
+    font-size: 0.86rem;
+    text-decoration: underline;
+    text-underline-offset: 0.3em;
+  }
+  .strip-pick input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    opacity: 0;
+    font-size: 16px;
+    cursor: pointer;
+  }
+  .strip-pick:focus-within {
+    outline: 2px solid var(--black);
+    outline-offset: 2px;
   }
   .date-strip button {
     display: grid;
@@ -3129,9 +3260,20 @@ html[data-staff-page][data-staff-theme="dark"] body {
   .chair-behind-toggle {
     top: 3px;
     right: 1px;
+    z-index: 2;
     padding: 1px 5px;
     font-size: 0.56rem;
     letter-spacing: 0;
+  }
+  .chair-behind-toggle::after {
+    inset: -15px -4px;
+  }
+  .chair-behind-options .button-secondary,
+  .range-chips button,
+  .seg button,
+  .cal-seg button,
+  .settings-back {
+    min-height: 44px;
   }
   .behind-long {
     display: none;

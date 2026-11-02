@@ -1,6 +1,7 @@
 import { requireStaff } from "@/lib/staff";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { privateJson, publicError } from "@/lib/security";
+import { fetchAll } from "@/lib/paging";
 
 // What the automated messages are, and whether the live site can send them.
 export async function GET() {
@@ -8,18 +9,25 @@ export async function GET() {
     await requireStaff(true);
     const db = createAdminClient();
     const since = new Date(Date.now() - 30 * 86400000).toISOString();
+    // Every row, a page at a time: the API stops at 1000 a request.
     const [consents, sent] = await Promise.all([
-      db
-        .from("email_marketing_consents")
-        .select("customer_id,granted,recorded_at")
-        .order("recorded_at", { ascending: false })
-        .limit(5000),
-      db
-        .from("notification_jobs")
-        .select("kind,channel,status")
-        .eq("status", "sent")
-        .gte("due_at", since)
-        .limit(5000),
+      fetchAll((start, end) =>
+        db
+          .from("email_marketing_consents")
+          .select("customer_id,granted,recorded_at")
+          .order("recorded_at", { ascending: false })
+          .order("id")
+          .range(start, end),
+      ),
+      fetchAll((start, end) =>
+        db
+          .from("notification_jobs")
+          .select("kind,channel,status")
+          .eq("status", "sent")
+          .gte("due_at", since)
+          .order("id")
+          .range(start, end),
+      ),
     ]);
     if (consents.error || sent.error)
       throw new Error("Marketing figures could not load");

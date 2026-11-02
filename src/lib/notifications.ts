@@ -14,6 +14,10 @@ import {
 import { getCatalog } from "./catalog";
 import { shopContact } from "./shop-contact";
 import { busyFor } from "./availability";
+import { fetchAll } from "./paging";
+import { bookingText, sentence, waitlistOfferText } from "./message-copy";
+import { offerOrder } from "./waitlist-order";
+import type { BusyPeriod } from "./booking-data";
 const escape = (s: string) =>
   s.replace(
     /[&<>"']/g,
@@ -43,6 +47,7 @@ export async function processNotifications() {
         phone = job.payload.phone as string | undefined,
         url = job.payload.url as string | undefined,
         text = "",
+        lead = "",
         subject = "Your Symmetry trim";
       if (job.group_id) {
         const { data: g, error } = await db
@@ -67,8 +72,24 @@ export async function processNotifications() {
           .eq("id", job.booking_id)
           .single();
         if (!b) throw new Error("Trim not found");
+        // One confirmation covers every trim booked together: list each one still booked.
+        let trims = [b];
+        if (job.kind === "confirmed") {
+          const { data: all, error: allError } = await db
+            .from("bookings")
+            .select(
+              "local_date,start_minute,status,late_minutes,services(name,slug),barbers(name,slug)",
+            )
+            .eq("group_id", job.group_id)
+            .eq("status", "booked")
+            .order("local_date")
+            .order("start_minute");
+          if (allError) throw new Error("Trims not found");
+          trims = all;
+        }
         if (
-          (["reminder", "confirmed", "moved", "delayed"].includes(job.kind) &&
+          (job.kind === "confirmed" && !trims.length) ||
+          (["reminder", "moved", "delayed"].includes(job.kind) &&
             b.status !== "booked") ||
           (job.kind === "reminder" &&
             shopInstant(b.local_date, b.start_minute).getTime() <=
@@ -109,13 +130,30 @@ export async function processNotifications() {
         } else if (job.kind === "delayed") {
           text = `${barber.name} is running about ${job.payload.minutes} minutes behind for your ${clock(b.start_minute)} trim today. Sorry for the wait; there is nothing you need to do.`;
         } else {
-          text = `${subject}. ${fullDate(b.local_date)} at ${clock(b.start_minute)}: ${service.name} with ${barber.name}. ${job.kind === "running_late" ? `The shop has been notified you expect to be ${b.late_minutes} minutes late.` : "View your booking and cancellation policy using your secure link."}`;
-        }
-        if (
-          ["confirmed", "moved", "reminder"].includes(job.kind) &&
-          g.policy_snapshot
-        ) {
-          text += ` Free cancellation until ${deadlineLabel(b.local_date, b.start_minute, g.policy_snapshot.cancellation_hours)}. Late cancellation: ${g.policy_snapshot.late_percent}%; no-show: ${g.policy_snapshot.no_show_percent}%. Move or cancel using your booking link.`;
+          // Texts have no heading, so they open with the subject; emails show it as the heading.
+          lead = sentence(subject);
+          const policy = g.policy_snapshot;
+          text = bookingText({
+            kind: job.kind,
+            trims: trims.map((t) => ({
+              when: `${fullDate(t.local_date)} at ${clock(t.start_minute)}`,
+              service: (t.services as unknown as { name: string }).name,
+              barber: (t.barbers as unknown as { name: string }).name,
+            })),
+            lateMinutes: b.late_minutes,
+            policy: policy
+              ? {
+                  hours: policy.cancellation_hours,
+                  latePercent: policy.late_percent,
+                  noShowPercent: policy.no_show_percent,
+                  deadline: deadlineLabel(
+                    trims[0].local_date,
+                    trims[0].start_minute,
+                    policy.cancellation_hours,
+                  ),
+                }
+              : null,
+          });
         }
       } else if (job.kind === "nudge") {
         const p = job.payload as {
@@ -148,8 +186,8 @@ export async function processNotifications() {
           "Confirm you’d like an alert when a time opens up. This link expires in 24 hours.";
       } else {
         subject = "A chair is available";
-        text =
-          "A time is available on your requested day. Book a trim to reserve it; availability can change.";
+        const day = job.payload.day as string | undefined;
+        text = waitlistOfferText(day ? fullDate(day) : null);
       }
       let providerId: string | undefined;
       if (job.channel === "email") {
@@ -162,7 +200,11 @@ export async function processNotifications() {
         }
         if (!process.env.RESEND_API_KEY || !process.env.EMAIL_FROM)
           throw new Error("Email provider not configured");
-        const html = `<div style="background:#efebe3;color:#161616;padding:36px;font:16px Arial,sans-serif"><img src="${escape(siteUrl())}/wordmark-email.png" width="320" height="112" alt="Symmetry" style="display:block;width:320px;max-width:100%;height:auto" /><h1 style="font:normal 28px Arial,sans-serif">${escape(subject)}.</h1><p>${escape(text)}</p><p><a href="${escape(url!)}" style="display:inline-block;background:#161616;color:#fff;padding:14px 20px;text-decoration:none">${job.kind === "waitlist_verify" ? "Confirm request" : job.kind === "thanks" ? (process.env.GOOGLE_REVIEW_URL ? "Leave a review" : "Book again") : job.kind === "nudge" ? "Book my usual" : "View details"}</a></p><p>4 Brewery Terrace, Saundersfoot</p>${job.kind === "nudge" ? `<p style="font-size:13px;color:#5a5650">You asked us to remind you when you are due. <a href="${escape(job.payload.stop)}" style="color:#5a5650">Stop these reminders</a>.</p>` : ""}</div>`;
+        const paragraphs = text
+          .split("\n")
+          .map((line) => `<p>${escape(line)}</p>`)
+          .join("");
+        const html = `<div style="background:#efebe3;color:#161616;padding:36px;font:16px Arial,sans-serif"><img src="${escape(siteUrl())}/wordmark-email.png" width="320" height="112" alt="Symmetry" style="display:block;width:320px;max-width:100%;height:auto" /><h1 style="font:normal 28px Arial,sans-serif">${escape(sentence(subject))}</h1>${paragraphs}<p><a href="${escape(url!)}" style="display:inline-block;background:#161616;color:#fff;padding:14px 20px;text-decoration:none">${job.kind === "waitlist_verify" ? "Confirm request" : job.kind === "thanks" ? (process.env.GOOGLE_REVIEW_URL ? "Leave a review" : "Book again") : job.kind === "nudge" ? "Book my usual" : job.kind === "waitlist_alert" ? "Book a trim" : "View details"}</a></p><p>4 Brewery Terrace, Saundersfoot</p>${job.kind === "nudge" ? `<p style="font-size:13px;color:#5a5650">You asked us to remind you when you are due. <a href="${escape(job.payload.stop)}" style="color:#5a5650">Stop these reminders</a>.</p>` : ""}</div>`;
         const response = await fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: {
@@ -184,9 +226,13 @@ export async function processNotifications() {
               (job.kind === "nudge"
                 ? "\n\nStop these reminders: " + job.payload.stop
                 : ""),
+            // One-click unsubscribe posts to the stop link; opening it only asks.
             headers:
               job.kind === "nudge"
-                ? { "List-Unsubscribe": "<" + job.payload.stop + ">" }
+                ? {
+                    "List-Unsubscribe": "<" + job.payload.stop + ">",
+                    "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+                  }
                 : undefined,
           }),
           signal: AbortSignal.timeout(15000),
@@ -227,7 +273,7 @@ export async function processNotifications() {
             body: new URLSearchParams({
               To: phone,
               From: process.env.TWILIO_FROM,
-              Body: text + " " + url,
+              Body: (lead ? lead + "\n" : "") + text + " " + url,
             }),
             signal: AbortSignal.timeout(15000),
           },
@@ -293,12 +339,13 @@ export async function processNotifications() {
 const OFFER_MS = 5 * 60000;
 
 /**
- * Offer freed slots to the people waiting, one at a time per day. The first
- * person waiting gets the offer; if the slot is still free five minutes
- * later it goes to the next. Nobody is offered the same day more than twice.
- * A request covers one day or a run of days. Text where we have a mobile
- * and Twilio, else email; with neither, they stay on the list for the team
- * to ring.
+ * Offer freed slots to the people waiting, one at a time per day. A day's
+ * offer goes to whoever has been offered that day the fewest times, then
+ * whoever asked first; if the slot is still free five minutes later it goes
+ * to the next. So everyone waiting for a day gets a turn before anyone is
+ * asked again, and nobody is offered the same day more than twice. A request
+ * covers one day or a run of days. Text where we have a mobile and Twilio,
+ * else email; with neither, they stay on the list for the team to ring.
  */
 export async function checkWaitlist() {
   const db = createAdminClient();
@@ -315,49 +362,72 @@ export async function checkWaitlist() {
     .order("created_at")
     .limit(100);
   if (error) throw new Error("Waitlist could not load");
+  // Offers made so far for each request and day: every offer is a queued
+  // message that carries its day.
+  const { data: made, error: madeError } = await fetchAll((start, end) =>
+    db
+      .from("notification_jobs")
+      .select("dedupe_key,payload")
+      .eq("kind", "waitlist_alert")
+      .gte("payload->>day", today)
+      .order("id")
+      .range(start, end),
+  );
+  if (madeError) throw new Error("Waitlist offers could not load");
+  const offers = new Map<string, number>();
+  for (const job of made) {
+    const id = /^waitlist-offer-([0-9a-f-]{36})-/.exec(job.dedupe_key)?.[1];
+    const day = (job.payload as { day?: string } | null)?.day;
+    if (id && day)
+      offers.set(id + " " + day, (offers.get(id + " " + day) ?? 0) + 1);
+  }
   const catalog = await getCatalog();
   const smsReady = Boolean(
     process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_FROM,
   );
   const now = Date.now();
+  const holding = (w: { offered_at: string | null }) =>
+    Boolean(w.offered_at && now - new Date(w.offered_at).getTime() < OFFER_MS);
   // One live offer per day at a time: a day with an offer made in the last five minutes is skipped.
   const offeredDays = new Set(
     (data || [])
-      .filter(
-        (w) =>
-          w.offered_at && now - new Date(w.offered_at).getTime() < OFFER_MS,
-      )
+      .filter(holding)
       .map((w) => (w.offered_slot as string | null)?.split(" ")[0] ?? ""),
   );
-  let alerted = 0;
+  // Who is waiting on each day, among those we can reach and who are not holding an offer now.
+  const waitingOn = new Map<string, NonNullable<typeof data>>();
   for (const w of data || []) {
-    const barber = (w.barbers?.slug || "any") as BarberChoice;
-    const service = w.services?.slug;
-    if (!service) continue;
-    if ((w.offer_count ?? 0) >= 2) continue;
-    if (w.offered_at && now - new Date(w.offered_at).getTime() < OFFER_MS)
-      continue;
-    const channel = w.phone && smsReady ? "sms" : w.email ? "email" : null;
-    if (!channel) continue;
+    if (!w.services?.slug || holding(w)) continue;
+    if (!(w.phone && smsReady) && !w.email) continue;
     const first =
       (w.preferred_date as string) < today ? today : w.preferred_date;
     const last = (w.until_date as string | null) ?? w.preferred_date;
-    for (let day = first; day <= last; day = addDays(day, 1)) {
-      if (offeredDays.has(day)) continue;
-      const slots = makeSlots(
-        day,
-        barber,
-        service,
-        await busyFor(day, barber),
-        catalog,
-      );
+    for (let day = first; day <= last; day = addDays(day, 1))
+      waitingOn.set(day, [...(waitingOn.get(day) ?? []), w]);
+  }
+  const busy = new Map<string, BusyPeriod[]>();
+  const offeredTo = new Set<string>();
+  let alerted = 0;
+  for (const day of [...waitingOn.keys()].sort()) {
+    if (offeredDays.has(day)) continue;
+    const next = offerOrder(
+      waitingOn.get(day)!.filter((w) => !offeredTo.has(w.id)),
+      (id) => offers.get(id + " " + day) ?? 0,
+    );
+    for (const w of next) {
+      const barber = (w.barbers?.slug || "any") as BarberChoice;
+      const service = w.services.slug as string;
+      const key = day + " " + barber;
+      if (!busy.has(key)) busy.set(key, await busyFor(day, barber));
+      const slots = makeSlots(day, barber, service, busy.get(key)!, catalog);
       if (!slots.length) continue;
       const slot = `${day} ${slots[0].time ?? ""}`.trim();
+      const count = (offers.get(w.id + " " + day) ?? 0) + 1;
       const { error: queue } = await db.from("notification_jobs").upsert(
         {
-          dedupe_key: `waitlist-offer-${w.id}-${(w.offer_count ?? 0) + 1}`,
+          dedupe_key: `waitlist-offer-${w.id}-${day}-${count}`,
           kind: "waitlist_alert",
-          channel,
+          channel: w.phone && smsReady ? "sms" : "email",
           payload: {
             email: w.email,
             phone: w.phone,
@@ -378,6 +448,7 @@ export async function checkWaitlist() {
           offer_count: (w.offer_count ?? 0) + 1,
         })
         .eq("id", w.id);
+      offeredTo.add(w.id);
       offeredDays.add(day);
       alerted++;
       break;

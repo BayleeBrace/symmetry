@@ -63,6 +63,8 @@ const actions = z.discriminatedUnion("action", [
     name: z.string().min(2).max(100),
     email: z.email().or(z.literal("")),
     phone: z.string().max(30),
+    // A client picked from the client list: book onto their own record.
+    customer_id: z.uuid().optional(),
     // Book over a taken slot on purpose; the calendar draws the two side by side.
     squeeze: z.boolean().optional(),
     // A regular: the same trim every N weeks, this many times in all.
@@ -76,6 +78,8 @@ const actions = z.discriminatedUnion("action", [
 ]);
 
 const WALK_IN = "Walk-in";
+/** The database refuses a booking further ahead than this. */
+const HORIZON_DAYS = 120;
 
 /**
  * A trim added by staff goes straight into the diary. The database trigger
@@ -109,7 +113,20 @@ async function addStaffTrims(
     .maybeSingle();
   if (!price) throw new Error("No price is set for this chair and service");
 
-  // Reuse a client only on an exact match, the same rule as online bookings.
+  // Repeats past the booking horizon are left out up front and counted on their own.
+  const horizon = addDays(shopToday(), HORIZON_DAYS);
+  const wanted = p.repeat
+    ? Array.from({ length: p.repeat.times }, (_, i) =>
+        addDays(p.date, i * p.repeat!.every * 7),
+      )
+    : [p.date];
+  const dates = wanted.filter((date) => date <= horizon);
+  const beyond = wanted.length - dates.length;
+  if (!dates.length)
+    throw new Error(`Choose a date within the next ${HORIZON_DAYS} days.`);
+
+  // A client picked from the list keeps their own record (a merged one points to the record kept).
+  // Otherwise reuse a client only on an exact match, the same rule as online bookings.
   // Walk-ins without details share one hidden "Walk-in" record.
   const name = p.name.trim();
   const email = p.email.trim().toLowerCase();
@@ -119,7 +136,16 @@ async function addStaffTrims(
   const phone = parsed?.isValid() ? parsed.number : typed;
   const walkIn = name === WALK_IN && !email && !phone;
   let customerId: string | null = null;
-  if (walkIn || (email && phone)) {
+  if (p.customer_id) {
+    const { data: chosen } = await db
+      .from("customers")
+      .select("id,directory_parent_id")
+      .eq("id", p.customer_id)
+      .maybeSingle();
+    if (!chosen)
+      throw new Error("That client could not be found. Search for them again.");
+    customerId = chosen.directory_parent_id ?? chosen.id;
+  } else if (walkIn || (email && phone)) {
     const { data: existing } = await db
       .from("customers")
       .select("id")
@@ -150,11 +176,6 @@ async function addStaffTrims(
     .single();
   if (groupError || !group) throw new Error("The booking could not be saved");
 
-  const dates = p.repeat
-    ? Array.from({ length: p.repeat.times }, (_, i) =>
-        addDays(p.date, i * p.repeat!.every * 7),
-      )
-    : [p.date];
   let made = 0;
   let firstError = "";
   const ids: string[] = [];
@@ -192,7 +213,7 @@ async function addStaffTrims(
     await db.from("booking_groups").delete().eq("id", group.id);
     throw new Error(firstError || "The booking could not be saved");
   }
-  return { ok: true, made, skipped: dates.length - made, ids };
+  return { ok: true, made, skipped: dates.length - made, beyond, ids };
 }
 export async function GET(req: Request) {
   try {
@@ -354,7 +375,12 @@ export async function POST(req: Request) {
             chairOnly: true,
           }),
         );
-      const body = { ok: true, made: result.made, skipped: result.skipped };
+      const body = {
+        ok: true,
+        made: result.made,
+        skipped: result.skipped,
+        beyond: result.beyond,
+      };
       return privateJson(body);
     }
     if (p.action === "block") {

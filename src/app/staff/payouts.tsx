@@ -1,9 +1,11 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { staffApi as api } from "@/lib/staff-client";
 import { addDays, shopToday } from "@/lib/booking-data";
 import { type Context, initials, pounds, shortDay, weekStart } from "./types";
 import { Loading } from "./spinner";
+import { toast } from "./toast";
+import { EditorHead, InlineEditor } from "./dialog";
 
 type Rule = {
   barber_id: string;
@@ -80,21 +82,30 @@ export function Payouts({ ctx }: { ctx: Context }) {
   const [custom, setCustom] = useState({ from: addDays(today, -6), to: today });
   const [report, setReport] = useState<Report | null>(null);
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const { from, to } = bounds(range, custom);
+  const backwards = to < from;
 
+  // Only the newest request counts: a slow answer for a period no longer shown is dropped.
+  const latest = useRef(0);
   const load = useCallback(() => {
     if (to < from) return;
+    const request = ++latest.current;
+    setError("");
     api(`/api/staff/payouts?from=${from}&to=${to}`)
       .then((d) => {
+        if (request !== latest.current) return;
         setReport(d);
         setError("");
       })
-      .catch((e) => setError((e as Error).message));
+      .catch((e) => {
+        if (request === latest.current) setError((e as Error).message);
+      });
   }, [from, to]);
+  const loadNow = useRef(load);
   useEffect(() => {
+    loadNow.current = load;
     const t = setTimeout(load, 0);
     return () => clearTimeout(t);
   }, [load]);
@@ -102,12 +113,11 @@ export function Payouts({ ctx }: { ctx: Context }) {
   async function act(data: unknown, done: string) {
     setBusy(true);
     setError("");
-    setNotice("");
     try {
       await api("/api/staff/payouts", data);
-      setNotice(done);
+      toast(done);
       setEditing(null);
-      load();
+      loadNow.current();
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -175,14 +185,20 @@ export function Payouts({ ctx }: { ctx: Context }) {
         what the shop pays over.
         {owner ? " Set each barber’s rent under their name." : ""}
       </p>
+      {backwards && (
+        <p className="staff-error" role="alert">
+          Pick a From date on or before the To date.
+        </p>
+      )}
       {error && (
         <p className="staff-error" role="alert">
           {error}
         </p>
       )}
-      {notice && <Loading>{notice}</Loading>}
       {!current ? (
-        <Loading>Adding it up…</Loading>
+        backwards || error ? null : (
+          <Loading>Adding it up…</Loading>
+        )
       ) : (
         <>
           {owner && (
@@ -384,8 +400,10 @@ export function Payouts({ ctx }: { ctx: Context }) {
                 )}
                 {owner && editing === i.barber.id && (
                   <RuleForm
+                    name={i.barber.name}
                     rule={i.rule}
                     busy={busy}
+                    onClose={() => setEditing(null)}
                     onSave={(rule) =>
                       act(
                         { action: "rules", ...rule },
@@ -449,17 +467,21 @@ export function Payouts({ ctx }: { ctx: Context }) {
 }
 
 function RuleForm({
+  name,
   rule,
   busy,
+  onClose,
   onSave,
 }: {
+  name: string;
   rule: Rule;
   busy: boolean;
+  onClose: () => void;
   onSave: (rule: Rule) => Promise<void>;
 }) {
   return (
-    <form
-      className="staff-form inline-editor"
+    <InlineEditor
+      onClose={onClose}
       onSubmit={(event) => {
         event.preventDefault();
         const form = new FormData(event.currentTarget);
@@ -474,13 +496,14 @@ function RuleForm({
         });
       }}
     >
+      <EditorHead title={`Rules and bank for ${name}`} onClose={onClose} />
       <label>
         Chair rent per week (pounds)
         <input
           name="rent"
           type="number"
           min="0"
-          step="0.5"
+          step="0.01"
           defaultValue={rule.weekly_rent_pence / 100}
         />
       </label>
@@ -529,7 +552,10 @@ function RuleForm({
         <button type="submit" className="button-primary" disabled={busy}>
           Save rules
         </button>
+        <button type="button" className="text-button" onClick={onClose}>
+          Cancel
+        </button>
       </div>
-    </form>
+    </InlineEditor>
   );
 }

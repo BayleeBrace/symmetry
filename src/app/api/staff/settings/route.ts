@@ -3,6 +3,8 @@ import { requireStaff } from "@/lib/staff";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { slugify } from "@/lib/slug";
 import { sameOrigin, privateJson, publicError } from "@/lib/security";
+import { fullDate, parseDate, shopMinute, shopToday } from "@/lib/booking-data";
+import { fetchAll } from "@/lib/paging";
 
 const schema = z.discriminatedUnion("action", [
   z.object({
@@ -180,16 +182,35 @@ export async function POST(req: Request) {
         open_minute: number | null;
         close_minute: number | null;
       };
-      const { data: bookings } = await db
-        .from("bookings")
-        .select("id")
-        .eq("barber_id", v.barber_id)
-        .in("status", ["booked", "arrived"])
-        .gte("local_date", new Date().toISOString().slice(0, 10))
-        .limit(1);
-      if (bookings?.length)
+      // Only upcoming trims on this weekday that the new hours would leave
+      // outside the chair's day stand in the way. Dates are the shop's (London).
+      const today = shopToday(),
+        now = shopMinute();
+      const { data: upcoming, error: loadError } = await fetchAll(
+        (start, end) =>
+          db
+            .from("bookings")
+            .select("local_date,start_minute,duration")
+            .eq("barber_id", v.barber_id)
+            .in("status", ["booked", "arrived"])
+            .gte("local_date", today)
+            .order("local_date")
+            .order("id")
+            .range(start, end),
+      );
+      if (loadError) throw new Error("Settings could not be saved");
+      const outside = upcoming.filter(
+        (b) =>
+          (parseDate(b.local_date).getUTCDay() || 7) === v.iso_weekday &&
+          !(b.local_date === today && b.start_minute + b.duration <= now) &&
+          (v.open_minute === null ||
+            v.close_minute === null ||
+            b.start_minute < v.open_minute ||
+            b.start_minute + b.duration > v.close_minute),
+      );
+      if (outside.length)
         throw new Error(
-          "Contact the owner to reconcile existing bookings before changing weekly hours. Use dated blocks for holidays.",
+          `${outside.length} booked trim${outside.length === 1 ? " falls" : "s fall"} outside these hours, the first on ${fullDate(outside[0].local_date)}. Move or cancel ${outside.length === 1 ? "it" : "them"} first, then change the weekly hours. Use dated blocks for holidays.`,
         );
     }
     const { error } =

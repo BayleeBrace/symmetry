@@ -1,6 +1,7 @@
 import "server-only";
 import { createAdminClient } from "./supabase/admin";
 import { addDays } from "./booking-data";
+import { fetchAll } from "./paging";
 import { computePayout, daysInRange, rentWeeksDue } from "./payouts-calc";
 
 /**
@@ -55,14 +56,17 @@ export async function payoutFigures(
   opts: { barberId?: string } = {},
 ) {
   const db = createAdminClient();
-  let trims = db
-    .from("bookings")
-    .select("barber_id,price_pence,paid_by,status")
-    .gte("local_date", from)
-    .lte("local_date", to)
-    .eq("status", "done")
-    .limit(5000);
-  if (opts.barberId) trims = trims.eq("barber_id", opts.barberId);
+  // Every finished trim in the period, a page at a time (the API stops at 1000 a request).
+  const trims = fetchAll((start, end) => {
+    let query = db
+      .from("bookings")
+      .select("barber_id,price_pence,paid_by,status")
+      .gte("local_date", from)
+      .lte("local_date", to)
+      .eq("status", "done");
+    if (opts.barberId) query = query.eq("barber_id", opts.barberId);
+    return query.order("id").range(start, end);
+  });
   const [barbers, members, rules, done, paid] = await Promise.all([
     db
       .from("barbers")

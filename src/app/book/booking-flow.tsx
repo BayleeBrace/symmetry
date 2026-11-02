@@ -2,6 +2,7 @@
 
 import {
   DRAFT_KEY,
+  SETUP_KEY,
   readDraft,
   encodeDraft,
   type SavedDraft,
@@ -484,6 +485,8 @@ export function BookingFlow({
       if (result.mode === "card_setup") {
         try {
           sessionStorage.setItem(DRAFT_KEY, encodeDraft(basket));
+          // Stripe returns to this tab; the token shows it is the one that booked.
+          sessionStorage.setItem(SETUP_KEY, result.completion || "");
         } catch {}
         window.location.assign(result.url);
         return;

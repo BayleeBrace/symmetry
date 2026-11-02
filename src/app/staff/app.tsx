@@ -41,15 +41,33 @@ function usePullToRefresh(enabled: boolean) {
   useEffect(() => {
     if (!enabled) return;
     let startY: number | null = null;
+    // Not over a sheet, an editor or a drag: a reload there would lose what was typed.
     const blocked = () =>
-      Boolean(document.querySelector(".sheet-backdrop, .is-drag-active"));
+      Boolean(
+        document.querySelector(
+          ".sheet-backdrop, .inline-editor, .editor-backdrop, .is-drag-active",
+        ),
+      );
+    /** The finger is in a list or sheet that has scrolled: that scrolls back, it does not refresh. */
+    const scrolledInside = (target: EventTarget | null) => {
+      for (
+        let el = target instanceof Element ? target : null;
+        el && el !== document.body;
+        el = el.parentElement
+      )
+        if (el.scrollTop > 0) return true;
+      return false;
+    };
     const set = (value: number) => {
       pullRef.current = value;
       setPull(value);
     };
     const onStart = (event: TouchEvent) => {
       startY =
-        event.touches.length === 1 && window.scrollY <= 0 && !blocked()
+        event.touches.length === 1 &&
+        window.scrollY <= 0 &&
+        !blocked() &&
+        !scrolledInside(event.target)
           ? event.touches[0].clientY
           : null;
     };
@@ -85,6 +103,31 @@ function usePullToRefresh(enabled: boolean) {
     };
   }, [enabled]);
   return { pull, refreshing };
+}
+
+/**
+ * Signing out of a shared phone stops this account's notifications on it.
+ * Best effort and quick: sign-out goes ahead whatever happens here.
+ */
+async function forgetThisPhone() {
+  try {
+    if (!("serviceWorker" in navigator)) return;
+    const registration = await Promise.race([
+      navigator.serviceWorker.getRegistration(),
+      new Promise<undefined>((done) => setTimeout(() => done(undefined), 2000)),
+    ]);
+    const sub = await registration?.pushManager.getSubscription();
+    if (!sub) return;
+    await Promise.race([
+      api("/api/staff/notify", {
+        action: "forget",
+        endpoint: sub.endpoint,
+      }).catch(() => {}),
+      new Promise((done) => setTimeout(done, 3000)),
+    ]);
+    // Even if the server did not hear, a dropped subscription can no longer reach this phone.
+    await sub.unsubscribe();
+  } catch {}
 }
 
 /** Sign-in calls go straight to fetch: there is no session to renew yet. */
@@ -137,6 +180,22 @@ export function StaffApp() {
     } catch {}
     return { date, view, team: mine ? "mine" : "all" };
   });
+
+  // A notification's ?date= and ?section= are read once; a later refresh opens where the app was left.
+  useEffect(() => {
+    try {
+      const url = new URL(window.location.href);
+      if (!url.searchParams.has("date") && !url.searchParams.has("section"))
+        return;
+      url.searchParams.delete("date");
+      url.searchParams.delete("section");
+      window.history.replaceState(
+        null,
+        "",
+        url.pathname + url.search + url.hash,
+      );
+    } catch {}
+  }, []);
 
   const load = useCallback(async () => {
     try {
@@ -232,8 +291,13 @@ export function StaffApp() {
     return (
       <section className="staff-signin">
         <img
-          className="signin-mark"
+          className="signin-mark on-light"
           src="/symmetry-monogram-black.svg"
+          alt=""
+        />
+        <img
+          className="signin-mark on-dark"
+          src="/symmetry-monogram.svg"
           alt=""
         />
         <p className="staff-kicker">Staff</p>
@@ -344,6 +408,7 @@ export function StaffApp() {
       owner={owner}
       name={name}
       onSignOut={async () => {
+        await forgetThisPhone();
         const r = await fetch("/api/staff/session", { method: "DELETE" });
         resetStaffSession();
         setCtx(null);
@@ -380,6 +445,7 @@ export function StaffApp() {
           onPrefillUsed={() => setPrefill(null)}
           addOpen={addOpen}
           onAddOpen={setAddOpen}
+          onSignedOut={() => setCtx(null)}
         />
       )}
       {section === "clients" && (

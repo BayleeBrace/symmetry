@@ -73,14 +73,14 @@ export function Readiness() {
           <h2>Ready for launch?</h2>
           <p className="staff-muted">{data.note}</p>
         </div>
-        <div
-          className="readiness-score"
-          aria-label={`${ready} of ${data.checks.length} checks complete`}
-        >
-          <strong>
+        <div className="readiness-score">
+          <strong aria-hidden="true">
             {ready}/{data.checks.length}
           </strong>
-          <span>Complete</span>
+          <span aria-hidden="true">Complete</span>
+          <span className="sr-only">
+            {ready} of {data.checks.length} checks complete
+          </span>
         </div>
       </header>
       <ul className="readiness-checks">

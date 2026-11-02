@@ -193,9 +193,17 @@ function Appearance() {
   );
 }
 
+/** A whole number from a policy field, or null when it is blank or out of range. */
+function wholeNumber(value: FormDataEntryValue | null, max: number) {
+  const text = String(value ?? "").trim();
+  const n = Number(text);
+  return text !== "" && Number.isInteger(n) && n >= 0 && n <= max ? n : null;
+}
+
 function PolicyForm({ act, busy }: { act: Act; busy: boolean }) {
   const [policy, setPolicy] = useState<Policy | null>(null);
   const [error, setError] = useState("");
+  const [problem, setProblem] = useState("");
   const reload = useCallback(() => {
     api("/api/staff/settings")
       .then((d) => {
@@ -220,13 +228,27 @@ function PolicyForm({ act, busy }: { act: Act; busy: boolean }) {
         onSubmit={async (event) => {
           event.preventDefault();
           const form = new FormData(event.currentTarget);
-          await act("/api/staff/settings", {
-            action: "policy",
-            cancellation_hours: Number(form.get("hours")),
-            late_percent: Number(form.get("late")),
-            no_show_percent: Number(form.get("noShow")),
-            policy_confirmed: form.get("confirmed") === "on",
-          });
+          const hours = wholeNumber(form.get("hours"), 168);
+          const late = wholeNumber(form.get("late"), 100);
+          const noShow = wholeNumber(form.get("noShow"), 100);
+          if (hours === null || late === null || noShow === null) {
+            setProblem(
+              "Fill in every number: whole hours from 0 to 168, and percentages from 0 to 100.",
+            );
+            return;
+          }
+          setProblem("");
+          try {
+            await act("/api/staff/settings", {
+              action: "policy",
+              cancellation_hours: hours,
+              late_percent: late,
+              no_show_percent: noShow,
+              policy_confirmed: form.get("confirmed") === "on",
+            });
+          } catch {
+            return;
+          }
           toast("Policy saved.");
           reload();
         }}
@@ -236,6 +258,9 @@ function PolicyForm({ act, busy }: { act: Act; busy: boolean }) {
           <input
             name="hours"
             type="number"
+            inputMode="numeric"
+            required
+            step="1"
             min="0"
             max="168"
             defaultValue={policy.cancellation_hours}
@@ -246,6 +271,9 @@ function PolicyForm({ act, busy }: { act: Act; busy: boolean }) {
           <input
             name="late"
             type="number"
+            inputMode="numeric"
+            required
+            step="1"
             min="0"
             max="100"
             defaultValue={policy.late_percent}
@@ -256,6 +284,9 @@ function PolicyForm({ act, busy }: { act: Act; busy: boolean }) {
           <input
             name="noShow"
             type="number"
+            inputMode="numeric"
+            required
+            step="1"
             min="0"
             max="100"
             defaultValue={policy.no_show_percent}
@@ -269,6 +300,11 @@ function PolicyForm({ act, busy }: { act: Act; busy: boolean }) {
           />
           <span>I confirm this is the shop’s policy</span>
         </label>
+        {problem && (
+          <p className="staff-error wide" role="alert">
+            {problem}
+          </p>
+        )}
         <div className="form-actions">
           <button type="submit" className="button-primary" disabled={busy}>
             Save policy

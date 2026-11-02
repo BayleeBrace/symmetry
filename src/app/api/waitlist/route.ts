@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { after } from "next/server";
 import { randomBytes, createHash } from "node:crypto";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createAdminClient, hasSupabase } from "@/lib/supabase/admin";
+import { getCatalog } from "@/lib/catalog";
 import { notifyWaitlistJoined } from "@/lib/staff-push";
 import {
   sameOrigin,
@@ -32,6 +33,25 @@ export async function POST(req: Request) {
     const until = p.until && p.until > p.date ? p.until : null;
     if (until && until > addDays(p.date, 14))
       throw new Error("Choose a run of up to two weeks");
+    // The site preview has no database: check the request, save nothing.
+    if (!hasSupabase()) {
+      const { services } = await getCatalog();
+      if (!services.some((s) => s.id === p.service))
+        throw new Error("Choose a service and barber");
+      return privateJson({
+        mode: "preview",
+        message:
+          "This is a preview, so no waitlist request was saved and no email was sent.",
+      });
+    }
+    // The confirm link needs the signing key; check it before saving anything.
+    if ((process.env.LINK_SIGNING_SECRET?.length || 0) < 32)
+      return privateJson(
+        {
+          error: "The waitlist is not open yet. Please contact the shop.",
+        },
+        503,
+      );
     const db = createAdminClient();
     const { data: s } = await db
       .from("services")

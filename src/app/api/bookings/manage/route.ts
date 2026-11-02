@@ -86,16 +86,8 @@ export async function PATCH(req: Request) {
         .eq("id", b.id)
         .eq("group_id", group.id);
       if (error) throw new Error("Could not let the shop know");
-      await db.from("notification_jobs").upsert(
-        {
-          dedupe_key: `late-${b.id}-${p.minutes || 10}`,
-          group_id: group.id,
-          booking_id: b.id,
-          kind: "running_late",
-          channel: "push",
-        },
-        { onConflict: "dedupe_key", ignoreDuplicates: true },
-      );
+      // The database queues the customer's own email, text and push for the
+      // change of late_minutes; the team hears from notifyTrim below.
       const minutes = p.minutes || 10;
       after(() =>
         notifyTrim("running_late", b.id, {

@@ -25,6 +25,7 @@ import {
 } from "./types";
 import { attachDrag, type DragDrop } from "./drag";
 import { toast } from "./toast";
+import { useDialog } from "./dialog";
 
 type Selection = { kind: "booking" | "block"; id: string } | null;
 /** Where the "select time" plus sits: a chair and a start minute. */
@@ -268,15 +269,6 @@ export function DayTimeline({
       ? blocksToday.find((b) => b.id === selected.id)
       : undefined;
   const sheetOpen = Boolean(selectedBooking || selectedBlock);
-
-  useEffect(() => {
-    if (!sheetOpen) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setSelected(null);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [sheetOpen]);
 
   const gridStyle = {
     "--rows": rows,
@@ -650,15 +642,16 @@ export function BookingSheet({
       ...(status === "done" && serviceId !== booking.service_id
         ? { service: serviceId }
         : {}),
-      ...(status === "done" &&
-      pricePence !== null &&
-      pricePence !== booking.price_pence
+      // Always sent at checkout: a changed service would otherwise be charged at its list price.
+      ...(status === "done" && pricePence !== null
         ? { price_pence: pricePence }
         : {}),
     });
   const feeOpen = owner && ["review", "charging"].includes(booking.fee_status);
+  const ref = useDialog<HTMLElement>(onClose);
   return (
     <aside
+      ref={ref}
       className="sheet"
       role="dialog"
       aria-modal="true"
@@ -991,6 +984,9 @@ function MoveForm({
       : current.free[0]
     : undefined;
   const chair = booking.barbers?.name ?? "this chair";
+  // Saving the same date and time would only send "moved" notices for nothing.
+  const unchanged =
+    date === booking.local_date && value === booking.start_minute;
   return (
     <details
       className="sheet-move"
@@ -1000,7 +996,7 @@ function MoveForm({
       <form
         onSubmit={(event) => {
           event.preventDefault();
-          if (value === undefined) return;
+          if (value === undefined || unchanged) return;
           void act("/api/staff/diary", {
             action: "move",
             id: booking.id,
@@ -1052,7 +1048,7 @@ function MoveForm({
         <button
           type="submit"
           className="button-secondary"
-          disabled={busy || value === undefined}
+          disabled={busy || value === undefined || unchanged}
         >
           Save move
         </button>
@@ -1075,8 +1071,10 @@ export function BlockSheet({
   onClose: () => void;
 }) {
   const wholeDay = block.duration >= 1440;
+  const ref = useDialog<HTMLElement>(onClose);
   return (
     <aside
+      ref={ref}
       className="sheet"
       role="dialog"
       aria-modal="true"

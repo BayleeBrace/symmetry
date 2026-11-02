@@ -3,6 +3,7 @@ import { requireStaff } from "@/lib/staff";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { privateJson, publicError } from "@/lib/security";
 import { addDays, shopToday, validDate } from "@/lib/booking-data";
+import { fetchAll } from "@/lib/paging";
 
 type Row = {
   id: string;
@@ -37,19 +38,25 @@ export async function GET(req: Request) {
     if (to < from || to > addDays(from, 92))
       throw new Error("Choose a period of up to three months");
     const db = createAdminClient();
-    let query = db
-      .from("bookings")
-      .select(
-        "id,local_date,start_minute,status,price_pence,fee_pence,fee_status,paid_by,barber_id,barbers(name),services(name),booking_groups(customers(name))",
-      )
-      .gte("local_date", from)
-      .lte("local_date", to)
-      .in("status", ["done", "no_show"])
-      .order("local_date", { ascending: false })
-      .order("start_minute", { ascending: false })
-      .limit(1500);
-    if (staff.role !== "owner") query = query.eq("barber_id", staff.barber_id);
-    const { data, error } = await query;
+    // Finished trims and no-shows, plus late cancellations whose fee was
+    // charged, so "Fees charged" matches Reports. A page at a time.
+    const { data, error } = await fetchAll((start, end) => {
+      let query = db
+        .from("bookings")
+        .select(
+          "id,local_date,start_minute,status,price_pence,fee_pence,fee_status,paid_by,barber_id,barbers(name),services(name),booking_groups(customers(name))",
+        )
+        .gte("local_date", from)
+        .lte("local_date", to)
+        .or("status.in.(done,no_show),fee_status.eq.charged");
+      if (staff.role !== "owner")
+        query = query.eq("barber_id", staff.barber_id);
+      return query
+        .order("local_date", { ascending: false })
+        .order("start_minute", { ascending: false })
+        .order("id")
+        .range(start, end);
+    });
     if (error) throw new Error("Sales could not load");
     const rows = data as unknown as Row[];
     const done = rows.filter((r) => r.status === "done");

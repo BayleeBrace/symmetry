@@ -51,9 +51,11 @@ import {
 } from "./forms";
 import { toast } from "./toast";
 import { Loading } from "./spinner";
+import { useDialog } from "./dialog";
 
 export type BookPrefill = {
-  client?: { name: string; email: string; phone: string };
+  /** id is the client's record, when they were picked from the client list. */
+  client?: { id?: string; name: string; email: string; phone: string };
   barberId?: string;
   serviceId?: string;
   date?: string;
@@ -86,6 +88,7 @@ export function Calendar({
   onPrefillUsed,
   addOpen,
   onAddOpen,
+  onSignedOut,
 }: {
   ctx: Context;
   act: Act;
@@ -96,6 +99,8 @@ export function Calendar({
   onPrefillUsed: () => void;
   addOpen: boolean;
   onAddOpen: (open: boolean) => void;
+  /** The sign-in ran out while the diary refreshed by itself. */
+  onSignedOut: () => void;
 }) {
   const today = shopToday();
   const chairs = [...ctx.barbers]
@@ -124,18 +129,31 @@ export function Calendar({
 
   const from = view === "week" ? weekStart(date) : date;
   const days = view === "week" ? 7 : 1;
+  const to = addDays(from, days - 1);
+  // Only the newest request may fill the diary: a slow answer for a day no longer shown is dropped.
+  const latest = useRef(0);
+  const signedOut = useRef(onSignedOut);
   const load = useCallback(async () => {
+    const request = ++latest.current;
     try {
       const d = (await api(
         `/api/staff/diary?date=${from}&days=${days}`,
       )) as Diary;
+      if (request !== latest.current) return;
       setData(d);
       setLoadError("");
     } catch (e) {
-      if (!(e instanceof StaffSignInRequired))
-        setLoadError((e as Error).message);
+      if (request !== latest.current) return;
+      if (e instanceof StaffSignInRequired) signedOut.current();
+      else setLoadError((e as Error).message);
     }
   }, [from, days]);
+  // An action finishing after the day changed refreshes the day now shown, not the one it started on.
+  const loadNow = useRef(load);
+  useEffect(() => {
+    signedOut.current = onSignedOut;
+    loadNow.current = load;
+  });
   useEffect(() => {
     const t = setTimeout(() => void load(), 0);
     const interval = setInterval(() => {
@@ -157,7 +175,7 @@ export function Calendar({
       return await act(url, payload);
     } finally {
       // Always refresh, so a refused move puts the card back where it was.
-      await load();
+      await loadNow.current();
     }
   };
   const quiet: Act = (url, payload) => run(url, payload).catch(() => undefined);
@@ -229,7 +247,12 @@ export function Calendar({
   const rebook = (b: Booking) => {
     const c = customerOf(b);
     openNew({
-      client: { name: c.name, email: c.email ?? "", phone: c.phone ?? "" },
+      client: {
+        id: b.booking_groups?.customer_id,
+        name: c.name,
+        email: c.email ?? "",
+        phone: c.phone ?? "",
+      },
       barberId: b.barber_id,
       serviceId: b.service_id,
       date: b.local_date,
@@ -242,12 +265,13 @@ export function Calendar({
     onPrefillUsed();
   };
 
+  // The diary on screen must be the one asked for: the same first day, and for a week all seven.
   const dayData =
-    data && view === "day" && data.date === date
+    data &&
+    data.date === from &&
+    (view === "day" || (data.to ?? data.date) === to)
       ? data
-      : data && view === "week" && data.date === from
-        ? data
-        : null;
+      : null;
 
   /** The next quarter hour a chair is free from now (or from opening on another day). */
   const nextFree = (barberId: string) => {
@@ -291,6 +315,22 @@ export function Calendar({
     return () => window.removeEventListener("keydown", onKey);
   }, [placing]);
 
+  const addMenu = useDialog<HTMLDivElement>(() => setAddOpen(false), addOpen);
+  const tools = useDialog<HTMLDivElement>(() => setToolsOpen(false), toolsOpen);
+
+  /** The phone's own date picker, from the hidden date field. False when the browser has none to open. */
+  const openPicker = () => {
+    const input = dateInput.current;
+    if (!input) return false;
+    if ("showPicker" in input) {
+      try {
+        (input as HTMLInputElement & { showPicker: () => void }).showPicker();
+        return true;
+      } catch {}
+    }
+    return false;
+  };
+
   return (
     <section className="staff-calendar" aria-label="Calendar">
       <div className="cal-bar">
@@ -315,22 +355,16 @@ export function Calendar({
             className="cal-date"
             aria-expanded={stripOpen}
             onClick={() => {
-              // On a phone the date opens the week strip; on desktop, the date picker.
-              if (window.matchMedia("(max-width: 760px)").matches) {
+              // On a phone the day view's date opens the week strip, which has its own date picker.
+              const phone = window.matchMedia("(max-width: 760px)").matches;
+              if (phone && view === "day") {
                 setStripOpen((o) => !o);
                 return;
               }
-              const input = dateInput.current;
-              if (!input) return;
-              if ("showPicker" in input) {
-                try {
-                  (
-                    input as HTMLInputElement & { showPicker: () => void }
-                  ).showPicker();
-                  return;
-                } catch {}
-              }
-              input.focus();
+              if (openPicker()) return;
+              // No picker to open from here: a phone gets the strip's date field to tap instead.
+              if (phone) setStripOpen((o) => !o);
+              else dateInput.current?.focus();
             }}
             aria-label={`Pick a date. Showing ${dayLabel(date)}`}
           >
@@ -389,7 +423,7 @@ export function Calendar({
         {toolsOpen && (
           <div className="menu-backdrop" onClick={() => setToolsOpen(false)} />
         )}
-        <div className={`cal-tools ${toolsOpen ? "is-open" : ""}`}>
+        <div ref={tools} className={`cal-tools ${toolsOpen ? "is-open" : ""}`}>
           {chairs.length > 1 && (
             <label className="cal-select">
               <span className="sr-only">Team</span>
@@ -454,7 +488,7 @@ export function Calendar({
       {addOpen && (
         <div className="add-menu-host">
           <div className="menu-backdrop" onClick={() => setAddOpen(false)} />
-          <div className="menu" role="menu">
+          <div className="menu" role="menu" ref={addMenu}>
             <button type="button" role="menuitem" onClick={startPlacing}>
               New appointment
             </button>
@@ -515,28 +549,45 @@ export function Calendar({
         </div>
       )}
 
-      {view === "day" && stripOpen && (
-        <div className="date-strip" aria-label="This week">
-          {weekDays(date).map((d) => (
-            <button
-              key={d}
-              type="button"
-              aria-pressed={d === date}
-              className={d === today ? "is-today" : ""}
-              onClick={() => go({ date: d })}
-            >
-              <span>{weekdayShort(d).slice(0, 1)}</span>
-              <strong>{dayNumber(d)}</strong>
-              {(data?.waiting?.[d] ?? 0) > 0 && (
-                <em
-                  className="strip-waiting"
-                  aria-label={`${data?.waiting?.[d]} waiting`}
-                >
-                  {data?.waiting?.[d]}
-                </em>
-              )}
-            </button>
-          ))}
+      {stripOpen && (
+        <div className="date-jump">
+          {view === "day" && (
+            <div className="date-strip" role="group" aria-label="This week">
+              {weekDays(date).map((d) => {
+                const waiting = data?.waiting?.[d] ?? 0;
+                return (
+                  <button
+                    key={d}
+                    type="button"
+                    aria-pressed={d === date}
+                    aria-label={`${dayLabel(d)}${d === today ? ", today" : ""}${waiting ? `, ${waiting} waiting` : ""}`}
+                    className={d === today ? "is-today" : ""}
+                    onClick={() => go({ date: d })}
+                  >
+                    <span aria-hidden="true">
+                      {weekdayShort(d).slice(0, 1)}
+                    </span>
+                    <strong aria-hidden="true">{dayNumber(d)}</strong>
+                    {waiting > 0 && (
+                      <em className="strip-waiting" aria-hidden="true">
+                        {waiting}
+                      </em>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          {/* A real date field under the words, so a tap opens the phone's own picker. */}
+          <label className="strip-pick">
+            <span aria-hidden="true">Pick another date</span>
+            <input
+              type="date"
+              aria-label="Pick another date"
+              value={date}
+              onChange={(e) => e.target.value && go({ date: e.target.value })}
+            />
+          </label>
         </div>
       )}
 
