@@ -6,6 +6,7 @@ import { openingStatus } from "@/lib/opening-status";
 import type { Metadata } from "next";
 import { BrandHeader } from "@/components/brand-header";
 import { SiteFooter } from "@/components/site-footer";
+import { WalkInWait } from "@/components/walk-in-wait";
 
 export const metadata: Metadata = {
   title: "Opening Hours & Location in Saundersfoot",
@@ -44,6 +45,7 @@ export default async function HoursPage() {
             SA69 9HG
           </p>
           <p className="opening-status">{openingStatus(catalog.hours)}</p>
+          <WalkInWait />
           <h2 className="finding-title">Finding us.</h2>
           <p>
             Our entrance on Brewery Terrace is shared with two other shops. Come

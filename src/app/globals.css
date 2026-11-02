@@ -2173,3 +2173,100 @@ h2 {
 .marketing-hero .primary-button.light:focus-visible {
   outline-color: var(--white);
 }
+
+/* Soonest times above the booking calendar: one tap books the next chair. */
+.soonest,
+.soonest-loading {
+  margin: 0 0 2.2rem;
+}
+.soonest-title {
+  margin: 0 0 0.8rem;
+  color: var(--muted);
+  font-family: var(--font-sans), sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 400;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+.soonest-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 0.6rem;
+}
+.soonest-chip {
+  display: grid;
+  align-content: center;
+  gap: 0.15rem;
+  min-height: 64px;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--black);
+  background: var(--white);
+  color: var(--black);
+  text-align: left;
+}
+.soonest-chip strong {
+  font-size: 0.95rem;
+  font-weight: 400;
+}
+.soonest-chip span {
+  font-size: 1.05rem;
+}
+.soonest-chip small {
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+.soonest-chip:not(:disabled):hover,
+.soonest-chip:focus-visible {
+  background: var(--black);
+  color: var(--white);
+}
+.soonest-chip:not(:disabled):hover small,
+.soonest-chip:focus-visible small {
+  color: rgba(255, 255, 255, 0.78);
+}
+.soonest-chip:disabled {
+  opacity: 0.55;
+}
+.soonest-or,
+.soonest-loading {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+.soonest-or {
+  margin: 0.9rem 0 0;
+}
+
+/* Remember my details on this phone. */
+.remembered-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.2rem 0.6rem;
+  margin: 0 0 0.4rem;
+  padding: 0.55rem 1rem;
+  background: var(--bone);
+  font-size: 0.95rem;
+}
+.text-button {
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--black);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+/* Walk-in wait, worked out from today's diary. */
+.walk-in-wait {
+  margin: 1.2rem 0 0;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+.walk-in-label {
+  font-weight: 400;
+}
+.walk-in-wait.light {
+  color: rgba(255, 255, 255, 0.88);
+}

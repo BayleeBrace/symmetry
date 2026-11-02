@@ -107,3 +107,15 @@ The three places that could still stop counting are fixed:
 - **Diary history.** "First visit", visit counts and "Last time" count every past visit for the clients on screen, in slices and pages. The shared "Walk-in" record is left out: its history is everyone's, so walk-ins no longer show a meaningless visit count, and it can't crowd out real clients' history.
 
 A new `forChunks` helper in `src/lib/paging.ts` does the slicing, with a unit test.
+
+## New features (2 November 2026)
+
+- **Remember me on this phone.** The booking form has an unticked box: "Remember my name, email and mobile on this phone for next time".
+  - **What's kept:** only those three details, in the customer's own browser (`src/lib/remembered-details.ts`). Marketing permission, notes and the cancellation-policy tick are always asked afresh.
+  - **What returning customers see:** "Your details are remembered on this phone. Forget them", with the fields already filled in.
+  - **Clearing:** the details are forgotten after a year, when the box is unticked, or when the customer taps "Forget them". The privacy notice says so.
+- **Soonest times.** After choosing a barber and a service, the dates step shows the earliest free time on each of the next three days with space, looking three weeks ahead. For "Any barber" it also shows the barber and price. One tap adds that time and goes straight to the details step. Served by `GET /api/availability/next` (`src/lib/next-free.ts`). Times that clash with a trim already in the booking are left out.
+- **Live walk-in wait.** The home hero and the hours page say "Walk-ins: a chair is free now.", "about 20 minutes' wait right now.", "next free chair about 3:15pm" or "no space left today", and say nothing while the shop is closed.
+  - **How it's worked out:** from today's diary, breaks and each barber's own hours, using each barber's cut length (`src/lib/walk-in.ts`, `src/lib/walk-in-wait.ts`).
+  - **Running behind:** a "Running behind" reported in the staff app in the last hour is added to that chair's wait.
+  - **Tested:** with unit tests, and in the browser at a fixed time with every chair busy (it read "about 25 minutes").

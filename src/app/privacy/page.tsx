@@ -118,7 +118,11 @@ export default function PrivacyPage() {
         <h2>Cookies and browser storage.</h2>
         <p>
           Essential cookies support preview access and staff sign-in. Browser
-          session storage helps recover selected trims. Vercel Web Analytics
+          session storage helps recover selected trims. If you tick “Remember my
+          name, email and mobile on this phone” when you book, those three
+          details are kept in your browser so your next booking is quicker. They
+          stay on your device and are not sent anywhere until you book; untick
+          the box or tap “Forget them” to remove them. Vercel Web Analytics
           counts page visits without cookies and without identifying you. The
           site does not use advertising trackers. Calendar downloads and Wallet
           passes are copies and may not update when your booking changes; your

@@ -10,6 +10,7 @@ import { OpeningHours } from "@/components/opening-hours";
 import { Reveal } from "@/components/reveal";
 import { SiteFooter } from "@/components/site-footer";
 import { TeaserLanding } from "@/components/teaser-landing";
+import { WalkInWait } from "@/components/walk-in-wait";
 import { getCatalog } from "@/lib/catalog";
 import { BARBERS } from "@/lib/booking-data";
 import { hasSiteAccess, SITE_ACCESS_COOKIE } from "@/lib/site-access";
@@ -77,6 +78,7 @@ export default async function Home() {
               View prices
             </Link>
           </div>
+          <WalkInWait className="light" />
           <p className="hero-address">4 Brewery Terrace, Saundersfoot.</p>
         </div>
         <figure className="marketing-hero-image cut-photo">

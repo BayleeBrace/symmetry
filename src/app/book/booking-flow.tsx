@@ -8,6 +8,11 @@ import {
   type SavedDraft,
 } from "@/lib/booking-draft";
 import {
+  REMEMBER_KEY,
+  encodeRemembered,
+  readRemembered,
+} from "@/lib/remembered-details";
+import {
   type CSSProperties,
   FormEvent,
   useEffect,
@@ -27,12 +32,29 @@ import {
   makeSlots,
   money,
   parseDate,
+  shopToday,
   Slot,
   type Service,
   type OPENING_HOURS,
 } from "@/lib/booking-data";
 
 type Draft = Slot & { date: string; service: string; alternatives?: Slot[] };
+type Soonest = Slot & { date: string };
+
+/** "Today", "Tomorrow", or a short date such as "Thu 6 Nov". */
+function dayLabel(value: string) {
+  const today = shopToday();
+  if (value === today) return "Today";
+  if (value === addDays(today, 1)) return "Tomorrow";
+  return new Intl.DateTimeFormat("en-GB", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    timeZone: "UTC",
+  })
+    .format(parseDate(value))
+    .replace(",", "");
+}
 type Details = {
   name: string;
   email: string;
@@ -165,12 +187,28 @@ export function BookingFlow({
     marketing: false,
     preferences: "",
   });
+  // "Remember my details on this phone": kept only in this browser.
+  const [remember, setRemember] = useState(false);
+  const [remembered, setRemembered] = useState(false);
+  // The soonest times, tagged with the barber and service they are for.
+  const [soonest, setSoonest] = useState<{
+    key: string;
+    slots: Soonest[];
+  } | null>(null);
   const [savedDraft, setSavedDraft] = useState<SavedDraft | null>(null);
   const [draftChecked, setDraftChecked] = useState(false);
   useEffect(() => {
     const timer = setTimeout(() => {
       try {
         setSavedDraft(readDraft(sessionStorage.getItem(DRAFT_KEY)));
+      } catch {}
+      try {
+        const saved = readRemembered(localStorage.getItem(REMEMBER_KEY));
+        if (saved) {
+          setDetails((current) => ({ ...current, ...saved }));
+          setRemember(true);
+          setRemembered(true);
+        }
       } catch {}
       setDraftChecked(true);
     }, 0);
@@ -349,11 +387,58 @@ export function BookingFlow({
     setPending(null);
   };
 
+  // The soonest few times for this barber and service, shown above the
+  // calendar so a customer who just wants the next chair can skip it.
+  useEffect(() => {
+    if (step !== 2 || !service) return;
+    let current = true;
+    const key = `${barber}|${service}`;
+    fetch(
+      `/api/availability/next?barber=${barber}&service=${encodeURIComponent(service)}`,
+      { cache: "no-store" },
+    )
+      .then((r) => (r.ok ? r.json() : { slots: [] }))
+      .then(
+        (d: { slots?: Soonest[] }) =>
+          current && setSoonest({ key, slots: d.slots || [] }),
+      )
+      .catch(() => current && setSoonest({ key, slots: [] }));
+    return () => {
+      current = false;
+    };
+  }, [step, barber, service]);
+  // Leave out any time that clashes with a trim already in this booking.
+  const soonestReady = soonest?.key === `${barber}|${service}`;
+  const soonestShown = (soonestReady ? soonest.slots : []).filter(
+    (s) =>
+      !basket.some(
+        (b) =>
+          b.date === s.date &&
+          b.barber === s.barber &&
+          b.time < s.time + s.duration &&
+          b.time + b.duration > s.time,
+      ),
+  );
+
   async function addDates() {
-    if (!slot || !service) return;
+    if (!slot) return;
+    await addTrims(date, slot, repeat, count);
+  }
+
+  async function addTrims(
+    start: string,
+    chosen: Slot,
+    every: number,
+    total: number,
+  ) {
+    if (!service) return;
     const drafts: Draft[] = Array.from(
-      { length: repeat ? count : 1 },
-      (_, index) => ({ ...slot, service, date: addDays(date, repeat * index) }),
+      { length: every ? total : 1 },
+      (_, index) => ({
+        ...chosen,
+        service,
+        date: addDays(start, every * index),
+      }),
     );
     if (drafts.some((item) => item.date > addDays(initialDate, 120)))
       return setError(
@@ -482,6 +567,11 @@ export function BookingFlow({
       const result = await response.json();
       if (!response.ok)
         throw new Error(result.error || "Your booking couldn’t be completed.");
+      try {
+        if (remember)
+          localStorage.setItem(REMEMBER_KEY, encodeRemembered(details));
+        else localStorage.removeItem(REMEMBER_KEY);
+      } catch {}
       if (result.mode === "card_setup") {
         try {
           sessionStorage.setItem(DRAFT_KEY, encodeDraft(basket));
@@ -494,14 +584,16 @@ export function BookingFlow({
       requestId.current = "";
       setDone({ reference: result.reference, manageToken: result.manageToken });
       setMode(result.mode);
-      setDetails({
-        name: "",
-        email: "",
-        country: "GB",
-        phone: "",
+      // Remembered details stay filled in for the next booking; nothing else does.
+      setRemembered(remember);
+      setDetails((current) => ({
+        name: remember ? current.name : "",
+        email: remember ? current.email : "",
+        country: remember ? current.country : "GB",
+        phone: remember ? current.phone : "",
         marketing: false,
         preferences: "",
-      });
+      }));
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (reason) {
       requestId.current = "";
@@ -745,6 +837,45 @@ export function BookingFlow({
                 ))
               ) : (
                 <>
+                  {!soonestReady ? (
+                    <p className="soonest-loading" role="status">
+                      Finding the soonest times…
+                    </p>
+                  ) : (
+                    soonestShown.length > 0 && (
+                      <div
+                        className="soonest"
+                        role="group"
+                        aria-labelledby="soonest-title"
+                      >
+                        <h2 id="soonest-title" className="soonest-title">
+                          Soonest
+                        </h2>
+                        <div className="soonest-list">
+                          {soonestShown.map((s) => (
+                            <button
+                              key={`${s.date}-${s.barber}-${s.time}`}
+                              className="soonest-chip"
+                              disabled={loading}
+                              onClick={() => void addTrims(s.date, s, 0, 1)}
+                            >
+                              <strong>{dayLabel(s.date)}</strong>
+                              <span>
+                                {clock(s.time)}
+                                {barber === "any"
+                                  ? ` with ${BARBERS[s.barber].name}`
+                                  : ""}
+                              </span>
+                              {barber === "any" && (
+                                <small>{money(s.price)}</small>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                        <p className="soonest-or">Or choose a day below.</p>
+                      </div>
+                    )
+                  )}
                   <div className="month-nav">
                     <button
                       onClick={() => setMonth(shiftMonth(month, -1))}
@@ -935,6 +1066,31 @@ export function BookingFlow({
                   finishBooking();
                 }}
               >
+                {remembered && (
+                  <p className="remembered-note">
+                    Your details are remembered on this phone.{" "}
+                    <button
+                      type="button"
+                      className="text-button"
+                      onClick={() => {
+                        try {
+                          localStorage.removeItem(REMEMBER_KEY);
+                        } catch {}
+                        setRemember(false);
+                        setRemembered(false);
+                        setDetails((current) => ({
+                          ...current,
+                          name: "",
+                          email: "",
+                          country: "GB",
+                          phone: "",
+                        }));
+                      }}
+                    >
+                      Forget them
+                    </button>
+                  </p>
+                )}
                 <div className="field">
                   <label>
                     Your name
@@ -998,6 +1154,17 @@ export function BookingFlow({
                     </span>
                   </label>
                 </div>
+                <label className="marketing remember">
+                  <input
+                    type="checkbox"
+                    checked={remember}
+                    onChange={(event) => setRemember(event.target.checked)}
+                  />
+                  <span>
+                    Remember my name, email and mobile on this phone for next
+                    time.
+                  </span>
+                </label>
                 <div className="field">
                   <label>
                     Anything you’d like us to know?{" "}
