@@ -3,13 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-export function BrandHeader({
-  compact = false,
-  note,
-}: {
-  compact?: boolean;
-  note?: string;
-}) {
+export function BrandHeader({ compact = false }: { compact?: boolean }) {
   const [open, setOpen] = useState(false);
   const toggleRef = useRef<HTMLButtonElement>(null);
   const path = usePathname();
@@ -60,7 +54,7 @@ export function BrandHeader({
         </Link>
         {compact ? (
           <>
-            {note && <small className="header-note">{note}</small>}
+            {/* Nothing sits beside the wordmark in its clear space. */}
             <Link href="/" className="back-to-site">
               Back to the site
             </Link>

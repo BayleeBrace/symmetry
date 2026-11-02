@@ -135,6 +135,7 @@ export default async function Home() {
         <Reveal>
           <p className="eyebrow">Saundersfoot, Pembrokeshire</p>
           <h2>Croeso.</h2>
+          <p className="welsh-english">Welcome.</p>
           <p>4 Brewery Terrace, Saundersfoot, SA69 9HG.</p>
           <p>Use the shared entrance and look for Symmetry inside.</p>
           <ContactLinks />

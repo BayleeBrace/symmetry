@@ -119,3 +119,36 @@ A new `forChunks` helper in `src/lib/paging.ts` does the slicing, with a unit te
   - **How it's worked out:** from today's diary, breaks and each barber's own hours, using each barber's cut length (`src/lib/walk-in.ts`, `src/lib/walk-in-wait.ts`).
   - **Running behind:** a "Running behind" reported in the staff app in the last hour is added to that chair's wait.
   - **Tested:** with unit tests, and in the browser at a fixed time with every chair busy (it read "about 25 minutes").
+
+## Design audit against Edition 01 (2 November 2026)
+
+Every public page was measured at 375px and 1440px for the brand rules:
+- clear space around the wordmark and monogram
+- one oxblood element per layout
+- the serif never under 40px
+- no bold, italic or pink
+- filled buttons
+
+The pages were also compared by eye with pages 10, 12, 18, 20 and 22 of the guidelines.
+
+What was fixed:
+
+- **The cut never runs through the words** (page 12). The hero's cut ran right between "Same chairs." and "New name." on phones and behind the text block on desktop. It now runs through the top band of the photograph, at least 47px clear of the words at every size from a 360px phone to a 1440px desktop. On wider screens the words sit low and left, as in the website application on page 18.
+- **Hero button outlined again** (page 18; "One black button per screen. Nothing else is filled.", page 20). An earlier pass in this audit had made it solid white. It is now a full-white outline that fills on hover.
+- **Booking header** (page 20: "Wordmark at the top, black on white"). On phones the full wordmark is centred at the top instead of the SY monogram, and it links home. "Formerly Studio 4 Barbers." moved out of the header, where it sat 12px under the mark inside its clear space, to the top of the booking page.
+- **Booking times three across on phones**, as on page 20, which also means less scrolling.
+- **Welsh first, English beneath** (page 22). "Croeso." on the home page now has "Welcome." under it, and the error page's "Diolch." has "Thank you.".
+- **Type.** Subheads are Jost Light (page 10), so "Finding us." is no longer Regular. Labels are tracked 18%.
+- **Heading order.** Trim headings in the booking summary are h2 under the page's h1, so screen readers announce them in order. They look the same.
+
+Checked afterwards:
+- no clear-space breaches
+- no axe accessibility violations on any public page at either width
+- no sideways scroll
+- the booking flow passes axe at every step
+
+Not changed, and needing photos or a decision:
+- **Photography.** The hero is a 1200 × 1600 portrait, so it is upscaled on wide screens, and on phones most of the visible photo is ceiling. A sharp landscape shot of the mirror wall would suit both. Barber portraits are still to come.
+- **Booking order.** Page 20 puts the barber pills and the service list on one screen. The site uses two steps. Merging them would save a tap.
+- **Prices page cut.** The A3 poster (page 15) takes the cut above the list. The prices page could do the same, as its one cut.
+- **Staff app.** It needs a signed-in account to audit visually.

@@ -32,6 +32,7 @@ export default function ErrorPage({
       </section>
       <footer className="site-footer">
         <h2>Diolch.</h2>
+        <p>Thank you.</p>
         <Link href="/privacy">Privacy</Link>
       </footer>
     </main>

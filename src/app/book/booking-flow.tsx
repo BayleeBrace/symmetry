@@ -129,6 +129,7 @@ export function BookingFlow({
   initialBarber = "sean",
   initialService = "",
   barberChosen = false,
+  formerly = false,
   catalog,
   policy,
 }: {
@@ -137,6 +138,8 @@ export function BookingFlow({
   initialService?: string;
   /** The link already named a barber (a "Book" link next to their name). */
   barberChosen?: boolean;
+  /** Show "Formerly Studio 4 Barbers." for the first months after launch. */
+  formerly?: boolean;
   catalog: { services: Service[]; hours: typeof OPENING_HOURS };
   policy: {
     cancellation_hours: number;
@@ -641,6 +644,9 @@ export function BookingFlow({
   return (
     <>
       <div className="booking-frame">
+        {formerly && (
+          <p className="app-note formerly-note">Formerly Studio 4 Barbers.</p>
+        )}
         {savedDraft && (
           <div className="draft-notice" role="status">
             <strong>Pick up where you left off?</strong>
@@ -793,12 +799,12 @@ export function BookingFlow({
               {pending ? (
                 pending.map((item, index) => (
                   <article className="resolution" key={`${item.date}-${index}`}>
-                    <h3>
+                    <h2>
                       {fullDate(item.date)} ·{" "}
                       {item.alternatives
                         ? "Choose another time"
                         : `${clock(item.time)} with ${BARBERS[item.barber].name}`}
-                    </h3>
+                    </h2>
                     {item.alternatives && (
                       <>
                         <div className="alternate-grid">
@@ -1027,9 +1033,9 @@ export function BookingFlow({
                   className="basket-item"
                   key={`${item.date}-${item.time}-${index}`}
                 >
-                  <h3>
+                  <h2>
                     {fullDate(item.date)} · {clock(item.time)}
-                  </h3>
+                  </h2>
                   <p>
                     {
                       SERVICES.find(

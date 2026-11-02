@@ -2270,3 +2270,116 @@ h2 {
 .walk-in-wait.light {
   color: rgba(255, 255, 255, 0.88);
 }
+
+/* November 2026 design audit, against Edition 01. */
+
+/* The cut runs through the photograph only, never through the words
+   (Edition 01, page 12): a band at the top of the hero, with the words held
+   below it. On wider screens the words sit low and left, as in the website
+   application on page 18. */
+.cut-photo {
+  --cut-y: 7.5rem;
+}
+.cut-photo .upper {
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    100% calc(var(--cut-y) - var(--cut-rise)),
+    0 var(--cut-y)
+  );
+}
+.cut-photo .lower {
+  clip-path: polygon(
+    0 calc(var(--cut-y) + var(--cut-gap)),
+    100% calc(var(--cut-y) - var(--cut-rise) + var(--cut-gap)),
+    100% 100%,
+    0 100%
+  );
+}
+@media (min-width: 601px) {
+  .marketing-hero {
+    align-items: flex-end;
+    padding-top: 15rem;
+  }
+  .cut-photo {
+    --cut-y: 8rem;
+  }
+}
+
+/* Hero action: the outlined button of page 18. One black button per screen;
+   nothing else is filled. A full white line keeps it the obvious action. */
+.marketing-hero .primary-button.light {
+  border: 1px solid var(--white);
+  background: transparent;
+  color: var(--white);
+}
+.marketing-hero .primary-button.light:hover {
+  background: var(--white);
+  color: var(--black);
+}
+
+/* Booking header: the wordmark at the top, black on white (page 20), with
+   nothing in its clear space. On phones it is centred and is the way home. */
+@media (max-width: 600px) {
+  .brand-header.compact,
+  .brand-header.compact.compact {
+    justify-content: center;
+    padding: 26px 20px;
+  }
+  .brand-header.compact .full-mark {
+    display: block;
+    width: 240px;
+    height: auto;
+  }
+  .brand-header.compact .monogram,
+  .brand-header.compact .back-to-site {
+    display: none;
+  }
+}
+@media (max-width: 340px) {
+  .brand-header.compact .full-mark {
+    display: none;
+  }
+  .brand-header.compact .monogram {
+    display: block;
+  }
+}
+.formerly-note {
+  margin-top: 0.4rem;
+}
+
+/* Booking times three across on phones, as on page 20. */
+@media (max-width: 760px) {
+  .time-grid,
+  .time-skeleton {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Subheads are Jost Light (page 10); labels are tracked 18%. */
+.finding-title {
+  font-weight: 300;
+}
+.eyebrow {
+  letter-spacing: 0.18em;
+}
+
+/* Welsh first, the English beneath in smaller Jost (page 22). */
+.welsh-english {
+  margin: -0.4rem 0 1.4rem;
+  color: var(--muted);
+}
+
+/* Trim headings in the booking summary are h2 (after the page's h1) but keep
+   their small Jost look. */
+.basket-item h2,
+.resolution h2 {
+  margin-bottom: 0.5rem;
+  font:
+    400 1rem var(--font-sans),
+    sans-serif;
+  letter-spacing: 0;
+}
+.resolution h2 {
+  margin-bottom: 0;
+}
