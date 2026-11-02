@@ -6,7 +6,7 @@ An audit of the public website, booking flow, customer pages, share images, staf
 
 - **Proper capitalisation stays.** The brand handover asks for lowercase headings and labels. A lowercase pass was tried on 2 November and reverted the same day: Baylee chose proper capitals everywhere, as Sean asked on 7 September (`CHANGELOG-2026-09-07-staff-and-copy.md`). Headings, buttons, labels and service names use normal sentence case, and names, places, days and months keep their capitals.
 - **Staff warning bands and the dark-mode oxblood** (`#c8737d`) were requested for legibility and stay. The pink and lilac service colours were not requested and were replaced (see the staff section).
-- **The phone number is still unconfirmed.** `SHOP_PHONE` stays empty until Sean confirms 01834 811351 or another number.
+- **Shop phone.** Production already has `SHOP_PHONE` set to 01834 811351, so it shows on the live site. The handover lists that number as unconfirmed, so check it is still the shop's line.
 - **The teaser password was changed** in Vercel (production `SITE_PASSWORD`) on 2 November. It is not stored in the repository. Anyone who unlocked the preview with the old password has to enter the new one.
 
 ## Database update to apply
