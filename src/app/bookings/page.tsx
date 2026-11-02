@@ -39,21 +39,21 @@ export default async function Page({
     <main className="information-page">
       <BrandHeader compact />
       <section className="staff-content">
-        <h1>your trims.</h1>
+        <h1>Your trims.</h1>
         {p.setup ? (
           <SetupComplete session={p.setup} />
         ) : p.token ? (
           <ManageBookings token={p.token} />
         ) : email ? (
           <>
-            <p>your booking history.</p>
+            <p>Your booking history.</p>
             {history.map((g) => (
               <p key={g.id}>
                 <a
                   className="primary-button"
                   href={"/bookings?token=" + signLink("manage", g.id)}
                 >
-                  booking made{" "}
+                  Booking made{" "}
                   {new Date(g.created_at).toLocaleDateString("en-GB")}
                 </a>
               </p>

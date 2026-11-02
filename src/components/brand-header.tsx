@@ -25,10 +25,10 @@ export function BrandHeader({
     return () => document.removeEventListener("keydown", onKey);
   }, [open]);
   const links = [
-    ["prices", "/prices"],
-    ["hours", "/hours"],
-    ["book", "/book"],
-    ["your bookings", "/bookings"],
+    ["Prices", "/prices"],
+    ["Hours", "/hours"],
+    ["Book", "/book"],
+    ["Your bookings", "/bookings"],
   ];
   return (
     <>
@@ -62,7 +62,7 @@ export function BrandHeader({
           <>
             {note && <small className="header-note">{note}</small>}
             <Link href="/" className="back-to-site">
-              back to the site
+              Back to the site
             </Link>
           </>
         ) : (
@@ -75,7 +75,7 @@ export function BrandHeader({
               aria-controls="main-navigation"
               onClick={() => setOpen((v) => !v)}
             >
-              {open ? "close" : "menu"}
+              {open ? "Close" : "Menu"}
             </button>
             <nav
               id="main-navigation"

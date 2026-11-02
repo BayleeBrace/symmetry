@@ -31,8 +31,8 @@ export default async function PricesPage() {
     <main className="information-page">
       <BrandHeader />
       <section className="information-hero">
-        <p className="eyebrow">cuts, fades and beards</p>
-        <h1>prices.</h1>
+        <p className="eyebrow">Cuts, fades and beards</p>
+        <h1>Prices.</h1>
         <p>Each barber sets their own prices.</p>
       </section>
       <section className="price-panel">
@@ -42,10 +42,10 @@ export default async function PricesPage() {
           </caption>
           <thead>
             <tr>
-              <th scope="col">service</th>
+              <th scope="col">Service</th>
               {(["dylan", "travis", "sean"] as const).map((id) => (
                 <th key={id} scope="col" aria-label={BARBERS[id].name}>
-                  {id[0]}
+                  {id[0].toUpperCase()}
                 </th>
               ))}
             </tr>
@@ -67,11 +67,11 @@ export default async function PricesPage() {
             ))}
           </tbody>
         </table>
-        <p className="price-legend">d Dylan · t Travis · s Sean</p>
-        <p className="price-note">prices in pounds.</p>
+        <p className="price-legend">D Dylan · T Travis · S Sean</p>
+        <p className="price-note">Prices in pounds.</p>
         <div className="price-book-links">
           <Link className="primary-button" href="/book">
-            book a trim
+            Book a trim
           </Link>
           <span className="price-book-with">
             or book with{" "}

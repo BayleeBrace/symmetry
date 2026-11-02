@@ -4,7 +4,7 @@ A mobile-first Symmetry website and bespoke booking app for GitHub, Vercel and S
 
 ## Latest: whole-site audit, 2 November 2026
 
-See `CHANGELOG-2026-11-02-site-audit.md`. It covers lowercase headings and labels, readability, booking fixes, staff app fixes and server fixes. Apply `supabase/migrations/20261102120000_audit_fixes.sql` and then `20261102130000_lowercase_service_names.sql` before or with the deploy.
+See `CHANGELOG-2026-11-02-site-audit.md` for the fixes across the website, booking flow, staff app and server. Apply `supabase/migrations/20261102120000_audit_fixes.sql` to the database alongside this deploy.
 
 ## This update
 

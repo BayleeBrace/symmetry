@@ -6,15 +6,15 @@ export default function NotFound() {
     <main className="information-page">
       <BrandHeader />
       <section className="information-hero">
-        <p className="eyebrow">page not found</p>
-        <h1>wrong chair.</h1>
+        <p className="eyebrow">Page not found</p>
+        <h1>Wrong chair.</h1>
         <p>That page isn’t here. Let’s get you back to the shop.</p>
         <div className="hero-actions">
           <Link className="primary-button" href="/">
-            home
+            Home
           </Link>
           <Link className="quiet-button" href="/book">
-            book a trim
+            Book a trim
           </Link>
         </div>
       </section>

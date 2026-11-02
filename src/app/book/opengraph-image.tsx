@@ -7,8 +7,8 @@ export const contentType = "image/jpeg";
 
 export default function OpenGraphImage() {
   return createBrandedOgImage({
-    eyebrow: "barbers in Saundersfoot",
-    title: "book a trim.",
+    eyebrow: "Barbers in Saundersfoot",
+    title: "Book a trim.",
     detail: "Choose your barber, service and time.",
   });
 }

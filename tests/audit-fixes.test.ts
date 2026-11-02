@@ -4,7 +4,6 @@ import { csvCell } from "../src/lib/csv.ts";
 import { fetchAll } from "../src/lib/paging.ts";
 import {
   bookingText,
-  heading,
   sentence,
   waitlistOfferText,
 } from "../src/lib/message-copy.ts";
@@ -67,8 +66,6 @@ test("headings end in one full stop, and questions keep their mark", () => {
   assert.equal(sentence("Your Symmetry booking"), "Your Symmetry booking.");
   assert.equal(sentence("Time for a trim?"), "Time for a trim?");
   assert.equal(sentence("Reminders stopped."), "Reminders stopped.");
-  assert.equal(heading("Your Symmetry booking"), "your Symmetry booking.");
-  assert.equal(heading("Time for a trim?"), "time for a trim?");
 });
 
 test("booking messages list every trim once and say what to do once", () => {

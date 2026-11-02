@@ -551,7 +551,7 @@ export function BookingFlow({
       <div className="booking-frame">
         {savedDraft && (
           <div className="draft-notice" role="status">
-            <strong>pick up where you left off?</strong>
+            <strong>Pick up where you left off?</strong>
             <p>
               {savedDraft.basket.length} saved trim
               {savedDraft.basket.length === 1 ? "" : "s"}. We’ll check the dates
@@ -559,7 +559,7 @@ export function BookingFlow({
               bookings before starting another.
             </p>
             <button disabled={loading} onClick={() => void restoreDraft()}>
-              recover my trims
+              Recover my trims
             </button>
             <button
               disabled={loading}
@@ -570,18 +570,18 @@ export function BookingFlow({
                 } catch {}
               }}
             >
-              start fresh
+              Start fresh
             </button>
-            <a href="/bookings">check my bookings</a>
+            <a href="/bookings">Check my bookings</a>
           </div>
         )}
         {mode !== "live" && (
           <p className="app-note">
-            development preview · no trims are reserved yet
+            Development preview · no trims are reserved yet
           </p>
         )}
         <div className="progress" aria-label="Booking progress">
-          {["barber", "service", "dates", "booking"].map((label, index) => (
+          {["Barber", "Service", "Dates", "Booking"].map((label, index) => (
             <span
               key={label}
               className={step === index ? "active" : index < step ? "done" : ""}
@@ -596,7 +596,7 @@ export function BookingFlow({
         >
           {step === 0 && (
             <>
-              <h1>your barber.</h1>
+              <h1>Your barber.</h1>
               <p className="intro">
                 Choose your usual chair, or take the first available.
               </p>
@@ -628,26 +628,26 @@ export function BookingFlow({
                     advance(1);
                   }}
                 >
-                  <strong>any barber</strong>
-                  <small>show me the first available trim</small>
+                  <strong>Any barber</strong>
+                  <small>Show me the first available trim</small>
                 </button>
               </div>
               <p>
                 <a className="quiet-button" href="/bookings">
-                  book my usual / find my bookings
+                  Book my usual / find my bookings
                 </a>
               </p>
             </>
           )}
           {step === 1 && (
             <>
-              <h1>your trim.</h1>
+              <h1>Your trim.</h1>
               <p className="intro">
                 {barber === "any"
                   ? "You’ll see the exact barber, time and price before adding."
                   : `with ${BARBERS[barber].name}`}
               </p>
-              <p className="price-note">prices in pounds.</p>
+              <p className="price-note">Prices in pounds.</p>
               <div className="service-list">
                 {SERVICES.map((item) => {
                   const detail = (
@@ -692,7 +692,7 @@ export function BookingFlow({
           )}
           {step === 2 && serviceInfo && (
             <>
-              <h1>{pending ? "your next few." : "your dates."}</h1>
+              <h1>{pending ? "Your next few." : "Your dates."}</h1>
               <p className="intro">
                 {pending
                   ? "Keep the weeks that work. Change only the ones that don’t."
@@ -704,7 +704,7 @@ export function BookingFlow({
                     <h3>
                       {fullDate(item.date)} ·{" "}
                       {item.alternatives
-                        ? "choose another time"
+                        ? "Choose another time"
                         : `${clock(item.time)} with ${BARBERS[item.barber].name}`}
                     </h3>
                     {item.alternatives && (
@@ -737,7 +737,7 @@ export function BookingFlow({
                           className="quiet-button"
                           onClick={() => findNextDay(index)}
                         >
-                          try the next open day
+                          Try the next open day
                         </button>
                       </>
                     )}
@@ -802,7 +802,7 @@ export function BookingFlow({
                           onClick={() => setPeriod(name)}
                           key={name}
                         >
-                          {name}
+                          {name.charAt(0).toUpperCase() + name.slice(1)}
                         </button>
                       ),
                     )}
@@ -847,24 +847,24 @@ export function BookingFlow({
                   )}
                   <div ref={repeatRef} className="repeat-box">
                     <label>
-                      repeat this trim
+                      Repeat this trim
                       <select
                         value={repeat}
                         onChange={(event) =>
                           setRepeat(Number(event.target.value))
                         }
                       >
-                        <option value="0">just once</option>
-                        <option value="7">every week</option>
-                        <option value="14">every 2 weeks</option>
-                        <option value="21">every 3 weeks</option>
-                        <option value="28">every 4 weeks</option>
-                        <option value="42">every 6 weeks</option>
+                        <option value="0">Just once</option>
+                        <option value="7">Every week</option>
+                        <option value="14">Every 2 weeks</option>
+                        <option value="21">Every 3 weeks</option>
+                        <option value="28">Every 4 weeks</option>
+                        <option value="42">Every 6 weeks</option>
                       </select>
                     </label>
                     {repeat > 0 && (
                       <label>
-                        trims in total
+                        Trims in total
                         <select
                           value={count}
                           onChange={(event) =>
@@ -886,7 +886,7 @@ export function BookingFlow({
           )}
           {step === 3 && !done && (
             <>
-              <h1>your booking.</h1>
+              <h1>Your booking.</h1>
               <p className="intro">
                 Check every trim, then enter your details once. Prices in
                 pounds.
@@ -914,7 +914,7 @@ export function BookingFlow({
                       )
                     }
                   >
-                    remove
+                    Remove
                   </button>
                 </article>
               ))}
@@ -925,7 +925,7 @@ export function BookingFlow({
                   setSlot(null);
                 }}
               >
-                add another trim
+                Add another trim
               </button>
               <form
                 ref={formRef}
@@ -937,7 +937,7 @@ export function BookingFlow({
               >
                 <div className="field">
                   <label>
-                    your name
+                    Your name
                     <input
                       required
                       minLength={2}
@@ -951,7 +951,7 @@ export function BookingFlow({
                 </div>
                 <div className="field">
                   <label>
-                    email
+                    Email
                     <input
                       required
                       type="email"
@@ -965,7 +965,7 @@ export function BookingFlow({
                 </div>
                 <div className="field">
                   <label>
-                    mobile number
+                    Mobile number
                     <span className="phone-row">
                       <select
                         aria-label="Country code"
@@ -1000,7 +1000,7 @@ export function BookingFlow({
                 </div>
                 <div className="field">
                   <label>
-                    anything you’d like us to know?{" "}
+                    Anything you’d like us to know?{" "}
                     <textarea
                       maxLength={1000}
                       value={details.preferences}
@@ -1056,7 +1056,7 @@ export function BookingFlow({
                   </span>
                 </label>
                 <button type="submit" hidden>
-                  finish
+                  Finish
                 </button>
               </form>
             </>
@@ -1064,7 +1064,7 @@ export function BookingFlow({
           {step === 3 && done && (
             <>
               <h1>
-                {mode === "live" ? "you’re booked." : "preview complete."}
+                {mode === "live" ? "You’re booked." : "Preview complete."}
               </h1>
               <div className="success-card">
                 <p>
@@ -1073,7 +1073,7 @@ export function BookingFlow({
                     : "You’ve completed the preview. No real trims were reserved and your details were not saved."}
                 </p>
                 <p>
-                  reference · <strong>{done.reference}</strong>
+                  Reference · <strong>{done.reference}</strong>
                 </p>
                 {mode === "live" && done.manageToken && (
                   <div className="success-actions">
@@ -1081,13 +1081,13 @@ export function BookingFlow({
                       className="primary-button"
                       href={`/api/calendar?token=${encodeURIComponent(done.manageToken)}`}
                     >
-                      add to calendar
+                      Add to calendar
                     </a>
                     <a
                       className="text-link"
                       href={`/bookings?token=${encodeURIComponent(done.manageToken)}`}
                     >
-                      manage your trims
+                      Manage your trims
                     </a>
                   </div>
                 )}
@@ -1115,7 +1115,7 @@ export function BookingFlow({
                 else setStep(step - 1);
               }}
             >
-              back
+              Back
             </button>
           )}
           <button
@@ -1142,22 +1142,22 @@ export function BookingFlow({
             }}
           >
             {loading
-              ? "checking…"
+              ? "Checking…"
               : done
-                ? "start again"
+                ? "Start again"
                 : step === 0
-                  ? "choose a trim"
+                  ? "Choose a trim"
                   : step === 1
-                    ? "choose dates"
+                    ? "Choose dates"
                     : step === 2
                       ? pending
-                        ? "keep these dates"
+                        ? "Keep these dates"
                         : repeat
-                          ? "add these trims"
-                          : "add this trim"
+                          ? "Add these trims"
+                          : "Add this trim"
                       : mode === "live"
-                        ? "save card and book"
-                        : "finish preview"}
+                        ? "Save card and book"
+                        : "Finish preview"}
           </button>
         </div>
       </div>

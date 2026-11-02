@@ -9,7 +9,7 @@ export const contentType = "image/jpeg";
 export default function OpenGraphImage() {
   return createBrandedOgImage({
     eyebrow: "Saundersfoot, Pembrokeshire",
-    title: "come by.",
+    title: "Come by.",
     detail: "4 Brewery Terrace · Saundersfoot · SA69 9HG",
   });
 }
