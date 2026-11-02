@@ -5,6 +5,8 @@ import { shopContact } from "@/lib/shop-contact";
 export const dynamic = "force-dynamic";
 export const metadata = {
   title: "Privacy notice",
+  description:
+    "How Symmetry Barbers in Saundersfoot uses your details to manage bookings, reminders and the waitlist.",
   alternates: { canonical: "/privacy" },
 };
 export default function PrivacyPage() {
@@ -116,8 +118,9 @@ export default function PrivacyPage() {
         <h2>Cookies and browser storage.</h2>
         <p>
           Essential cookies support preview access and staff sign-in. Browser
-          session storage helps recover selected trims. The site does not
-          currently use advertising trackers. Calendar downloads and Wallet
+          session storage helps recover selected trims. Vercel Web Analytics
+          counts page visits without cookies and without identifying you. The
+          site does not use advertising trackers. Calendar downloads and Wallet
           passes are copies and may not update when your booking changes; your
           booking link shows the current details.
         </p>
@@ -140,8 +143,8 @@ export default function PrivacyPage() {
           .
         </p>
         <p>
-          Updated 7 September 2026. We will update this notice if our use of
-          your information changes.
+          Updated 2 November 2026. We will update this notice if our use of your
+          information changes.
         </p>
       </section>
       <SiteFooter />

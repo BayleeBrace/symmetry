@@ -2101,3 +2101,75 @@ h2 {
     animation: none;
   }
 }
+
+/* November 2026 audit: readability.
+   The brand asks for comfortably readable body copy (17–18px on the website)
+   and never shrinking critical labels to make a layout fit. Paragraphs had no
+   base size and fell back to 16px; several labels and links sat at 12px. */
+.marketing-home,
+.information-page {
+  font-size: 1.0625rem;
+}
+@media (min-width: 901px) {
+  .marketing-home,
+  .information-page {
+    font-size: 1.125rem;
+  }
+  .brand-header nav a {
+    font-size: 0.875rem;
+  }
+}
+.eyebrow {
+  font-size: 0.8125rem;
+}
+.hero-address {
+  font-size: 0.95rem;
+}
+.footer-links a:not(.primary-button) {
+  font-size: 0.95rem;
+}
+.hero-actions .primary-button {
+  font-size: 0.8125rem;
+}
+.choice small {
+  font-size: 0.875rem;
+}
+.time-cell small {
+  font-size: 0.8125rem;
+}
+.teaser-form > label,
+.teaser-form button,
+.teaser-form-message {
+  font-size: 0.8125rem;
+}
+/* One obvious primary action on the hero photo: solid white, black text. */
+.marketing-hero .primary-button.light {
+  border-color: var(--white);
+  background: var(--white);
+  color: var(--black);
+}
+/* Links inside running text must look like links, not only differ by colour. */
+.information-hero > p a:not([class]),
+.visit-section p a:not([class]),
+.contact-links a,
+.teaser-where a {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+.teaser-where {
+  max-width: 30rem;
+  margin: 1.6rem 0 0;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+/* Booking form labels: Jost Regular at a readable size (were 12.5px Light). */
+.field label,
+.repeat-box label {
+  font-size: 0.9375rem;
+  font-weight: 400;
+}
+/* The white hero button needs a white focus ring against the dark photo. */
+.marketing-hero .primary-button.light:focus-visible {
+  outline-color: var(--white);
+}

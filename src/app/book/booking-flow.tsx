@@ -41,12 +41,38 @@ type Details = {
   preferences: string;
 };
 
+// UK first, then the countries visitors to Saundersfoot most often come from.
+// The server validates the number for whichever country is chosen.
 const countries = [
   ["GB", "UK", "+44"],
   ["IE", "Ireland", "+353"],
+  ["AU", "Australia", "+61"],
+  ["AT", "Austria", "+43"],
+  ["BE", "Belgium", "+32"],
+  ["CA", "Canada", "+1"],
+  ["CZ", "Czechia", "+420"],
+  ["DK", "Denmark", "+45"],
+  ["FI", "Finland", "+358"],
   ["FR", "France", "+33"],
-  ["ES", "Spain", "+34"],
+  ["DE", "Germany", "+49"],
+  ["GR", "Greece", "+30"],
+  ["HU", "Hungary", "+36"],
+  ["IN", "India", "+91"],
+  ["IT", "Italy", "+39"],
+  ["LV", "Latvia", "+371"],
+  ["LT", "Lithuania", "+370"],
+  ["NL", "Netherlands", "+31"],
+  ["NZ", "New Zealand", "+64"],
+  ["NO", "Norway", "+47"],
+  ["PL", "Poland", "+48"],
   ["PT", "Portugal", "+351"],
+  ["RO", "Romania", "+40"],
+  ["SK", "Slovakia", "+421"],
+  ["ZA", "South Africa", "+27"],
+  ["ES", "Spain", "+34"],
+  ["SE", "Sweden", "+46"],
+  ["CH", "Switzerland", "+41"],
+  ["UA", "Ukraine", "+380"],
   ["US", "USA", "+1"],
 ];
 
@@ -79,12 +105,15 @@ export function BookingFlow({
   initialDate,
   initialBarber = "sean",
   initialService = "",
+  barberChosen = false,
   catalog,
   policy,
 }: {
   initialDate: string;
   initialBarber?: BarberChoice;
   initialService?: string;
+  /** The link already named a barber (a "Book" link next to their name). */
+  barberChosen?: boolean;
   catalog: { services: Service[]; hours: typeof OPENING_HOURS };
   policy: {
     cancellation_hours: number;
@@ -103,7 +132,7 @@ export function BookingFlow({
         ? Object.keys(s.barbers).length
         : s.barbers[initialBarber]),
   );
-  const [step, setStep] = useState(quickBook ? 2 : 0);
+  const [step, setStep] = useState(quickBook ? 2 : barberChosen ? 1 : 0);
   const [barber, setBarber] = useState<BarberChoice>(initialBarber);
   const [service, setService] = useState(
     SERVICES.some((s) => s.id === initialService) ? initialService : "",
@@ -196,6 +225,7 @@ export function BookingFlow({
   const timeGridRef = useRef<HTMLDivElement>(null);
   const repeatRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
+  const errorRef = useRef<HTMLParagraphElement>(null);
   const scrollPending = useRef(false);
   const advanceTimer = useRef<number | null>(null);
   useEffect(
@@ -282,6 +312,21 @@ export function BookingFlow({
       toTop();
     }, 220);
   };
+  // A problem found after tapping the bar's button (often a long way below,
+  // at the end of the form) is brought into view, clear of the fixed bar.
+  useEffect(() => {
+    if (!error) return;
+    requestAnimationFrame(() => {
+      const node = errorRef.current;
+      if (!node) return;
+      const box = node.getBoundingClientRect();
+      const bar =
+        document.querySelector(".booking-bar")?.getBoundingClientRect().top ??
+        window.innerHeight;
+      if (box.top >= 0 && box.bottom <= bar) return;
+      node.scrollIntoView({ behavior: motion(), block: "center" });
+    });
+  }, [error]);
   useEffect(() => {
     if (!availabilityReady || !scrollPending.current) return;
     scrollPending.current = false;
@@ -783,7 +828,7 @@ export function BookingFlow({
                           {clock(choice.time)}
                           {barber === "any" && (
                             <small>
-                              {BARBERS[choice.barber].name} ·
+                              {BARBERS[choice.barber].name} ·{" "}
                               {money(choice.price)}
                             </small>
                           )}
@@ -937,6 +982,7 @@ export function BookingFlow({
                       </select>
                       <input
                         required
+                        aria-label="Mobile number"
                         type="tel"
                         inputMode="tel"
                         autoComplete={mode === "live" ? "tel-national" : "off"}
@@ -1046,7 +1092,7 @@ export function BookingFlow({
             </>
           )}
           {error && (
-            <p className="error-message" role="alert">
+            <p ref={errorRef} className="error-message" role="alert">
               {error}
             </p>
           )}

@@ -27,11 +27,11 @@ export function generateMetadata(): Metadata {
       "beard trim Saundersfoot",
       "Symmetry Barbers",
     ],
-    alternates: { canonical: "/" },
+    // No site-wide canonical or og:url: pages that don't set their own would
+    // otherwise all point search engines and share cards at the home page.
     openGraph: {
       type: "website",
       locale: "en_GB",
-      url: "/",
       siteName: "Symmetry Barbers",
       title: "Symmetry Barbers Saundersfoot",
       description:

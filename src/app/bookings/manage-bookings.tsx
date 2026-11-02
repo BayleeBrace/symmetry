@@ -146,7 +146,7 @@ export function ManageBookings({ token }: { token: string }) {
               </p>
               <h2>{a.service.name}</h2>
               <p>
-                with {a.barber.name} · {a.duration} min ·
+                with {a.barber.name} · {a.duration} min ·{" "}
                 {money(a.pricePence / 100)} · {a.status.replace("_", " ")}
               </p>
               <p className="cancellation-deadline">

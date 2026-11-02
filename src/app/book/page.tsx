@@ -66,6 +66,7 @@ export default async function BookPage({
         initialDate={firstDate}
         initialBarber={initialBarber}
         initialService={service}
+        barberChosen={Boolean(barber && barber in BARBERS)}
         catalog={catalog}
         policy={policy}
       />

@@ -5,6 +5,8 @@ import { ContactLinks } from "@/components/contact-links";
 import { getPolicy } from "@/lib/catalog";
 export const metadata = {
   title: "Cancellation policy",
+  description:
+    "No deposit at Symmetry Barbers. Cancel for free up to the cut-off before your trim; late cancellations and no-shows carry a fee.",
   alternates: { canonical: "/cancellation-policy" },
 };
 export default async function Page() {

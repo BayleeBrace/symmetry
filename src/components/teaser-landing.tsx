@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { FormEvent, useState } from "react";
 
-export function TeaserLanding() {
+export function TeaserLanding({ formerly = true }: { formerly?: boolean }) {
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -79,6 +79,22 @@ export function TeaserLanding() {
             <br />
             New name.
           </h1>
+          <p className="teaser-where">
+            {formerly && (
+              <>
+                Formerly Studio 4 Barbers.
+                <br />
+              </>
+            )}
+            4 Brewery Terrace, Saundersfoot.{" "}
+            <a
+              href="https://www.instagram.com/symmetry.wales/"
+              target="_blank"
+              rel="noreferrer"
+            >
+              @symmetry.wales
+            </a>
+          </p>
         </div>
 
         <form className="teaser-form" onSubmit={unlock}>

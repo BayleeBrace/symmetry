@@ -12,6 +12,7 @@ import {
   type BarberChoice,
 } from "./booking-data";
 import { getCatalog } from "./catalog";
+import { shopContact } from "./shop-contact";
 import { busyFor } from "./availability";
 const escape = (s: string) =>
   s.replace(
@@ -148,7 +149,7 @@ export async function processNotifications() {
       } else {
         subject = "A chair is available";
         text =
-          "A time is available on your requested day. Book online to reserve it; availability can change.";
+          "A time is available on your requested day. Book a trim to reserve it; availability can change.";
       }
       let providerId: string | undefined;
       if (job.channel === "email") {
@@ -172,7 +173,7 @@ export async function processNotifications() {
           body: JSON.stringify({
             from: process.env.EMAIL_FROM,
             reply_to:
-              process.env.EMAIL_REPLY_TO || process.env.SHOP_EMAIL || undefined,
+              process.env.EMAIL_REPLY_TO || shopContact.email || undefined,
             to: [email],
             subject,
             html,

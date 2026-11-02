@@ -2,7 +2,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 export function BrandHeader({
   compact = false,
   note,
@@ -11,7 +11,19 @@ export function BrandHeader({
   note?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const toggleRef = useRef<HTMLButtonElement>(null);
   const path = usePathname();
+  // Escape closes the phone menu and puts focus back on its button.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setOpen(false);
+      toggleRef.current?.focus();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
   const links = [
     ["Prices", "/prices"],
     ["Hours", "/hours"],
@@ -56,6 +68,7 @@ export function BrandHeader({
         ) : (
           <>
             <button
+              ref={toggleRef}
               className="menu-toggle"
               type="button"
               aria-expanded={open}

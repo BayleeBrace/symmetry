@@ -44,7 +44,7 @@ export default async function Home() {
   );
 
   if (!isUnlocked) {
-    return <TeaserLanding />;
+    return <TeaserLanding formerly={showFormerly()} />;
   }
 
   const catalog = await getCatalog();

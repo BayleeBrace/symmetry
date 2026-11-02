@@ -55,17 +55,8 @@ export async function createBrandedOgImage({
           objectPosition: "center 54%",
         }}
       />
-      <div
-        style={{
-          display: "flex",
-          position: "absolute",
-          top: 0,
-          left: 0,
-          width: "100%",
-          height: "100%",
-          background: "rgba(15,15,15,.5)",
-        }}
-      />
+      {/* One deliberate gradient: calm and dark behind the words on the left,
+          opening up on the right so the lit mirrors and the room still show. */}
       <div
         style={{
           display: "flex",
@@ -75,7 +66,7 @@ export async function createBrandedOgImage({
           width: "100%",
           height: "100%",
           backgroundImage:
-            "linear-gradient(90deg, rgba(22,22,22,.94) 0%, rgba(22,22,22,.8) 48%, rgba(22,22,22,.22) 100%)",
+            "linear-gradient(90deg, rgba(22,22,22,.93) 0%, rgba(22,22,22,.86) 40%, rgba(22,22,22,.45) 66%, rgba(22,22,22,.12) 100%)",
         }}
       />
       <div
@@ -88,7 +79,9 @@ export async function createBrandedOgImage({
           justifyContent: "space-between",
         }}
       >
-        <div style={{ display: "flex", flexDirection: "column" }}>
+        {/* The wordmark keeps clear space equal to its letter height on every
+            side, so no strapline sits beneath it. */}
+        <div style={{ display: "flex" }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={wordmarkUrl}
@@ -97,19 +90,6 @@ export async function createBrandedOgImage({
             height="62"
             style={{ width: 430, height: 62, objectFit: "contain" }}
           />
-          <div
-            style={{
-              display: "flex",
-              marginTop: 14,
-              color: "#e0dbd5",
-              fontFamily: "Brand Sans",
-              fontSize: 17,
-              fontWeight: 300,
-              letterSpacing: "0.24em",
-            }}
-          >
-            BARBERS · SAUNDERSFOOT
-          </div>
         </div>
 
         <div style={{ display: "flex", width: 620, flexDirection: "column" }}>
