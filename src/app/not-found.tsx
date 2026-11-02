@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { BrandHeader } from "@/components/brand-header";
+import { Header } from "@/components/header";
 import { SiteFooter } from "@/components/site-footer";
 export default function NotFound() {
   return (
     <main className="information-page">
-      <BrandHeader />
+      <Header />
       <section className="information-hero">
         <p className="eyebrow">Page not found</p>
         <h1>Wrong chair.</h1>

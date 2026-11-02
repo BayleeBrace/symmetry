@@ -15,7 +15,7 @@ export default async function Page({
   const catalog = await getCatalog();
   return (
     <main className="information-page">
-      <BrandHeader compact />
+      <BrandHeader />
       <section className="information-hero customer-content">
         <h1>Next in line.</h1>
         <p>

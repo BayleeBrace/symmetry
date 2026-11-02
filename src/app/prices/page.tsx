@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { BrandHeader } from "@/components/brand-header";
+import { Header } from "@/components/header";
 import { SiteFooter } from "@/components/site-footer";
 import { getCatalog } from "@/lib/catalog";
 import { BARBERS, money } from "@/lib/booking-data";
@@ -29,7 +29,7 @@ export default async function PricesPage() {
   const { services: SERVICES } = await getCatalog();
   return (
     <main className="information-page">
-      <BrandHeader />
+      <Header />
       <section className="information-hero">
         <p className="eyebrow">Cuts, fades and beards</p>
         <h1>Prices.</h1>

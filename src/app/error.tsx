@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { BrandHeader } from "@/components/brand-header";
+import { SiteHeader } from "@/components/site-header";
 export default function ErrorPage({
   retry,
 }: {
@@ -9,7 +9,7 @@ export default function ErrorPage({
 }) {
   return (
     <main className="information-page">
-      <BrandHeader />
+      <SiteHeader />
       <section className="information-hero">
         <p className="eyebrow">A little interruption</p>
         <h1>One moment.</h1>

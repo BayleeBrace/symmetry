@@ -3,8 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
-import { BrandHeader } from "@/components/brand-header";
-import { MobileBookCta } from "@/components/mobile-book-cta";
+import { Header } from "@/components/header";
 import { ContactLinks } from "@/components/contact-links";
 import { OpeningHours } from "@/components/opening-hours";
 import { Reveal } from "@/components/reveal";
@@ -51,7 +50,7 @@ export default async function Home() {
   const catalog = await getCatalog();
   return (
     <main className="marketing-home">
-      <BrandHeader />
+      <Header overPhoto />
       <section className="marketing-hero">
         <div className="marketing-hero-copy">
           <p className="eyebrow">Barbers in Saundersfoot</p>
@@ -157,7 +156,6 @@ export default async function Home() {
       </section>
 
       <SiteFooter />
-      <MobileBookCta />
     </main>
   );
 }

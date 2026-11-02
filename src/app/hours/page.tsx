@@ -4,7 +4,7 @@ import { OpeningHours } from "@/components/opening-hours";
 import { ContactLinks } from "@/components/contact-links";
 import { openingStatus } from "@/lib/opening-status";
 import type { Metadata } from "next";
-import { BrandHeader } from "@/components/brand-header";
+import { Header } from "@/components/header";
 import { SiteFooter } from "@/components/site-footer";
 import { WalkInWait } from "@/components/walk-in-wait";
 
@@ -32,7 +32,7 @@ export default async function HoursPage() {
 
   return (
     <main className="information-page">
-      <BrandHeader />
+      <Header />
       <section className="hours-page-grid">
         <div>
           <p className="eyebrow">Saundersfoot, Pembrokeshire</p>

@@ -58,7 +58,7 @@ export default async function BookPage({
     firstDate = addDays(firstDate, 1);
   return (
     <main className="app-shell">
-      <BrandHeader compact />
+      <BrandHeader />
       <BookingFlow
         initialDate={firstDate}
         initialBarber={initialBarber}

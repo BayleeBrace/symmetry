@@ -1,40 +1,19 @@
-"use client";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
-export function BrandHeader({ compact = false }: { compact?: boolean }) {
-  const [open, setOpen] = useState(false);
-  const toggleRef = useRef<HTMLButtonElement>(null);
-  const path = usePathname();
-  // Escape closes the phone menu and puts focus back on its button.
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      setOpen(false);
-      toggleRef.current?.focus();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [open]);
-  const links = [
-    ["Prices", "/prices"],
-    ["Hours", "/hours"],
-    ["Book", "/book"],
-    ["Your bookings", "/bookings"],
-  ];
+
+/**
+ * The header on the booking, bookings and waitlist pages: the wordmark black
+ * on white (Edition 01, page 20), with a way back to the site on wider
+ * screens. The public pages use SiteHeader instead.
+ */
+export function BrandHeader() {
   return (
     <>
-      <header className={`brand-header ${compact ? "compact" : ""}`}>
+      <header className="brand-header compact">
         <Link href="/" className="wordmark" aria-label="Symmetry home">
           <Image
             className="full-mark"
-            src={
-              compact
-                ? "/symmetry-wordmark-black.svg"
-                : "/symmetry-wordmark.svg"
-            }
+            src="/symmetry-wordmark-black.svg"
             width={264}
             height={38}
             alt="Symmetry"
@@ -42,53 +21,16 @@ export function BrandHeader({ compact = false }: { compact?: boolean }) {
           />
           <Image
             className="monogram"
-            src={
-              compact
-                ? "/symmetry-monogram-black.svg"
-                : "/symmetry-monogram.svg"
-            }
+            src="/symmetry-monogram-black.svg"
             width={44}
             height={44}
             alt="Symmetry"
           />
         </Link>
-        {compact ? (
-          <>
-            {/* Nothing sits beside the wordmark in its clear space. */}
-            <Link href="/" className="back-to-site">
-              Back to the site
-            </Link>
-          </>
-        ) : (
-          <>
-            <button
-              ref={toggleRef}
-              className="menu-toggle"
-              type="button"
-              aria-expanded={open}
-              aria-controls="main-navigation"
-              onClick={() => setOpen((v) => !v)}
-            >
-              {open ? "Close" : "Menu"}
-            </button>
-            <nav
-              id="main-navigation"
-              className={open ? "open" : ""}
-              aria-label="Main navigation"
-            >
-              {links.map(([label, href]) => (
-                <Link
-                  key={href}
-                  href={href}
-                  className={path === href ? "active" : ""}
-                  onClick={() => setOpen(false)}
-                >
-                  {label}
-                </Link>
-              ))}
-            </nav>
-          </>
-        )}
+        {/* Nothing sits beside the wordmark in its clear space. */}
+        <Link href="/" className="back-to-site">
+          Back to the site
+        </Link>
       </header>
       <span id="main-content" tabIndex={-1} className="skip-target" />
     </>

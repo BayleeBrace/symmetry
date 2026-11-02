@@ -1,4 +1,4 @@
-import { BrandHeader } from "@/components/brand-header";
+import { Header } from "@/components/header";
 import { SiteFooter } from "@/components/site-footer";
 import { ContactLinks } from "@/components/contact-links";
 import { shopContact } from "@/lib/shop-contact";
@@ -20,7 +20,7 @@ export default function PrivacyPage() {
     );
   return (
     <main className="information-page">
-      <BrandHeader />
+      <Header />
       <section className="information-hero privacy-copy">
         <p className="eyebrow">Your information</p>
         <h1>Your privacy.</h1>

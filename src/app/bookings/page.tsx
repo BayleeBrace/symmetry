@@ -37,7 +37,7 @@ export default async function Page({
   }
   return (
     <main className="information-page">
-      <BrandHeader compact />
+      <BrandHeader />
       <section className="staff-content">
         <h1>Your trims.</h1>
         {p.setup ? (

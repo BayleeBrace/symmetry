@@ -1,5 +1,5 @@
 export const dynamic = "force-dynamic";
-import { BrandHeader } from "@/components/brand-header";
+import { Header } from "@/components/header";
 import { SiteFooter } from "@/components/site-footer";
 import { ContactLinks } from "@/components/contact-links";
 import { getPolicy } from "@/lib/catalog";
@@ -13,7 +13,7 @@ export default async function Page() {
   const p = await getPolicy();
   return (
     <main className="information-page">
-      <BrandHeader />
+      <Header />
       <section className="information-hero">
         <h1>Plans change.</h1>
         <p>No deposit is taken. Your card is saved securely when you book.</p>

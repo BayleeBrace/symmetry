@@ -2383,3 +2383,268 @@ h2 {
 .resolution h2 {
   margin-bottom: 0;
 }
+
+/* Site header (November 2026). One row at the top of the page; on the home
+   page it sits over the shop photo. Once the page scrolls it becomes a slim
+   black bar with the SY monogram, "Book a trim" and "Menu". "Menu" opens a
+   full-screen menu. Wide screens show the links in the bar instead. */
+:root {
+  --site-header-h: 88px;
+}
+@media (min-width: 901px) {
+  :root {
+    --site-header-h: 104px;
+  }
+}
+/* The area behind the phone's status bar takes the header's black, not the
+   bone page colour. */
+:root:has(.site-header),
+:root:has(.site-header) body {
+  background: var(--black);
+}
+.site-header {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  height: var(--site-header-h);
+  padding: 0 max(20px, calc((100vw - 1200px) / 2));
+  background: var(--black);
+  color: var(--white);
+  transition:
+    height 0.25s ease,
+    background-color 0.25s ease;
+}
+.site-header.over-photo:not(.is-slim) {
+  background: transparent;
+}
+.site-header.is-slim {
+  height: 60px;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+.site-home {
+  display: block;
+  line-height: 0;
+}
+.site-wordmark {
+  display: block;
+  width: 240px;
+  height: auto;
+}
+.site-monogram {
+  display: none;
+  width: 40px;
+  height: 40px;
+}
+.site-header.is-slim .site-wordmark {
+  display: none;
+}
+.site-header.is-slim .site-monogram {
+  display: block;
+}
+.site-nav {
+  display: none;
+}
+.site-actions {
+  display: flex;
+  align-items: center;
+  gap: 26px;
+}
+.site-book,
+.site-menu-toggle,
+.site-nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+.site-book {
+  display: none;
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+  text-decoration: underline;
+  text-decoration-color: rgba(255, 255, 255, 0.65);
+  text-underline-offset: 0.45em;
+}
+.site-header.is-slim .site-book {
+  display: inline-flex;
+}
+.site-menu-toggle {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--white);
+  font-size: 0.95rem;
+  letter-spacing: 0.08em;
+  text-decoration: underline;
+  text-underline-offset: 0.45em;
+}
+.site-header-spacer {
+  height: var(--site-header-h);
+  background: var(--black);
+}
+@media (min-width: 901px) {
+  .site-wordmark {
+    width: 264px;
+  }
+  .site-nav {
+    display: flex;
+    align-items: center;
+    gap: clamp(1rem, 2.2vw, 2rem);
+  }
+  .site-nav a {
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 0.875rem;
+    letter-spacing: 0.08em;
+  }
+  .site-nav a:hover,
+  .site-nav a.active {
+    color: var(--white);
+  }
+  .site-nav a.active {
+    text-decoration: underline;
+    text-underline-offset: 0.55em;
+  }
+  .site-actions {
+    display: none;
+  }
+}
+/* Too narrow for the wordmark and its clear space beside "Menu": the SY. */
+@media (max-width: 340px) {
+  .site-header .site-wordmark {
+    display: none;
+  }
+  .site-header .site-monogram {
+    display: block;
+  }
+}
+
+/* The full-screen menu. */
+.site-menu {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 0 max(20px, calc((100vw - 1200px) / 2))
+    calc(28px + env(safe-area-inset-bottom));
+  background: var(--black);
+  color: var(--white);
+  animation: site-menu-in 0.2s ease-out;
+}
+@keyframes site-menu-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.site-menu-bar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--site-header-h);
+}
+.site-menu-links {
+  display: flex;
+  flex-direction: column;
+  margin-top: 28px;
+}
+.site-menu-links a {
+  display: block;
+  padding: 14px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
+  font-family: var(--font-serif), serif;
+  font-size: 3rem;
+  font-weight: 300;
+  line-height: 1.05;
+}
+.site-menu-links a:last-child {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+}
+.site-menu-links a[aria-current="page"] {
+  color: rgba(255, 255, 255, 0.6);
+}
+.site-menu-foot {
+  margin-top: auto;
+  padding-top: 36px;
+}
+.site-menu-foot p {
+  margin: 0 0 6px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.95rem;
+}
+.site-menu-foot .site-menu-welsh {
+  margin: 0;
+  color: var(--white);
+  font-family: var(--font-serif), serif;
+  font-size: 2.5rem;
+  font-weight: 300;
+  line-height: 1;
+}
+.site-menu-foot .site-menu-status {
+  margin: 6px 0 22px;
+}
+.site-menu-contacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 22px;
+}
+.site-menu-contacts a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: 0.95rem;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+@media (prefers-reduced-motion: reduce) {
+  .site-header {
+    transition: none;
+  }
+  .site-menu {
+    animation: none;
+  }
+}
+
+/* Home: the photo runs to the top of the screen under the header, with a
+   calm dark band for the wordmark (never on a busy photograph). The cut sits
+   below the header and above the words; the bottom "Book a trim" bar is gone,
+   since the slim header carries it. */
+.marketing-home {
+  padding-bottom: 0;
+}
+.marketing-home .marketing-hero {
+  min-height: max(640px, 100svh);
+  padding-top: calc(11rem + 2.25rem);
+  padding-bottom: 2.5rem;
+}
+.marketing-home .cut-photo {
+  --cut-y: 11rem;
+}
+@media (min-width: 601px) {
+  .marketing-home .marketing-hero {
+    padding-top: 18rem;
+    padding-bottom: clamp(3.5rem, 7vw, 7rem);
+  }
+}
+.marketing-hero-image::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(
+    180deg,
+    rgba(22, 22, 22, 0.88) 0,
+    rgba(22, 22, 22, 0.5) 110px,
+    rgba(22, 22, 22, 0) 220px
+  );
+  pointer-events: none;
+}

@@ -152,3 +152,18 @@ Not changed, and needing photos or a decision:
 - **Booking order.** Page 20 puts the barber pills and the service list on one screen. The site uses two steps. Merging them would save a tap.
 - **Prices page cut.** The A3 poster (page 15) takes the cut above the list. The prices page could do the same, as its one cut.
 - **Staff app.** It needs a signed-in account to audit visually.
+
+## New header (2 November 2026)
+
+Chosen from the mockups on the header canvas:
+- **At the top:** one row with the wordmark and "Menu". On the home page it sits over the shop photo, which now runs to the top of the screen, with a calm dark band behind the mark.
+- **Once you scroll:** a slim black bar with the SY monogram, "Book a trim" and "Menu". Wide screens show the links in the bar instead.
+- **The menu:** "Menu" opens a full-screen black menu with large serif links, "Ar agor." or "Ar gau." with today's hours in English beneath, the address, email and Instagram.
+  - Focus moves into the menu, Tab stays inside it, and Escape closes it.
+  - The page behind doesn't scroll while it's open.
+
+Other changes:
+- **Phone status bar:** the area behind it is black now, rather than the bone page colour.
+- **Bottom bar removed:** the "Book a trim" bar at the bottom of the home page is gone, since the slim header carries "Book a trim".
+- **Code:** `src/components/site-header.tsx` is the header, with `src/components/header.tsx` passing in the open status and contact details. `BrandHeader` is now only the white booking-page header.
+- **Checked:** at 375px and 1440px, with no accessibility violations, no sideways scroll, and the cut clear of the words.
