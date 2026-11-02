@@ -9,15 +9,15 @@ An audit of the public website, booking flow, customer pages, share images, staf
 - **Shop phone.** Production already has `SHOP_PHONE` set to 01834 811351, so it shows on the live site. The handover lists that number as unconfirmed, so check it is still the shop's line.
 - **The teaser password was changed** in Vercel (production `SITE_PASSWORD`) on 2 November. It is not stored in the repository. Anyone who unlocked the preview with the old password has to enter the new one.
 
-## Database update to apply
+## Database update (applied 2 November 2026)
 
-Apply `supabase/migrations/20261102120000_audit_fixes.sql` to the Symmetry database. It is safe to run twice, and it does three things:
+`supabase/migrations/20261102120000_audit_fixes.sql` was applied to the live Symmetry database through the Supabase SQL editor on 2 November, after a check that the September squeeze-in column was present. It is safe to run twice, and it does three things:
 
 - Returning customers keep the notes the team wrote.
 - A normal trim can't be booked over a squeeze-in.
 - One confirmation goes out per booking rather than one per trim.
 
-Until it is applied, the new code still works, but a booking of several trims sends one confirmation per trim, and each one lists every trim in the booking.
+On a fresh database, apply it after the earlier migrations, in filename order.
 
 ## Public website
 

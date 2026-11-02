@@ -4,7 +4,7 @@ A mobile-first Symmetry website and bespoke booking app for GitHub, Vercel and S
 
 ## Latest: whole-site audit, 2 November 2026
 
-See `CHANGELOG-2026-11-02-site-audit.md` for the fixes across the website, booking flow, staff app and server. Apply `supabase/migrations/20261102120000_audit_fixes.sql` to the database alongside this deploy.
+See `CHANGELOG-2026-11-02-site-audit.md` for the fixes across the website, booking flow, staff app and server. `supabase/migrations/20261102120000_audit_fixes.sql` was applied to the live database on 2 November.
 
 ## This update
 
