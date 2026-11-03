@@ -13,6 +13,7 @@ import {
   chairHours,
   customerOf,
   dayLabel,
+  displayPhone,
   freeTimes,
   hoursFor,
   initials,
@@ -22,6 +23,7 @@ import {
 } from "./types";
 import type { BookPrefill } from "./calendar";
 import { useDialog } from "./dialog";
+import { SheetIcon } from "./timeline";
 
 type Client = {
   id: string;
@@ -150,6 +152,9 @@ export function NewAppointment({
   const [times, setTimes] = useState(4);
   const [confirmSqueeze, setConfirmSqueeze] = useState(false);
   const [error, setError] = useState("");
+  // Date, time and chair fold into one line when they came from a tap on the diary.
+  const [whenOpen, setWhenOpen] = useState(prefill.minute == null);
+  const [allServices, setAllServices] = useState(false);
   const { day, error: dayError, retry } = useDay(date, cached);
   const walkIn = picked?.name === WALK_IN;
   const ref = useDialog<HTMLElement>(onClose);
@@ -196,15 +201,23 @@ export function NewAppointment({
     working && !slots?.closed
       ? timeOptions(working[0], working[1] - duration)
       : [];
+  // A time from outside the chair's hours is only kept on a day the chair is
+  // not working (staff adding to a closed day). On a working day it moves to
+  // the nearest start that still finishes in time.
   const choices = slots
-    ? time === null || inHours.includes(time)
+    ? time === null || inHours.includes(time) || inHours.length > 0
       ? inHours
       : [...inHours, time].sort((a, b) => a - b)
     : time !== null
       ? [time]
       : [];
   const value =
-    time !== null && choices.includes(time) ? time : (choices[0] ?? null);
+    time !== null && choices.length
+      ? choices.reduce((best, m) =>
+          Math.abs(m - time) < Math.abs(best - time) ? m : best,
+        )
+      : (choices[0] ?? null);
+  const moved = time !== null && value !== null && value !== time && !!slots;
   const taken = value !== null && slots ? !slots.free.includes(value) : false;
   const overlapping =
     day && value !== null
@@ -274,10 +287,17 @@ export function NewAppointment({
     }
   };
 
+  const serviceRows = offered.filter(
+    (s, i) =>
+      allServices || offered.length <= 5 || i < 4 || s.id === serviceValue,
+  );
+  const hiddenServices = offered.length - serviceRows.length;
+  const newClient = !picked && name.trim().length >= 2;
+
   return (
     <aside
       ref={ref}
-      className="sheet drawer"
+      className="sheet drawer new-appointment"
       role="dialog"
       aria-modal="true"
       aria-label="New appointment"
@@ -288,13 +308,9 @@ export function NewAppointment({
         onClick={onClose}
         aria-label="Close"
       >
-        ×
+        <SheetIcon d="M6 6l12 12M18 6L6 18" />
       </button>
-      <h2>New appointment.</h2>
-      <p className="sheet-line">
-        Goes straight into the diary, so online bookings cannot take the same
-        time.
-      </p>
+      <h2>New appointment</h2>
       <form
         className="staff-form"
         onSubmit={(event) => {
@@ -306,23 +322,112 @@ export function NewAppointment({
           void save(false);
         }}
       >
-        <label className="wide client-field">
-          Client
-          <input
-            value={name}
-            required
-            minLength={2}
-            autoComplete="off"
-            placeholder="Start typing a name"
-            onChange={(e) => {
-              setName(e.target.value);
-              setPicked(null);
-            }}
-          />
-          {picked && (
-            <span className="client-picked">
+        <button
+          type="button"
+          className="when-row wide"
+          aria-expanded={whenOpen}
+          onClick={() => setWhenOpen((o) => !o)}
+        >
+          <SheetIcon d="M3.5 5h17v15h-17zM3.5 10h17M8 3v4M16 3v4" />
+          <span className="when-text">
+            {shortDay(date)} ·{" "}
+            {value !== null
+              ? clock(value)
+              : slots
+                ? slots.closed
+                  ? "Closed"
+                  : "No times"
+                : "Checking…"}{" "}
+            · {barber?.name ?? "Chair"}
+          </span>
+          <span className="when-change">{whenOpen ? "Done" : "Change"}</span>
+        </button>
+        {(moved || taken) && value !== null && (
+          <p className="when-note wide">
+            {moved && time !== null
+              ? `${clock(time)} would run past ${barber?.name ?? "the chair"}’s hours, so this starts at ${clock(value)}. `
+              : ""}
+            {taken
+              ? `${clock(value)} is taken: this will be squeezed in alongside.`
+              : ""}
+          </p>
+        )}
+        {whenOpen && (
+          <div className="when-fields wide">
+            <label>
+              Chair
+              <select
+                value={barberId}
+                onChange={(e) => setBarberId(e.target.value)}
+              >
+                {options.map((b) => (
+                  <option value={b.id} key={b.id}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Date
+              <input
+                type="date"
+                required
+                max={horizon}
+                value={date}
+                onChange={(e) => e.target.value && setDate(e.target.value)}
+              />
+            </label>
+            <label>
+              Time
+              <select
+                value={value ?? ""}
+                disabled={!slots || choices.length === 0}
+                onChange={(e) => {
+                  setTime(Number(e.target.value));
+                  setConfirmSqueeze(false);
+                }}
+              >
+                {!slots && (
+                  <option value="">
+                    {dayError
+                      ? "Could not check the diary"
+                      : "Checking the diary…"}
+                  </option>
+                )}
+                {slots && choices.length === 0 && (
+                  <option value="">
+                    {slots.closed ? "Closed that day" : "No times today"}
+                  </option>
+                )}
+                {choices.map((minute) => (
+                  <option key={minute} value={minute}>
+                    {clock(minute)}
+                    {slots && !slots.free.includes(minute)
+                      ? " (taken, squeeze in)"
+                      : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        )}
+        {dayError && <DayError onRetry={retry} />}
+
+        <div className="wide client-block">
+          <span className="field-label">Client</span>
+          {picked ? (
+            <div className="client-picked">
               <span className="avatar">{initials(picked.name)}</span>
-              {walkIn ? "Walk-in, no details needed" : "Existing client"}
+              <span className="client-picked-text">
+                <strong>{picked.name}</strong>
+                <small>
+                  {walkIn
+                    ? "Walk-in, no details needed"
+                    : picked.phone
+                      ? displayPhone(picked.phone)
+                      : picked.email || "Existing client"}
+                </small>
+              </span>
               <button
                 type="button"
                 className="text-button"
@@ -333,12 +438,58 @@ export function NewAppointment({
                   setPhone("");
                 }}
               >
-                Clear
+                Change
               </button>
-            </span>
+            </div>
+          ) : (
+            <label className="client-field">
+              <span className="sr-only">Client name</span>
+              <span className="search-box">
+                <SheetIcon d="M11 4.5a6.5 6.5 0 1 1 0 13 6.5 6.5 0 0 1 0-13zM16 16l4.5 4.5" />
+                <input
+                  value={name}
+                  required
+                  minLength={2}
+                  autoComplete="off"
+                  placeholder="Name, mobile or email"
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    setPicked(null);
+                  }}
+                />
+              </span>
+              {name.trim().length >= 2 && results.length > 0 && (
+                <ul className="client-results" role="listbox">
+                  {results.map((c) => (
+                    <li key={c.id}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPicked(c);
+                          setName(c.name);
+                          setEmail(c.email);
+                          setPhone(c.phone);
+                          setResults([]);
+                        }}
+                      >
+                        <span className="avatar">{initials(c.name)}</span>
+                        <span>
+                          <strong>{c.name}</strong>
+                          <small>
+                            {c.phone
+                              ? displayPhone(c.phone)
+                              : c.email || "No contact details"}
+                          </small>
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </label>
           )}
           {!picked && (
-            <span className="client-quick">
+            <div className="client-quick">
               <button
                 type="button"
                 className="chip-button"
@@ -353,131 +504,75 @@ export function NewAppointment({
                 Walk-in
               </button>
               <small>Someone off the street, no details needed.</small>
-            </span>
+            </div>
           )}
-          {!picked && name.trim().length >= 2 && results.length > 0 && (
-            <ul className="client-results" role="listbox">
-              {results.map((c) => (
-                <li key={c.id}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPicked(c);
-                      setName(c.name);
-                      setEmail(c.email);
-                      setPhone(c.phone);
-                      setResults([]);
-                    }}
-                  >
-                    <span className="avatar">{initials(c.name)}</span>
-                    <span>
-                      <strong>{c.name}</strong>
-                      <small>
-                        {c.phone || c.email || "No contact details"}
-                      </small>
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
+          {newClient && (
+            <div className="new-client-fields">
+              <p className="field-hint">
+                New client? Add a mobile or email so they get reminders.
+              </p>
+              <label>
+                Mobile (optional)
+                <input
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="off"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                />
+              </label>
+              <label>
+                Email (optional)
+                <input
+                  type="email"
+                  autoComplete="off"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </label>
+            </div>
           )}
-        </label>
-        {!walkIn && (
-          <>
-            <label>
-              Mobile (optional)
-              <input
-                type="tel"
-                inputMode="tel"
-                autoComplete="off"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-              />
-            </label>
-            <label>
-              Email (optional)
-              <input
-                type="email"
-                autoComplete="off"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </label>
-          </>
-        )}
-        <label>
-          Service
-          <select
-            value={serviceValue}
-            disabled={offered.length === 0}
-            onChange={(e) => setServiceId(e.target.value)}
-          >
-            {offered.length === 0 && (
-              <option value="">Nothing offered on this chair</option>
-            )}
-            {offered.map((s) => (
-              <option value={s.id} key={s.id}>
-                {canonicalServiceName(s.slug, s.name)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Chair
-          <select
-            value={barberId}
-            onChange={(e) => setBarberId(e.target.value)}
-          >
-            {options.map((b) => (
-              <option value={b.id} key={b.id}>
-                {b.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Date
-          <input
-            type="date"
-            required
-            max={horizon}
-            value={date}
-            onChange={(e) => e.target.value && setDate(e.target.value)}
-          />
-        </label>
-        <label>
-          Time
-          <select
-            value={value ?? ""}
-            disabled={!slots || choices.length === 0}
-            onChange={(e) => {
-              setTime(Number(e.target.value));
-              setConfirmSqueeze(false);
-            }}
-          >
-            {!slots && (
-              <option value="">
-                {dayError ? "Could not check the diary" : "Checking the diary…"}
-              </option>
-            )}
-            {slots && choices.length === 0 && (
-              <option value="">
-                {slots.closed ? "Closed that day" : "No times today"}
-              </option>
-            )}
-            {choices.map((minute) => (
-              <option key={minute} value={minute}>
-                {clock(minute)}
-                {slots && !slots.free.includes(minute)
-                  ? " (taken, squeeze in)"
-                  : ""}
-              </option>
-            ))}
-          </select>
-        </label>
-        {dayError && <DayError onRetry={retry} />}
-        <label>
-          Repeat
+        </div>
+
+        <fieldset className="wide service-list">
+          <legend className="field-label">Service</legend>
+          {offered.length === 0 && (
+            <p className="staff-muted">Nothing is offered on this chair.</p>
+          )}
+          {serviceRows.map((s) => {
+            const p = offeredPrice(s.id);
+            return (
+              <label key={s.id} className="service-option">
+                <input
+                  type="radio"
+                  name="service"
+                  value={s.id}
+                  checked={s.id === serviceValue}
+                  onChange={() => setServiceId(s.id)}
+                />
+                <span className="service-name">
+                  {canonicalServiceName(s.slug, s.name)}
+                </span>
+                <span className="service-mins">{p?.duration ?? 30} min</span>
+                <span className="service-price">
+                  {p ? `£${pounds(p.price_pence)}` : ""}
+                </span>
+              </label>
+            );
+          })}
+          {hiddenServices > 0 && (
+            <button
+              type="button"
+              className="text-button"
+              onClick={() => setAllServices(true)}
+            >
+              All services ({offered.length})
+            </button>
+          )}
+        </fieldset>
+
+        <label className="wide row-field">
+          <span>Repeat</span>
           <select
             value={every}
             onChange={(e) => setEvery(Number(e.target.value))}
@@ -490,8 +585,8 @@ export function NewAppointment({
           </select>
         </label>
         {every > 0 && fits >= 2 && (
-          <label>
-            How many times
+          <label className="wide row-field">
+            <span>How many times</span>
             <select
               value={repeatTimes}
               onChange={(e) => setTimes(Number(e.target.value))}
@@ -504,20 +599,23 @@ export function NewAppointment({
             </select>
           </label>
         )}
-        <p className="price-hint">
-          {price
-            ? `${pounds(price.price_pence)} pounds · ${duration} min with ${barber?.name ?? ""}`
-            : "No price is set for this chair and service."}
-          {hours ? "" : slots ? " The shop is closed that day." : ""}
-          {repeating && lastDate
-            ? ` Same time ${REPEAT_LABEL[every]} until ${shortDay(lastDate)}. Dates already taken are skipped.`
-            : ""}
-          {every > 0 && fits < 12
-            ? fits >= 2
-              ? ` The diary opens ${HORIZON_DAYS} days ahead, so up to ${fits} times fit.`
-              : ` The diary opens ${HORIZON_DAYS} days ahead, so no repeat fits after this date.`
-            : ""}
-        </p>
+        {(!price ||
+          (!hours && slots) ||
+          (repeating && lastDate) ||
+          (every > 0 && fits < 12)) && (
+          <p className="price-hint">
+            {price ? "" : "No price is set for this chair and service."}
+            {hours ? "" : slots ? " The shop is closed that day." : ""}
+            {repeating && lastDate
+              ? ` Same time ${REPEAT_LABEL[every]} until ${shortDay(lastDate)}. Dates already taken are skipped.`
+              : ""}
+            {every > 0 && fits < 12
+              ? fits >= 2
+                ? ` The diary opens ${HORIZON_DAYS} days ahead, so up to ${fits} times fit.`
+                : ` The diary opens ${HORIZON_DAYS} days ahead, so no repeat fits after this date.`
+              : ""}
+          </p>
+        )}
         {confirmSqueeze && value !== null && (
           <div className="squeeze-box wide" role="alertdialog">
             <p>
@@ -553,16 +651,14 @@ export function NewAppointment({
           </p>
         )}
         {!confirmSqueeze && (
-          <div className="form-actions">
+          <div className="form-actions sheet-cta">
             <button
               type="submit"
               className="button-primary"
               disabled={busy || !price || value === null}
             >
-              {taken ? "Squeeze in" : "Save appointment"}
-            </button>
-            <button type="button" className="text-button" onClick={onClose}>
-              Cancel
+              {taken ? "Squeeze in" : "Book"}
+              {price ? ` · £${pounds(price.price_pence)}` : ""}
             </button>
           </div>
         )}

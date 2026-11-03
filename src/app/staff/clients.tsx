@@ -2,7 +2,8 @@
 import { useEffect, useState } from "react";
 import { staffApi as api } from "@/lib/staff-client";
 import { clock, money } from "@/lib/booking-data";
-import { type Context, initials, shortDay } from "./types";
+import { type Context, displayPhone, initials, shortDay } from "./types";
+import { SheetIcon } from "./timeline";
 import { type Waiting, WaitingRow } from "./forms";
 import { toast } from "./toast";
 import { Loading } from "./spinner";
@@ -175,6 +176,17 @@ export function Clients({
     };
   }, [id, query, page, period]);
 
+  // The list filters as you type; Enter searches straight away.
+  useEffect(() => {
+    const term = search.trim();
+    if (term === query) return;
+    const t = setTimeout(() => {
+      setQuery(term);
+      setPage(0);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [search, query]);
+
   const open = (next: string | null) => {
     setError("");
     setEditing(false);
@@ -191,13 +203,29 @@ export function Clients({
   if (id)
     return (
       <section className="clients" aria-label="Client">
-        <button
-          type="button"
-          className="text-button back-link"
-          onClick={() => open(null)}
-        >
-          ‹ All clients
-        </button>
+        <div className="client-bar">
+          <button
+            type="button"
+            className="text-button back-link"
+            onClick={() => open(null)}
+          >
+            <SheetIcon d="M15 5l-7 7 7 7" />
+            Clients
+          </button>
+          {owner && client && (
+            <button
+              type="button"
+              className="text-button"
+              aria-expanded={editing}
+              onClick={() => {
+                setDraft(client);
+                setEditing((e) => !e);
+              }}
+            >
+              {editing ? "Stop editing" : "Edit"}
+            </button>
+          )}
+        </div>
         {error && (
           <p className="staff-error" role="alert">
             {error}
@@ -217,68 +245,83 @@ export function Clients({
                     month: "long",
                     year: "numeric",
                   })}
+                  {client.phone ? ` · ${displayPhone(client.phone)}` : ""}
                 </p>
-                <p className="client-contact">
-                  {client.phone && (
-                    <a href={`tel:${client.phone}`}>{client.phone}</a>
-                  )}
-                  {client.email && (
-                    <a href={`mailto:${client.email}`}>{client.email}</a>
-                  )}
-                  {!client.phone && !client.email && (
-                    <span className="staff-muted">No contact details</span>
-                  )}
-                </p>
-              </div>
-              <div className="client-actions">
-                <button
-                  type="button"
-                  className="button-primary"
-                  onClick={() =>
-                    onBook({
-                      id: client.id,
-                      name: client.name,
-                      email: client.email,
-                      phone: client.phone,
-                    })
-                  }
-                >
-                  New appointment
-                </button>
-                {owner && (
-                  <button
-                    type="button"
-                    className="button-secondary"
-                    onClick={() => {
-                      setDraft(client);
-                      setEditing((e) => !e);
-                    }}
-                  >
-                    {editing ? "Stop editing" : "Edit details"}
-                  </button>
-                )}
               </div>
             </header>
+            {client.phone || client.email ? (
+              <div className="contact-buttons">
+                {client.phone && (
+                  <a
+                    href={`tel:${client.phone}`}
+                    aria-label={`Call ${displayPhone(client.phone)}`}
+                  >
+                    <SheetIcon d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2" />
+                    Call
+                  </a>
+                )}
+                {client.phone && (
+                  <a
+                    href={`sms:${client.phone}`}
+                    aria-label={`Text ${displayPhone(client.phone)}`}
+                  >
+                    <SheetIcon d="M4 5h16v11H9l-5 4z" />
+                    Text
+                  </a>
+                )}
+                {client.email && (
+                  <a
+                    href={`mailto:${client.email}`}
+                    aria-label={`Email ${client.email}`}
+                  >
+                    <SheetIcon d="M3 5h18v14H3zM3.5 6.5L12 13l8.5-6.5" />
+                    Email
+                  </a>
+                )}
+              </div>
+            ) : (
+              <p className="staff-muted">No contact details</p>
+            )}
+            {client.email && <p className="client-email">{client.email}</p>}
             {stats && (
-              <div className="stat-row client-stats">
+              <dl className="stat-line">
                 {[
                   ["Visits", String(stats.visits)],
-                  ["Spent (pounds)", money(stats.spent / 100)],
+                  ["Spent", `£${money(stats.spent / 100)}`],
                   ["No shows", String(stats.noShows)],
                   ["Cancelled", String(stats.cancelled)],
                 ].map(([label, value]) => (
                   <div
-                    className={`stat ${label === "No shows" && stats.noShows ? "is-warn" : ""}`}
+                    className={
+                      label === "No shows" && stats.noShows ? "is-warn" : ""
+                    }
                     key={label}
                   >
-                    <span>{label}</span>
-                    <strong>{value}</strong>
+                    <dt>{label}</dt>
+                    <dd>{value}</dd>
                   </div>
                 ))}
-              </div>
+              </dl>
             )}
+            <button
+              type="button"
+              className="button-primary client-book"
+              onClick={() =>
+                onBook({
+                  id: client.id,
+                  name: client.name,
+                  email: client.email,
+                  phone: client.phone,
+                })
+              }
+            >
+              New appointment
+            </button>
             {client.preferences && (
-              <p className="sheet-notes">{client.preferences}</p>
+              <div className="sheet-notes">
+                <span className="sheet-notes-label">Notes</span>
+                <p>{client.preferences}</p>
+              </div>
             )}
             {editing && draft && (
               <InlineEditor
@@ -380,7 +423,7 @@ export function Clients({
                 </div>
               </InlineEditor>
             )}
-            <div className="seg" role="group" aria-label="Appointments">
+            <div className="seg is-tabs" role="group" aria-label="Appointments">
               {(["upcoming", "past"] as const).map((p) => (
                 <button
                   key={p}
@@ -414,7 +457,7 @@ export function Clients({
                     </small>
                   </span>
                   <span className="visit-how">
-                    <strong>{money(v.price_pence / 100)}</strong>
+                    <strong>£{money(v.price_pence / 100)}</strong>
                     <small>
                       {STATUS[v.status] ?? v.status}
                       {v.paid_by ? ` · ${v.paid_by}` : ""}
@@ -453,16 +496,14 @@ export function Clients({
             setPage(0);
           }}
         >
+          <SheetIcon d="M11 4.5a6.5 6.5 0 1 1 0 13 6.5 6.5 0 0 1 0-13zM16 16l4.5 4.5" />
           <input
             type="search"
             aria-label="Search clients"
-            placeholder="Search by name, mobile or email"
+            placeholder="Name, mobile or email"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          <button type="submit" className="button-secondary">
-            Search
-          </button>
         </form>
       </header>
       {error && (
@@ -489,8 +530,9 @@ export function Clients({
                 <span className="avatar">{initials(c.name)}</span>
                 <span className="client-name">{c.name}</span>
                 <span className="client-meta">
-                  {c.phone || "No mobile"}
-                  <small>{c.email || "No email"}</small>
+                  {c.phone
+                    ? displayPhone(c.phone)
+                    : c.email || "No contact details"}
                 </span>
                 <span className="chevron" aria-hidden="true">
                   ›

@@ -1,6 +1,6 @@
 "use client";
 import { type CSSProperties, useEffect, useRef, useState } from "react";
-import { clock, inputTime, shopMinute, shopToday } from "@/lib/booking-data";
+import { clock, shopMinute, shopToday } from "@/lib/booking-data";
 import { staffApi as api } from "@/lib/staff-client";
 import {
   type Act,
@@ -15,6 +15,7 @@ import {
   canonicalServiceName,
   chairHours,
   customerOf,
+  displayPhone,
   freeTimes,
   initials,
   laneLayout,
@@ -62,11 +63,11 @@ export function historyView(
   const id = booking.booking_groups?.customer_id;
   const h = id ? diary.history?.[id] : undefined;
   if (!h) return undefined;
+  const lastService = h.last
+    ? diary.services.find((s) => s.id === h.last?.service_id)
+    : undefined;
   const last = h.last
-    ? `${canonicalServiceName(
-        diary.services.find((s) => s.id === h.last?.service_id)?.slug,
-        "Trim",
-      )} with ${
+    ? `${canonicalServiceName(lastService?.slug, lastService?.name ?? "")} with ${
         diary.barbers.find((b) => b.id === h.last?.barber_id)?.name ?? "us"
       }, ${shortDay(h.last.date)}`
     : null;
@@ -275,36 +276,8 @@ export function DayTimeline({
     "--chairs": barbers.length,
   } as CSSProperties;
 
-  const nextUp = isToday
-    ? bookingsToday
-        .filter(
-          (b) =>
-            b.barber_id === own &&
-            OPEN_STATUSES.includes(b.status) &&
-            b.start_minute + b.duration > nowMinute,
-        )
-        .sort((a, b) => a.start_minute - b.start_minute)[0]
-    : undefined;
-
   return (
     <div className="day">
-      <div className="day-sticky">
-        {nextUp && (
-          <button
-            type="button"
-            className="next-up"
-            onClick={() => setSelected({ kind: "booking", id: nextUp.id })}
-          >
-            <span className="next-up-label">
-              {nextUp.status === "arrived" ? "In the chair" : "Next"}
-            </span>
-            <span className="next-up-body">
-              {clock(nextUp.start_minute)} · {customerOf(nextUp).name} ·{" "}
-              {serviceLabel(diary, nextUp)}
-            </span>
-          </button>
-        )}
-      </div>
       {!diary.hours && (
         <p className="day-closed">
           The shop is closed on this day. Anything shown here was added by
@@ -589,6 +562,34 @@ function parsePounds(text: string) {
     : null;
 }
 
+/** Line icons for the booking sheet, drawn at 20px. */
+const ICON = {
+  call: "M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2",
+  text: "M4 5h16v11H9l-5 4z",
+  email: "M3 5h18v14H3zM3.5 6.5L12 13l8.5-6.5",
+  move: "M3.5 5h17v15h-17zM3.5 10h17M8 3v4M16 3v4M10 15h5M13 13l2 2-2 2",
+  noShow:
+    "M10 4.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7zM3.5 20c1-3.5 3.5-5.5 6.5-5.5 1.5 0 2.8.4 3.9 1.2M16 15l5 5M21 15l-5 5",
+  cancel: "M12 3.5a8.5 8.5 0 1 1 0 17 8.5 8.5 0 0 1 0-17zM9 9l6 6M15 9l-6 6",
+};
+export function SheetIcon({ d }: { d: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="20"
+      height="20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d={d} />
+    </svg>
+  );
+}
+
 export function BookingSheet({
   booking,
   serviceName,
@@ -618,6 +619,7 @@ export function BookingSheet({
     booking.local_date < today ||
     (booking.local_date === today && booking.start_minute <= shopMinute());
   const [checkout, setCheckout] = useState(false);
+  const [moving, setMoving] = useState(false);
   // What was actually done and charged: the booking to start with, editable at checkout.
   const chairPrices = (diary?.prices ?? []).filter(
     (p) => p.barber_id === booking.barber_id && p.active !== false,
@@ -652,18 +654,19 @@ export function BookingSheet({
   return (
     <aside
       ref={ref}
-      className="sheet"
+      className="sheet booking-sheet"
       role="dialog"
       aria-modal="true"
       aria-label="Appointment"
     >
+      <span className="sheet-grip" aria-hidden="true" />
       <button
         type="button"
         className="sheet-close"
         onClick={onClose}
         aria-label="Close"
       >
-        ×
+        <SheetIcon d="M6 6l12 12M18 6L6 18" />
       </button>
       <div className="sheet-head">
         <span className="avatar is-large">{initials(customer.name)}</span>
@@ -684,8 +687,8 @@ export function BookingSheet({
             : ""}
         </span>
         {booking.late_minutes > 0 && (
-          <span className="status-chip">
-            Running {booking.late_minutes} min late
+          <span className="status-chip is-late">
+            {booking.late_minutes} min late
           </span>
         )}
         {booking.source === "walk_in" && (
@@ -695,6 +698,37 @@ export function BookingSheet({
           <span className="status-chip is-quiet">Squeezed in</span>
         )}
       </p>
+      {(customer.phone || customer.email) && (
+        <div className="contact-buttons">
+          {customer.phone && (
+            <a
+              href={`tel:${customer.phone}`}
+              aria-label={`Call ${displayPhone(customer.phone)}`}
+            >
+              <SheetIcon d={ICON.call} />
+              Call
+            </a>
+          )}
+          {customer.phone && (
+            <a
+              href={`sms:${customer.phone}`}
+              aria-label={`Text ${displayPhone(customer.phone)}`}
+            >
+              <SheetIcon d={ICON.text} />
+              Text
+            </a>
+          )}
+          {customer.email && (
+            <a
+              href={`mailto:${customer.email}`}
+              aria-label={`Email ${customer.email}`}
+            >
+              <SheetIcon d={ICON.email} />
+              Email
+            </a>
+          )}
+        </div>
+      )}
       <div className="sheet-service">
         <span>
           {serviceName}
@@ -702,13 +736,13 @@ export function BookingSheet({
             {booking.duration} min with {booking.barbers?.name ?? "chair"}
           </small>
         </span>
-        <strong>{pounds(booking.price_pence)}</strong>
+        <strong>£{pounds(booking.price_pence)}</strong>
       </div>
       {history && (
         <p className="sheet-history">
           {history.visits === 0
             ? "First visit."
-            : `${history.visits} previous visit${history.visits === 1 ? "" : "s"}.`}
+            : `${history.visits} visit${history.visits === 1 ? "" : "s"} before.`}
           {history.last ? ` Last time: ${history.last}.` : ""}
           {history.noShows > 0 && (
             <span className="no-shows">
@@ -719,56 +753,28 @@ export function BookingSheet({
         </p>
       )}
       {customer.preferences && (
-        <p className="sheet-notes">{customer.preferences}</p>
-      )}
-      {(customer.phone || customer.email) && (
-        <div className="sheet-contact">
-          {customer.phone && (
-            <a href={`tel:${customer.phone}`}>{customer.phone}</a>
-          )}
-          {customer.email && (
-            <a href={`mailto:${customer.email}`}>{customer.email}</a>
-          )}
-        </div>
-      )}
-      {!isOpen && onRebook && (
-        <div className="sheet-actions">
-          <button
-            type="button"
-            className="button-primary"
-            onClick={() => onRebook(booking)}
-          >
-            {booking.status === "done" ? "Book again" : "Rebook"}
-          </button>
+        <div className="sheet-notes">
+          <span className="sheet-notes-label">Notes</span>
+          <p>{customer.preferences}</p>
         </div>
       )}
       {isOpen && !checkout && (
         <>
-          <div className="sheet-actions">
-            {booking.status === "booked" && (
-              <button
-                type="button"
-                className={started ? "button-secondary" : "button-primary"}
-                disabled={busy}
-                onClick={() => void setStatus("arrived")}
-              >
-                In the chair
-              </button>
-            )}
+          <div
+            className="sheet-quiet"
+            role="group"
+            aria-label="Change this trim"
+          >
             <button
               type="button"
-              className={started ? "button-primary" : "button-secondary"}
-              disabled={busy || !started}
-              title={
-                started ? undefined : "Available once the trim has started"
-              }
-              onClick={() => setCheckout(true)}
+              aria-expanded={moving}
+              onClick={() => setMoving((m) => !m)}
             >
-              Checkout
+              <SheetIcon d={ICON.move} />
+              Move
             </button>
             <button
               type="button"
-              className="button-secondary"
               disabled={busy || !started}
               title={
                 started ? undefined : "Available once the trim has started"
@@ -778,21 +784,23 @@ export function BookingSheet({
                   void setStatus("no_show");
               }}
             >
+              <SheetIcon d={ICON.noShow} />
               No show
             </button>
             <button
               type="button"
-              className="button-secondary"
+              className="is-danger"
               disabled={busy}
               onClick={() => {
                 if (confirm(`Cancel this trim for ${customer.name}?`))
                   void setStatus("cancelled");
               }}
             >
-              Cancel trim
+              <SheetIcon d={ICON.cancel} />
+              Cancel
             </button>
           </div>
-          <MoveForm booking={booking} busy={busy} act={act} />
+          {moving && <MoveForm booking={booking} busy={busy} act={act} />}
         </>
       )}
       {isOpen && checkout && (
@@ -820,7 +828,7 @@ export function BookingSheet({
                 </select>
               </label>
               <label>
-                Price (pounds)
+                Price (£)
                 <input
                   inputMode="decimal"
                   value={priceText}
@@ -832,15 +840,13 @@ export function BookingSheet({
           )}
           <p className="checkout-total">
             <span>Total</span>
-            <strong>
-              {pricePence === null ? "?" : pounds(pricePence)} pounds
-            </strong>
+            <strong>£{pricePence === null ? "?" : pounds(pricePence)}</strong>
           </p>
           {(serviceId !== booking.service_id ||
             (pricePence !== null && pricePence !== booking.price_pence)) && (
             <p className="staff-muted checkout-note">
-              Booked as {serviceName} at {pounds(booking.price_pence)} pounds.
-              Sales and pay use what you record here.
+              Booked as {serviceName} at £{pounds(booking.price_pence)}. Sales
+              and pay use what you record here.
             </p>
           )}
           <p className="staff-muted">How did {customer.name} pay?</p>
@@ -879,7 +885,7 @@ export function BookingSheet({
       {booking.fee_pence > 0 && (
         <div className="sheet-fee">
           <p>
-            Fee {pounds(booking.fee_pence)} pounds ·{" "}
+            Fee £{pounds(booking.fee_pence)} ·{" "}
             {booking.fee_status.replace("_", " ")}
           </p>
           {feeOpen && (
@@ -891,7 +897,7 @@ export function BookingSheet({
                 onClick={() => {
                   if (
                     confirm(
-                      `Charge the authorised ${pounds(booking.fee_pence)} pounds fee to this customer's saved card?`,
+                      `Charge the authorised £${pounds(booking.fee_pence)} fee to this customer's saved card?`,
                     )
                   )
                     void act("/api/staff/charge", {
@@ -921,9 +927,56 @@ export function BookingSheet({
           )}
         </div>
       )}
+      {isOpen && !checkout && (
+        <div className="sheet-cta">
+          <div className="sheet-cta-buttons">
+            {booking.status === "booked" && (
+              <button
+                type="button"
+                className={started ? "button-secondary" : "button-primary"}
+                disabled={busy}
+                onClick={() => void setStatus("arrived")}
+              >
+                In the chair
+              </button>
+            )}
+            {(started || booking.status !== "booked") && (
+              <button
+                type="button"
+                className="button-primary"
+                disabled={busy || !started}
+                onClick={() => setCheckout(true)}
+              >
+                Checkout
+              </button>
+            )}
+          </div>
+          {!started && (
+            <p className="sheet-cta-note">
+              Checkout opens at {clock(booking.start_minute)}
+              {booking.local_date === today
+                ? ""
+                : ` on ${shortDay(booking.local_date)}`}
+              .
+            </p>
+          )}
+        </div>
+      )}
+      {!isOpen && onRebook && (
+        <div className="sheet-cta">
+          <div className="sheet-cta-buttons">
+            <button
+              type="button"
+              className="button-primary"
+              onClick={() => onRebook(booking)}
+            >
+              {booking.status === "done" ? "Book again" : "Rebook"}
+            </button>
+          </div>
+        </div>
+      )}
       <p className="sheet-foot">
-        Booked for {inputTime(booking.start_minute)} on {booking.local_date}.
-        Hold the card in the calendar to drag it to another time or chair.
+        Hold the card in the diary to drag it to another time or chair.
       </p>
     </aside>
   );
@@ -946,12 +999,10 @@ function MoveForm({
   busy: boolean;
   act: Act;
 }) {
-  const [open, setOpen] = useState(false);
   const [date, setDate] = useState(booking.local_date);
   const [time, setTime] = useState(booking.start_minute);
   const [result, setResult] = useState<FreeTimes | null>(null);
   useEffect(() => {
-    if (!open) return;
     let live = true;
     const check = async () => {
       try {
@@ -976,7 +1027,7 @@ function MoveForm({
       live = false;
       clearInterval(timer);
     };
-  }, [open, date, booking.id, booking.barber_id, booking.duration]);
+  }, [date, booking.id, booking.barber_id, booking.duration]);
   const current = result && result.date === date ? result : null;
   const value = current
     ? current.free.includes(time)
@@ -988,11 +1039,8 @@ function MoveForm({
   const unchanged =
     date === booking.local_date && value === booking.start_minute;
   return (
-    <details
-      className="sheet-move"
-      onToggle={(event) => setOpen(event.currentTarget.open)}
-    >
-      <summary>Reschedule</summary>
+    <div className="sheet-move">
+      <p className="sheet-move-title">Move to another time</p>
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -1053,7 +1101,7 @@ function MoveForm({
           Save move
         </button>
       </form>
-    </details>
+    </div>
   );
 }
 

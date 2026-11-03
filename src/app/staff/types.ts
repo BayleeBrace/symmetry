@@ -266,6 +266,16 @@ export function customerOf(booking: Booking): Customer {
   );
 }
 
+/**
+ * A UK number the way people write it (07700 900233), from however it was
+ * stored (+447700900233). Anything that is not a UK number is shown as stored.
+ */
+export function displayPhone(phone: string) {
+  const digits = phone.replace(/[\s()-]/g, "");
+  const uk = /^(?:\+44|0044|0)(\d{4})(\d{6})$/.exec(digits);
+  return uk ? `0${uk[1]} ${uk[2]}` : phone;
+}
+
 export function initials(name: string) {
   return (
     name

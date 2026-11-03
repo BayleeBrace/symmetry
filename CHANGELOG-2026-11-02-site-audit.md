@@ -167,3 +167,34 @@ Other changes:
 - **Bottom bar removed:** the "Book a trim" bar at the bottom of the home page is gone, since the slim header carries "Book a trim".
 - **Code:** `src/components/site-header.tsx` is the header, with `src/components/header.tsx` passing in the open status and contact details. `BrandHeader` is now only the white booking-page header.
 - **Checked:** at 375px and 1440px, with no accessibility violations, no sideways scroll, and the cut clear of the words.
+
+## Staff app: calmer screens (3 November 2026)
+
+Same features, easier to read and quicker to get around. Approved from the
+mockups first.
+
+- **Diary.** One slim bar with the date and a Day/Week switch, then the
+  chairs as chips (Sean, Travis, Dylan, All) and "3 waiting". The tools menu
+  and the "In the chair" strip are gone; "Today" sits in the date strip on a
+  phone. Cards are flat colour with soft corners: done cards go grey, no
+  shows dashed, in the chair black. Dragging is unchanged.
+- **Booking sheet.** Call, Text and Email buttons; a quiet Move / No show /
+  Cancel row; one black button (In the chair, then Checkout). Prices in £,
+  phone numbers as 07700 900233, no computer date in the footer.
+- **New appointment.** Date, time and chair in one line with Change; client
+  search with Walk-in; mobile and email only for a new client; services as a
+  tap list with minutes and prices; one "Book · £24" button.
+- **Clients.** The list filters as you type. The profile has Call/Text/Email,
+  the numbers in one plain row, and Upcoming/Past tabs.
+- **Sales.** The total large, one summary line, a card/cash split bar, and
+  the completed trims as a list on a phone.
+- **More.** The More sheet and Settings are one page: your account, the
+  shop's sections (Catalogue is now "Services and prices", Team is "Team and
+  hours"), the settings, Back to the site and Sign out.
+- **Dark mode.** Cards are one calm grey with the service colour as a thin
+  edge, instead of muddy fills.
+- **Fixed.** "Last time" on a booking always said "Trim". The checkout price
+  box ran off a phone screen. "Select time" and "Walk-in now" could offer a
+  start that runs past closing (14:30 for a 40-minute Fade with a 15:00
+  close); they now look for a gap that fits the chair's first service, and
+  the form moves a time that would overrun to the nearest start that fits.

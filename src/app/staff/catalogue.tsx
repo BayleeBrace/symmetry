@@ -91,7 +91,7 @@ export function Catalogue({
   return (
     <section className="catalogue" aria-label="Catalogue">
       <header className="sec-head">
-        <h1>Catalogue</h1>
+        <h1>Services and prices</h1>
         <button
           type="button"
           className="button-primary"

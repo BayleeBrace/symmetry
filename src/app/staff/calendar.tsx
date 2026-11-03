@@ -78,6 +78,22 @@ type Drawer =
 /** How long the "select time" placeholder is drawn before a service is chosen. */
 const PLACE_MINUTES = 30;
 
+const Chevron = ({ d, size = 20 }: { d: string; size?: number }) => (
+  <svg
+    viewBox="0 0 24 24"
+    width={size}
+    height={size}
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.6"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d={d} />
+  </svg>
+);
+
 export function Calendar({
   ctx,
   act,
@@ -118,7 +134,6 @@ export function Calendar({
   const [data, setData] = useState<Diary | null>(null);
   const [loadError, setLoadError] = useState("");
   const setAddOpen = onAddOpen;
-  const [toolsOpen, setToolsOpen] = useState(false);
   const [stripOpen, setStripOpen] = useState(false);
   const [drawer, setDrawer] = useState<Drawer>(() =>
     prefill ? { kind: "new", prefill } : null,
@@ -272,18 +287,35 @@ export function Calendar({
     (view === "day" || (data.to ?? data.date) === to)
       ? data
       : null;
+  const waitingToday = view === "day" ? (dayData?.waiting?.[date] ?? 0) : 0;
+  // The highlighted chip: the week's chair, or the day's single chair ("All" covers the rest).
+  const chipChair = view === "week" ? weekBarber?.id : teamId;
 
   /** The next quarter hour a chair is free from now (or from opening on another day). */
+  /** How long the chair's first service takes: the one a new appointment starts with. */
+  const firstServiceMinutes = (barberId: string) => {
+    const offered = ctx.prices.filter(
+      (p) => p.barber_id === barberId && p.active !== false,
+    );
+    const first = ctx.services.find((s) =>
+      offered.some((p) => p.service_id === s.id),
+    );
+    return (
+      offered.find((p) => p.service_id === first?.id)?.duration ?? PLACE_MINUTES
+    );
+  };
   const nextFree = (barberId: string) => {
     if (!dayData) return null;
     const hours = chairHours(dayData, date, barberId);
     if (!hours) return null;
     const earliest =
       date === today ? Math.ceil(shopMinute() / 15) * 15 : hours[0];
-    const free = freeTimes(dayData, date, barberId, PLACE_MINUTES).free;
+    // Long enough for the service the form will start with, so it is not offered a gap that runs past closing.
+    const minutes = firstServiceMinutes(barberId);
+    const free = freeTimes(dayData, date, barberId, minutes).free;
     return (
       free.find((m) => m >= earliest) ??
-      Math.max(hours[0], Math.min(earliest, hours[1] - PLACE_MINUTES))
+      Math.max(hours[0], Math.min(earliest, hours[1] - minutes))
     );
   };
   /** Fresha's "select time": drop a plus on the day, drag it about, then fill in the trim. */
@@ -316,7 +348,6 @@ export function Calendar({
   }, [placing]);
 
   const addMenu = useDialog<HTMLDivElement>(() => setAddOpen(false), addOpen);
-  const tools = useDialog<HTMLDivElement>(() => setToolsOpen(false), toolsOpen);
 
   /** The phone's own date picker, from the hidden date field. False when the browser has none to open. */
   const openPicker = () => {
@@ -337,7 +368,7 @@ export function Calendar({
         <div className="cal-nav">
           <button
             type="button"
-            className="btn-quiet"
+            className="btn-quiet cal-today"
             onClick={() => go({ date: today })}
           >
             Today
@@ -348,7 +379,7 @@ export function Calendar({
             aria-label={view === "week" ? "Previous week" : "Previous day"}
             onClick={() => step(-1)}
           >
-            ‹
+            <Chevron d="M15 5l-7 7 7 7" />
           </button>
           <button
             type="button"
@@ -380,7 +411,7 @@ export function Calendar({
               </>
             )}
             <span className="cal-caret" aria-hidden="true">
-              ▾
+              <Chevron d="M6 9l6 6 6-6" size={14} />
             </span>
           </button>
           <button
@@ -389,7 +420,7 @@ export function Calendar({
             aria-label={view === "week" ? "Next week" : "Next day"}
             onClick={() => step(1)}
           >
-            ›
+            <Chevron d="M9 5l7 7-7 7" />
           </button>
           <input
             ref={dateInput}
@@ -400,90 +431,76 @@ export function Calendar({
             onChange={(e) => e.target.value && go({ date: e.target.value })}
           />
         </div>
-        <button
-          type="button"
-          className="cal-filter-toggle"
-          aria-label="Chairs and view"
-          aria-expanded={toolsOpen}
-          onClick={() => setToolsOpen((o) => !o)}
-        >
-          <svg
-            viewBox="0 0 24 24"
-            width="20"
-            height="20"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.7"
-            strokeLinecap="round"
-            aria-hidden="true"
+        <div className="cal-seg" role="group" aria-label="View">
+          <button
+            type="button"
+            aria-pressed={view === "day"}
+            onClick={() => go({ view: "day" })}
           >
-            <path d="M4 7h10M18 7h2M4 17h4M12 17h8M14 4.5v5M8 14.5v5" />
-          </svg>
-        </button>
-        {toolsOpen && (
-          <div className="menu-backdrop" onClick={() => setToolsOpen(false)} />
-        )}
-        <div ref={tools} className={`cal-tools ${toolsOpen ? "is-open" : ""}`}>
-          {chairs.length > 1 && (
-            <label className="cal-select">
-              <span className="sr-only">Team</span>
-              <select
-                value={
-                  view === "week"
-                    ? (weekBarber?.id ?? "all")
-                    : team === "mine"
-                      ? (ownChair?.id ?? "all")
-                      : team
-                }
-                onChange={(e) =>
-                  go({
-                    team:
-                      e.target.value === "all"
-                        ? "all"
-                        : e.target.value === ownChair?.id
-                          ? "mine"
-                          : e.target.value,
-                  })
-                }
-              >
-                {view === "day" && <option value="all">All chairs</option>}
-                {chairs.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.name}
-                    {b.id === ownChair?.id ? " (me)" : ""}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-          <div className="cal-seg" role="group" aria-label="View">
-            <button
-              type="button"
-              aria-pressed={view === "day"}
-              onClick={() => go({ view: "day" })}
-            >
-              Day
-            </button>
-            <button
-              type="button"
-              aria-pressed={view === "week"}
-              onClick={() => go({ view: "week" })}
-            >
-              Week
-            </button>
-          </div>
-          <div className="cal-add">
-            <button
-              type="button"
-              className="button-primary"
-              aria-expanded={addOpen}
-              onClick={() => setAddOpen(!addOpen)}
-            >
-              Add
-            </button>
-          </div>
+            Day
+          </button>
+          <button
+            type="button"
+            aria-pressed={view === "week"}
+            onClick={() => go({ view: "week" })}
+          >
+            Week
+          </button>
+        </div>
+        <div className="cal-add">
+          <button
+            type="button"
+            className="button-primary"
+            aria-expanded={addOpen}
+            onClick={() => setAddOpen(!addOpen)}
+          >
+            Add
+          </button>
         </div>
       </div>
+
+      {(chairs.length > 1 || waitingToday > 0) && (
+        <div className="cal-chips">
+          {chairs.length > 1 && (
+            <div className="chair-chips" role="group" aria-label="Chairs">
+              {chairs.map((b) => (
+                <button
+                  key={b.id}
+                  type="button"
+                  aria-pressed={chipChair === b.id}
+                  onClick={() =>
+                    go({ team: b.id === ownChair?.id ? "mine" : b.id })
+                  }
+                >
+                  {b.name}
+                </button>
+              ))}
+              {view === "day" && (
+                <button
+                  type="button"
+                  aria-pressed={team === "all"}
+                  onClick={() => go({ team: "all" })}
+                >
+                  All
+                </button>
+              )}
+            </div>
+          )}
+          {waitingToday > 0 && (
+            <button
+              type="button"
+              className="waiting-link"
+              aria-label={`${waitingToday} ${waitingToday === 1 ? "person is" : "people are"} waiting for this day`}
+              onClick={() => {
+                setPlacing(null);
+                setDrawer({ kind: "waitlist", date });
+              }}
+            >
+              {waitingToday} waiting
+            </button>
+          )}
+        </div>
+      )}
 
       {addOpen && (
         <div className="add-menu-host">
@@ -578,33 +595,28 @@ export function Calendar({
               })}
             </div>
           )}
-          {/* A real date field under the words, so a tap opens the phone's own picker. */}
-          <label className="strip-pick">
-            <span aria-hidden="true">Pick another date</span>
-            <input
-              type="date"
-              aria-label="Pick another date"
-              value={date}
-              onChange={(e) => e.target.value && go({ date: e.target.value })}
-            />
-          </label>
+          <div className="strip-foot">
+            {date !== today && (
+              <button
+                type="button"
+                className="strip-today"
+                onClick={() => go({ date: today })}
+              >
+                Today
+              </button>
+            )}
+            {/* A real date field under the words, so a tap opens the phone's own picker. */}
+            <label className="strip-pick">
+              <span aria-hidden="true">Pick another date</span>
+              <input
+                type="date"
+                aria-label="Pick another date"
+                value={date}
+                onChange={(e) => e.target.value && go({ date: e.target.value })}
+              />
+            </label>
+          </div>
         </div>
-      )}
-
-      {view === "day" && (dayData?.waiting?.[date] ?? 0) > 0 && (
-        <button
-          type="button"
-          className="waiting-pill"
-          onClick={() => {
-            setPlacing(null);
-            setDrawer({ kind: "waitlist", date });
-          }}
-        >
-          {dayData?.waiting?.[date]}{" "}
-          {dayData?.waiting?.[date] === 1 ? "person is" : "people are"} waiting
-          for this day
-          <span aria-hidden="true">›</span>
-        </button>
       )}
 
       {loadError && (

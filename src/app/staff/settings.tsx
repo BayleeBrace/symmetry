@@ -1,7 +1,10 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { staffApi as api } from "@/lib/staff-client";
-import { type Act } from "./types";
+import { type Act, initials } from "./types";
+import { type Section, SECTIONS } from "./shell";
+import { SheetIcon } from "./timeline";
 import { Account } from "./account";
 import { Readiness } from "./readiness";
 import { type Theme, THEME_LABEL, applyTheme, readTheme } from "./theme";
@@ -67,6 +70,48 @@ const PAGES: {
   },
 ];
 
+/** A line icon for each settings row. */
+const PAGE_ICON: Record<Exclude<SettingsTab, "home">, string> = {
+  account:
+    "M12 4.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7zM5 20c1-3.5 3.8-5.5 7-5.5s6 2 7 5.5",
+  notify: "M6 16v-5a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20.5a2 2 0 0 0 4 0",
+  appearance: "M12 3.5a8.5 8.5 0 1 1 0 17zM12 3.5a8.5 8.5 0 1 0 0 17",
+  policy: "M3.5 5h17v15h-17zM3.5 10h17M8 3v4M16 3v4M10 13.5l4 4M14 13.5l-4 4",
+  checks:
+    "M12 3.5a8.5 8.5 0 1 1 0 17 8.5 8.5 0 0 1 0-17zM8 12.5l2.8 2.8 5.7-5.8",
+  exports: "M12 4v11M7.5 10.5L12 15l4.5-4.5M4.5 19.5h15",
+};
+
+const Chev = () => (
+  <span className="chev" aria-hidden="true">
+    <SheetIcon d="M9 5l7 7-7 7" />
+  </span>
+);
+
+/** One row on the More page: an icon, a name, sometimes a value, and a chevron. */
+function Row({
+  icon,
+  label,
+  value,
+  onClick,
+}: {
+  icon: ReactNode;
+  label: string;
+  value?: string;
+  onClick: () => void;
+}) {
+  return (
+    <li>
+      <button type="button" onClick={onClick}>
+        <span className="row-icon">{icon}</span>
+        <strong>{label}</strong>
+        {value && <span className="row-value">{value}</span>}
+        <Chev />
+      </button>
+    </li>
+  );
+}
+
 /** The shop's own data, as CSV files that open in Excel or Numbers. */
 function Exports() {
   return (
@@ -108,6 +153,8 @@ export function SettingsSection({
   busy,
   tab,
   onTab,
+  onSection,
+  onSignOut,
 }: {
   owner: boolean;
   name: string;
@@ -115,30 +162,79 @@ export function SettingsSection({
   busy: boolean;
   tab: SettingsTab;
   onTab: (tab: SettingsTab) => void;
+  /** On a phone this page is also the More tab: the other sections open from here. */
+  onSection: (section: Section) => void;
+  onSignOut: () => void;
 }) {
   const pages = PAGES.filter((p) => owner || !p.owner);
   const page = pages.find((p) => p.id === tab);
+  const [theme] = useState<Theme>(() =>
+    typeof window === "undefined" ? "auto" : readTheme(),
+  );
+  // The sections the phone's tab bar has no room for. The rail shows them on a computer.
+  const more = SECTIONS.filter(
+    (s) =>
+      (owner || !s.owner) &&
+      !["calendar", "clients", "sales", "settings"].includes(s.id),
+  );
   if (!page)
     return (
       <section className="settings" aria-label="Settings">
         <header className="sec-head">
-          <h1>Settings</h1>
+          <h1>
+            <span className="phone-only">More</span>
+            <span className="wide-only">Settings</span>
+          </h1>
         </header>
-        <ul className="settings-list">
-          {pages.map((p) => (
-            <li key={p.id}>
-              <button type="button" onClick={() => onTab(p.id)}>
-                <span>
-                  <strong>{p.title}</strong>
-                  <small>{p.detail}</small>
-                </span>
-                <span className="chev" aria-hidden="true">
-                  ›
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
+        <button
+          type="button"
+          className="more-profile"
+          onClick={() => onTab("account")}
+        >
+          <span className="avatar">{initials(name)}</span>
+          <span>
+            <strong>{name}</strong>
+            <small>Your account and password</small>
+          </span>
+          <Chev />
+        </button>
+        {more.length > 0 && (
+          <div className="more-group phone-only">
+            <p className="more-label">The shop</p>
+            <ul className="settings-list">
+              {more.map((s) => (
+                <Row
+                  key={s.id}
+                  icon={s.icon}
+                  label={s.long ?? s.label}
+                  onClick={() => onSection(s.id)}
+                />
+              ))}
+            </ul>
+          </div>
+        )}
+        <div className="more-group">
+          <p className="more-label">Settings</p>
+          <ul className="settings-list">
+            {pages
+              .filter((p) => p.id !== "account")
+              .map((p) => (
+                <Row
+                  key={p.id}
+                  icon={<SheetIcon d={PAGE_ICON[p.id]} />}
+                  label={p.title}
+                  value={p.id === "appearance" ? THEME_LABEL[theme] : undefined}
+                  onClick={() => onTab(p.id)}
+                />
+              ))}
+          </ul>
+        </div>
+        <div className="more-foot phone-only">
+          <Link href="/">Back to the site</Link>
+          <button type="button" className="more-signout" onClick={onSignOut}>
+            Sign out
+          </button>
+        </div>
       </section>
     );
   return (
@@ -148,7 +244,9 @@ export function SettingsSection({
         className="settings-back"
         onClick={() => onTab("home")}
       >
-        <span aria-hidden="true">‹</span> Settings
+        <SheetIcon d="M15 5l-7 7 7 7" />
+        <span className="phone-only">More</span>
+        <span className="wide-only">Settings</span>
       </button>
       <header className="sec-head">
         <h1>{page.title}</h1>

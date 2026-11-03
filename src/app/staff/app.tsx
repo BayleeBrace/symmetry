@@ -394,6 +394,14 @@ export function StaffApp() {
   const me = chairs.find((b) => b.id === ctx.staff.barber_id);
   const name = me ? me.name : owner ? "Owner" : "Staff";
 
+  const signOut = async () => {
+    await forgetThisPhone();
+    const r = await fetch("/api/staff/session", { method: "DELETE" });
+    resetStaffSession();
+    setCtx(null);
+    if (!r.ok) setError((await r.json()).error);
+  };
+
   return (
     <Shell
       section={section}
@@ -405,15 +413,14 @@ export function StaffApp() {
         setSection("calendar");
         setAddOpen(true);
       }}
+      onMore={() => {
+        setSettingsTab("home");
+        setSection("settings");
+        setAddOpen(false);
+      }}
       owner={owner}
       name={name}
-      onSignOut={async () => {
-        await forgetThisPhone();
-        const r = await fetch("/api/staff/session", { method: "DELETE" });
-        resetStaffSession();
-        setCtx(null);
-        if (!r.ok) setError((await r.json()).error);
-      }}
+      onSignOut={signOut}
     >
       <div
         className={`pull-refresh ${pull > 0 || refreshing ? "is-visible" : ""}`}
@@ -473,6 +480,11 @@ export function StaffApp() {
           busy={busy}
           tab={settingsTab}
           onTab={setSettingsTab}
+          onSection={(next) => {
+            setSection(next);
+            setAddOpen(false);
+          }}
+          onSignOut={signOut}
         />
       )}
     </Shell>

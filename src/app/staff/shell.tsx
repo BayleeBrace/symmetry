@@ -1,8 +1,7 @@
 "use client";
 import Link from "next/link";
-import { type ReactNode, useState } from "react";
+import { type ReactNode } from "react";
 import { Toaster } from "./toast";
-import { useDialog } from "./dialog";
 
 export type Section =
   | "calendar"
@@ -34,6 +33,8 @@ const Icon = ({ d }: { d: string }) => (
 export const SECTIONS: {
   id: Section;
   label: string;
+  /** The fuller name on the phone's More page, where there is room. */
+  long?: string;
   owner?: boolean;
   icon: ReactNode;
 }[] = [
@@ -67,13 +68,15 @@ export const SECTIONS: {
   },
   {
     id: "catalogue",
-    label: "Catalogue",
+    label: "Services",
+    long: "Services and prices",
     owner: true,
     icon: <Icon d="M4 5h16M4 12h16M4 19h16M8 5v14M14 5v14" />,
   },
   {
     id: "team",
     label: "Team",
+    long: "Team and hours",
     owner: true,
     icon: <Icon d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM5 20a7 7 0 0 1 14 0" />,
   },
@@ -102,12 +105,13 @@ export const SECTIONS: {
 /** Phone tab bar: two tabs, the plus in the middle, one tab, then More. */
 const LEFT_TABS: Section[] = ["calendar", "clients"];
 const RIGHT_TABS: Section[] = ["sales"];
-const PHONE_TABS = [...LEFT_TABS, ...RIGHT_TABS];
+export const PHONE_TABS = [...LEFT_TABS, ...RIGHT_TABS];
 
 export function Shell({
   section,
   onSection,
   onAdd,
+  onMore,
   owner,
   name,
   onSignOut,
@@ -116,24 +120,20 @@ export function Shell({
   section: Section;
   onSection: (section: Section) => void;
   onAdd: () => void;
+  /** The phone's More tab: one page with the other sections and the settings. */
+  onMore: () => void;
   owner: boolean;
   name: string;
   onSignOut: () => void;
   children: ReactNode;
 }) {
-  const [more, setMore] = useState(false);
   const visible = SECTIONS.filter((s) => owner || !s.owner);
-  const moreSections = visible.filter((s) => !PHONE_TABS.includes(s.id));
-  const pick = (id: Section) => {
-    onSection(id);
-    setMore(false);
-  };
   const tab = (s: (typeof SECTIONS)[number]) => (
     <button
       key={s.id}
       type="button"
-      aria-pressed={section === s.id && !more}
-      onClick={() => pick(s.id)}
+      aria-pressed={section === s.id}
+      onClick={() => onSection(s.id)}
     >
       {s.icon}
       <span>{s.label}</span>
@@ -152,7 +152,7 @@ export function Shell({
               key={s.id}
               type="button"
               aria-pressed={section === s.id}
-              onClick={() => pick(s.id)}
+              onClick={() => onSection(s.id)}
             >
               {s.icon}
               <span>{s.label}</span>
@@ -177,84 +177,22 @@ export function Shell({
           type="button"
           className="tab-add"
           aria-label="Add an appointment or blocked time"
-          onClick={() => {
-            setMore(false);
-            onAdd();
-          }}
+          onClick={onAdd}
         >
           <span className="tab-add-mark" aria-hidden="true">
-            +
+            <Icon d="M12 5v14M5 12h14" />
           </span>
         </button>
         {visible.filter((s) => RIGHT_TABS.includes(s.id)).map(tab)}
         <button
           type="button"
-          aria-pressed={more || moreSections.some((s) => s.id === section)}
-          aria-expanded={more}
-          onClick={() => setMore((m) => !m)}
+          aria-pressed={!PHONE_TABS.includes(section)}
+          onClick={onMore}
         >
           <Icon d="M5 12h.01M12 12h.01M19 12h.01" />
           <span>More</span>
         </button>
       </nav>
-
-      {more && (
-        <MoreSheet name={name} onClose={() => setMore(false)}>
-          {moreSections.map((s) => (
-            <button
-              key={s.id}
-              type="button"
-              aria-pressed={section === s.id}
-              onClick={() => pick(s.id)}
-            >
-              {s.icon}
-              <span>{s.label}</span>
-            </button>
-          ))}
-          <Link href="/">Back to the site</Link>
-          <button type="button" className="more-signout" onClick={onSignOut}>
-            Sign out
-          </button>
-        </MoreSheet>
-      )}
     </div>
-  );
-}
-
-/** The phone's More tab: the other sections, the site and sign out, in a sheet from the bottom. */
-function MoreSheet({
-  name,
-  onClose,
-  children,
-}: {
-  name: string;
-  onClose: () => void;
-  children: ReactNode;
-}) {
-  const ref = useDialog<HTMLDivElement>(onClose);
-  return (
-    <>
-      <div className="sheet-backdrop" onClick={onClose} />
-      <div
-        ref={ref}
-        className="more-sheet"
-        role="dialog"
-        aria-modal="true"
-        aria-label="More"
-      >
-        <div className="more-head">
-          <p className="more-who">{name}</p>
-          <button
-            type="button"
-            className="more-close"
-            aria-label="Close"
-            onClick={onClose}
-          >
-            ×
-          </button>
-        </div>
-        {children}
-      </div>
-    </>
   );
 }

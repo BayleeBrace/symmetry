@@ -34,9 +34,9 @@ type Report = {
 
 const RANGES = [
   { id: "today", label: "Today" },
-  { id: "week", label: "This week" },
-  { id: "month", label: "This month" },
-  { id: "30", label: "Last 30 days" },
+  { id: "week", label: "Week" },
+  { id: "month", label: "Month" },
+  { id: "30", label: "30 days" },
 ] as const;
 type RangeId = (typeof RANGES)[number]["id"];
 
@@ -82,7 +82,11 @@ export function Sales({ ctx }: { ctx: Context }) {
     <section className="sales" aria-label="Sales">
       <header className="sec-head">
         <h1>Sales</h1>
-        <div className="range-chips" role="group" aria-label="Period">
+        <div
+          className="range-chips is-segmented"
+          role="group"
+          aria-label="Period"
+        >
           {RANGES.map((r) => (
             <button
               key={r.id}
@@ -104,35 +108,47 @@ export function Sales({ ctx }: { ctx: Context }) {
         <Loading>Adding it up…</Loading>
       ) : (
         <>
-          <div className="stat-row">
-            {[
-              ["Sales (pounds)", pounds(current.totals.sales)],
-              ["Trims completed", String(current.totals.trims)],
-              [
-                "Average per trim (pounds)",
-                current.totals.trims
-                  ? pounds(
-                      Math.round(current.totals.sales / current.totals.trims),
-                    )
-                  : "0",
-              ],
-              ["Fees charged (pounds)", pounds(current.totals.fees)],
-            ].map(([label, value]) => (
-              <div className="stat" key={label}>
-                <span>{label}</span>
-                <strong>{value}</strong>
-              </div>
-            ))}
+          <div className="sales-hero">
+            <p className="sales-total">
+              <span className="sr-only">Sales: </span>£
+              {pounds(current.totals.sales)}
+            </p>
+            <p className="sales-sub">
+              {current.totals.trims}{" "}
+              {current.totals.trims === 1 ? "trim" : "trims"} · £
+              {current.totals.trims
+                ? pounds(
+                    Math.round(current.totals.sales / current.totals.trims),
+                  )
+                : "0"}{" "}
+              average · £{pounds(current.totals.fees)} fees
+            </p>
           </div>
           <div className="sales-breakdown">
             <div>
               <h2>By payment</h2>
+              {current.totals.sales > 0 && (
+                <div className="split-bar" aria-hidden="true">
+                  {Object.entries(current.totals.byMethod).map(([m, v]) => (
+                    <span
+                      key={m}
+                      className={`split-${m}`}
+                      style={{
+                        width: `${(v / current.totals.sales) * 100}%`,
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
               <table className="day-table">
                 <tbody>
                   {Object.entries(current.totals.byMethod).map(([m, v]) => (
                     <tr key={m}>
-                      <td>{METHOD[m] ?? m}</td>
-                      <td>{pounds(v)}</td>
+                      <td>
+                        <span className={`split-dot split-${m}`} />
+                        {METHOD[m] ?? m}
+                      </td>
+                      <td>£{pounds(v)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -147,9 +163,12 @@ export function Sales({ ctx }: { ctx: Context }) {
                       <tr key={b.name}>
                         <td>
                           {b.name}
-                          <small className="staff-muted"> · {b.trims}</small>
+                          <small className="staff-muted">
+                            {" "}
+                            {b.trims} {b.trims === 1 ? "trim" : "trims"}
+                          </small>
                         </td>
-                        <td>{pounds(b.sales)}</td>
+                        <td>£{pounds(b.sales)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -157,7 +176,7 @@ export function Sales({ ctx }: { ctx: Context }) {
               </div>
             )}
           </div>
-          <h2>Completed trims</h2>
+          <h2>Completed</h2>
           {!current.rows.length ? (
             <p className="staff-muted">Nothing completed in this period yet.</p>
           ) : (
@@ -171,21 +190,28 @@ export function Sales({ ctx }: { ctx: Context }) {
                     <th scope="col">Chair</th>
                     <th scope="col">Paid by</th>
                     <th scope="col" className="num">
-                      Pounds
+                      Price
                     </th>
                   </tr>
                 </thead>
                 <tbody>
                   {current.rows.map((r) => (
                     <tr key={r.id}>
-                      <td>
-                        {shortDay(r.local_date)} · {clock(r.start_minute)}
+                      <td className="sale-when">
+                        <span className="sale-day">
+                          {shortDay(r.local_date)} ·{" "}
+                        </span>
+                        {clock(r.start_minute)}
                       </td>
-                      <td>{r.client}</td>
-                      <td>{r.service}</td>
-                      <td>{r.barber}</td>
-                      <td>{METHOD[r.paid_by ?? "none"]}</td>
-                      <td className="num">{pounds(r.price_pence)}</td>
+                      <td className="sale-client">{r.client}</td>
+                      <td className="sale-service">{r.service}</td>
+                      <td className="sale-chair">{r.barber}</td>
+                      <td className="sale-paid">
+                        {METHOD[r.paid_by ?? "none"]}
+                      </td>
+                      <td className="num sale-price">
+                        £{pounds(r.price_pence)}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -193,9 +219,8 @@ export function Sales({ ctx }: { ctx: Context }) {
             </div>
           )}
           <p className="staff-muted">
-            Sales are the booked prices of trims marked done. Fees only count
-            once a card has been charged. No shows in this period:{" "}
-            {current.totals.noShows}.
+            Sales are the prices of trims marked done. Fees count once a card is
+            charged. No shows in this period: {current.totals.noShows}.
           </p>
         </>
       )}

@@ -55,7 +55,7 @@ export function Team({
   return (
     <section className="team" aria-label="Team">
       <header className="sec-head">
-        <h1>Team</h1>
+        <h1>Team and hours</h1>
         <div className="seg" role="group" aria-label="Team pages">
           <button
             type="button"
