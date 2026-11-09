@@ -43,6 +43,7 @@ import {
   serviceLabel,
 } from "./timeline";
 import { attachDrag, type DragDrop } from "./drag";
+import { showsInDiary } from "@/lib/diary-visibility";
 import {
   type BlockPrefill,
   BlockedTime,
@@ -743,7 +744,7 @@ function WeekGrid({
   const today = shopToday();
   const mine = <T extends { barber_id: string }>(x: T) =>
     x.barber_id === barber.id;
-  const bookings = diary.bookings.filter(mine);
+  const bookings = diary.bookings.filter((b) => mine(b) && showsInDiary(b));
   const blocks = diary.blocks.filter(mine);
   const hours = days
     .map((d) => chairHours(diary, d, barber.id))

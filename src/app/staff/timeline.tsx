@@ -25,6 +25,7 @@ import {
   timeRange,
 } from "./types";
 import { attachDrag, type DragDrop } from "./drag";
+import { showsInDiary } from "@/lib/diary-visibility";
 import { toast } from "./toast";
 import { useDialog } from "./dialog";
 
@@ -203,7 +204,7 @@ export function DayTimeline({
   }, [isToday, date]);
 
   const bookingsToday = diary.bookings.filter(
-    (b) => !b.local_date || b.local_date === date,
+    (b) => (!b.local_date || b.local_date === date) && showsInDiary(b),
   );
   const blocksToday = diary.blocks.filter(
     (b) => !b.local_date || b.local_date === date,

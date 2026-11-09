@@ -198,3 +198,11 @@ mockups first.
   start that runs past closing (14:30 for a 40-minute Fade with a 15:00
   close); they now look for a gap that fits the chair's first service, and
   the form moves a time that would overrun to the nearest start that fits.
+
+## Cancelled trims leave the diary (9 November 2026)
+
+At Sean's request, a cancelled trim no longer shows in the day or week view,
+so a cancelled walk-in no longer sits beside the next one. One stays only
+while a late-cancellation fee waits for the owner to charge or waive, since
+the booking is where that is done. Cancelled trims still appear in the
+client's past visits, sales and reports. No shows still show (dashed).
