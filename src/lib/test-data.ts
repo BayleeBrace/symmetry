@@ -150,7 +150,7 @@ export async function addTestData(stripe: Stripe | null) {
       : [open, close];
   };
 
-  // The clients, and in practice mode a test card each.
+  // The clients.
   const clients = NAMES.map((name, i) => ({
     id: randomUUID(),
     name,
@@ -172,40 +172,20 @@ export async function addTestData(stripe: Stripe | null) {
         consent_version: "2026-09-08",
       })),
   );
-  const cards = new Map<string, { customer: string; card: string }>();
-  if (stripe)
-    for (const c of clients) {
-      const customer = await stripe.customers.create({
-        name: c.name,
-        metadata: { symmetry_test: "1" },
-      });
-      const card = await stripe.paymentMethods.attach("pm_card_visa", {
-        customer: customer.id,
-      });
-      cards.set(c.id, { customer: customer.id, card: card.id });
-    }
-  const accepted = new Date().toISOString();
-  const groupFor = (clientId: string): Row => {
-    const card = cards.get(clientId);
-    return {
-      id: randomUUID(),
-      customer_id: clientId,
-      manage_token_hash: tokenHash(),
-      ...(card
-        ? {
-            stripe_customer: card.customer,
-            stripe_payment_method: card.card,
-            policy_snapshot: {
-              cancellation_hours: policy.cancellation_hours,
-              late_percent: policy.late_percent,
-              no_show_percent: policy.no_show_percent,
-              version: policy.version,
-            },
-            policy_accepted_at: accepted,
-          }
-        : {}),
-    };
+  // Every test booking carries the shop's cancellation policy, so a no-show
+  // raises a fee to review, as a real one would. Test cards come separately.
+  const snapshot = {
+    cancellation_hours: policy.cancellation_hours,
+    late_percent: policy.late_percent,
+    no_show_percent: policy.no_show_percent,
+    version: policy.version,
   };
+  const groupFor = (clientId: string): Row => ({
+    id: randomUUID(),
+    customer_id: clientId,
+    manage_token_hash: tokenHash(),
+    policy_snapshot: snapshot,
+  });
 
   // Past visits: the latest one to six weeks ago, then every three to five weeks before.
   const past: { group: Row; booking: Row }[] = [];
@@ -324,7 +304,78 @@ export async function addTestData(stripe: Stripe | null) {
         .in("id", chunk);
       return { data: [], error };
     });
-  return { clients: clients.length, trims: added, cards: cards.size };
+  const cards = stripe ? await addTestCards(stripe) : 0;
+  return { clients: clients.length, trims: added, cards };
+}
+
+/**
+ * Practice mode: a Stripe test card saved for every test client still without
+ * one, so their no-show fees can be charged. Run when test clients go in, and
+ * again when the practice card machine is added, in case they went in before
+ * Stripe was connected.
+ */
+export async function addTestCards(stripe: Stripe) {
+  const db = createAdminClient();
+  const { data: clients, error } = await db
+    .from("customers")
+    .select("id,name")
+    .like("preferences", TEST_MARK + "%");
+  if (error) throw new Error("Test clients could not load");
+  const accepted = new Date().toISOString();
+  let added = 0;
+  for (const c of clients ?? []) {
+    const groups = await rowsWhere(
+      "booking_groups",
+      "id,stripe_customer",
+      "customer_id",
+      [c.id as string],
+    );
+    const bare = groups
+      .filter((g) => !g.stripe_customer)
+      .map((g) => g.id as string);
+    if (!bare.length) continue;
+    const customer = await stripe.customers.create({
+      name: c.name as string,
+      metadata: { symmetry_test: "1" },
+    });
+    const card = await stripe.paymentMethods.attach("pm_card_visa", {
+      customer: customer.id,
+    });
+    const { error: save } = await forChunks(bare, async (chunk) => {
+      const { error: e } = await db
+        .from("booking_groups")
+        .update({
+          stripe_customer: customer.id,
+          stripe_payment_method: card.id,
+          policy_accepted_at: accepted,
+        })
+        .in("id", chunk);
+      return { data: [], error: e };
+    });
+    if (save) throw new Error("Test cards could not be saved");
+    added++;
+  }
+  return added;
+}
+
+/** How many test clients have bookings with no test card saved yet. */
+export async function testClientsWithoutCards() {
+  const db = createAdminClient();
+  const { data: clients } = await db
+    .from("customers")
+    .select("id")
+    .like("preferences", TEST_MARK + "%");
+  const ids = (clients ?? []).map((c) => c.id as string);
+  if (!ids.length) return 0;
+  const groups = await rowsWhere(
+    "booking_groups",
+    "customer_id,stripe_customer",
+    "customer_id",
+    ids,
+  );
+  return new Set(
+    groups.filter((g) => !g.stripe_customer).map((g) => g.customer_id),
+  ).size;
 }
 
 /** Takes out every test client and everything hanging off them, and nothing else. */
@@ -369,4 +420,21 @@ export async function removeTestData(stripe: Stripe | null) {
         await stripe.customers.del(c.id).catch(() => {});
     }
   return { clients: clientIds.length, trims: trimIds.length };
+}
+
+/**
+ * Switched on from Vercel with SEED_TEST_DATA=true: the every-minute job puts
+ * the test clients in once, when there are none, so the team has something
+ * to practise on without anyone pressing a button. Never once card payments
+ * are live. Switch it off again afterwards, or Remove would be undone.
+ */
+export async function seedTestDataOnce(
+  mode: "test" | "live" | null,
+  stripe: Stripe | null,
+) {
+  if (mode === "live") return { skipped: "Card payments are live" };
+  if ((await countTestClients()) > 0) return { skipped: "Already in" };
+  const added = await addTestData(stripe);
+  console.log("Test clients added", added);
+  return added;
 }

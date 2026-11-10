@@ -279,11 +279,16 @@ export function CardPayments({ owner }: { owner: boolean }) {
  */
 function TestClients({ mode }: { mode: "test" | "live" | null }) {
   const [count, setCount] = useState<number | null>(null);
+  const [noCards, setNoCards] = useState(0);
   const [working, setWorking] = useState(false);
   const load = useCallback(
     () =>
       api("/api/staff/test-data")
-        .then((d) => setCount((d as { clients: number }).clients))
+        .then((d) => {
+          const r = d as { clients: number; without_cards?: number };
+          setCount(r.clients);
+          setNoCards(r.without_cards ?? 0);
+        })
         .catch(() => setCount(null)),
     [],
   );
@@ -291,7 +296,7 @@ function TestClients({ mode }: { mode: "test" | "live" | null }) {
     const t = setTimeout(() => void load(), 0);
     return () => clearTimeout(t);
   }, [load]);
-  const run = async (action: "add" | "remove") => {
+  const run = async (action: "add" | "remove" | "cards") => {
     if (
       action === "remove" &&
       !confirm(
@@ -307,9 +312,11 @@ function TestClients({ mode }: { mode: "test" | "live" | null }) {
         cards?: number;
       };
       toast(
-        action === "add"
-          ? `Added ${r.clients} test clients and ${r.trims} trims${r.cards ? ", each with a test card saved" : ""}. They’re in the diary now.`
-          : `Removed ${r.clients} test clients and ${r.trims} trims.`,
+        action === "cards"
+          ? `Saved a test card for ${r.cards} test clients.`
+          : action === "add"
+            ? `Added ${r.clients} test clients and ${r.trims} trims${r.cards ? ", each with a test card saved" : ""}. They’re in the diary now.`
+            : `Removed ${r.clients} test clients and ${r.trims} trims.`,
       );
       await load();
     } catch (e) {
@@ -346,6 +353,16 @@ function TestClients({ mode }: { mode: "test" | "live" | null }) {
         >
           Add test clients
         </button>
+        {mode === "test" && noCards > 0 && (
+          <button
+            type="button"
+            className="button-secondary"
+            disabled={working}
+            onClick={() => void run("cards")}
+          >
+            Give them test cards
+          </button>
+        )}
         <button
           type="button"
           className="button-secondary"

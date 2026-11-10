@@ -13,6 +13,7 @@ import {
   shopReader,
 } from "@/lib/card-payments";
 import { onboardingLink } from "@/lib/card-onboarding";
+import { addTestCards } from "@/lib/test-data";
 
 /**
  * Card payments set-up: whether Stripe is connected and in practice mode, the
@@ -116,6 +117,8 @@ export async function POST(req: Request) {
       label: mode === "test" ? "Practice card machine" : "Shop card machine",
       location: location.id,
     });
+    // Test clients added before Stripe was connected get their test cards now.
+    if (mode === "test") await addTestCards(stripe).catch(() => 0);
     return privateJson({ ok: true, label: reader.label });
   } catch (e) {
     return publicError(new Error(cardMessage(e) || (e as Error).message), 409);
