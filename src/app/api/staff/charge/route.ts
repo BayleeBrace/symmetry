@@ -2,6 +2,8 @@ import { z } from "zod";
 import { requireStaff } from "@/lib/staff";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { stripeClient } from "@/lib/stripe";
+import { readyAccount } from "@/lib/card-payments";
+import { cardFee } from "@/lib/card-fees";
 import { sameOrigin, privateJson, publicError } from "@/lib/security";
 export async function POST(req: Request) {
   try {
@@ -69,6 +71,18 @@ export async function POST(req: Request) {
         throw new Error(
           "This fee has already been changed. Refresh the diary.",
         );
+      // The fee is the barber's: it goes to their own Stripe account, less the
+      // card fee, once they have one. Until then it stays with the shop.
+      const { data: chair } = await db
+        .from("barbers")
+        .select("name")
+        .eq("id", b.barber_id)
+        .maybeSingle();
+      const account = await readyAccount(
+        stripe,
+        b.barber_id,
+        chair?.name ?? "This barber",
+      ).catch(() => null);
       // Persist the intent before confirming it. An interrupted attempt cannot create a second charge.
       const draft = await stripe.paymentIntents.create(
         {
@@ -77,7 +91,13 @@ export async function POST(req: Request) {
           customer: g.stripe_customer,
           payment_method: g.stripe_payment_method,
           description: `Symmetry ${b.status === "no_show" ? "no-show" : "late cancellation"} fee`,
-          metadata: { booking: id },
+          metadata: { booking: id, kind: "fee" },
+          ...(account
+            ? {
+                transfer_data: { destination: account },
+                application_fee_amount: cardFee(b.fee_pence, "online"),
+              }
+            : {}),
         },
         { idempotencyKey: "fee-create-" + id },
       );

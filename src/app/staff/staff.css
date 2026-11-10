@@ -4713,3 +4713,101 @@ html[data-staff-theme="dark"]
     margin-bottom: 4px;
   }
 }
+
+/* Checkout's card machine: one big button, then what the machine is doing. */
+.card-machine {
+  display: grid;
+  gap: 8px;
+  margin: 4px 0 14px;
+}
+.card-machine .button-primary {
+  width: 100%;
+  min-height: 52px;
+}
+.card-machine.is-live {
+  padding: 14px;
+  border-radius: 12px;
+  background: var(--white);
+}
+.card-machine-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 1.02rem;
+}
+.card-machine-text,
+.card-machine-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+.card-machine-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--black);
+  animation: card-machine-pulse 1.2s ease-in-out infinite;
+}
+@keyframes card-machine-pulse {
+  50% {
+    opacity: 0.25;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .card-machine-dot {
+    animation: none;
+  }
+}
+.card-machine-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.card-machine-actions .button-primary {
+  min-height: 46px;
+}
+.card-machine .text-button {
+  justify-self: start;
+}
+
+/* More, Card payments */
+.card-practice {
+  border-left: 3px solid var(--black);
+}
+.card-chairs {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+}
+.card-chairs li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.card-chairs span {
+  display: grid;
+}
+.card-chairs small {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+.card-code {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+.card-code input {
+  min-height: 46px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  background: var(--white);
+  color: var(--black);
+  font: inherit;
+}

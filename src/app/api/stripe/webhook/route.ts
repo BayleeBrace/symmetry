@@ -1,6 +1,7 @@
 import { stripeClient } from "@/lib/stripe";
 import { finalizeBooking, PermanentBookingError } from "@/lib/finalize-booking";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { finishCardPayment } from "@/lib/card-payments";
 export async function POST(request: Request) {
   const signature = request.headers.get("stripe-signature");
   if (!signature || !process.env.STRIPE_WEBHOOK_SECRET)
@@ -42,6 +43,15 @@ export async function POST(request: Request) {
           });
       } catch {}
       return Response.json({ received: true, booked: false });
+    }
+  }
+  // A trim paid on the card machine: the checkout screen usually gets there
+  // first, but if it was closed mid-payment this still marks the trim paid.
+  if (event.type === "payment_intent.succeeded") {
+    try {
+      await finishCardPayment(createAdminClient(), event.data.object);
+    } catch {
+      return new Response("Unable to record payment", { status: 500 });
     }
   }
   return Response.json({ received: true });

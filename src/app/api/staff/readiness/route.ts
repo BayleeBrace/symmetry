@@ -2,6 +2,7 @@ import { z } from "zod";
 import { requireStaff } from "@/lib/staff";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { processNotifications } from "@/lib/notifications";
+import { cardMode } from "@/lib/card-payments";
 import { sameOrigin, privateJson, publicError } from "@/lib/security";
 
 /** Messages this far past due are stale: the sender would have taken them within a minute. */
@@ -82,6 +83,14 @@ export async function GET() {
         {
           label: "Saved-card configuration present",
           ready: configured(["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET"]),
+        },
+        {
+          label: "Card payments live (not practice mode)",
+          ready: cardMode() === "live",
+        },
+        {
+          label: "No-show fee charging enabled",
+          ready: process.env.CARD_CHARGES_ENABLED === "true",
         },
         {
           label: "Email configuration present",

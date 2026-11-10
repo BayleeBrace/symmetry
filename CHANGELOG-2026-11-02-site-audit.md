@@ -219,3 +219,17 @@ send the whole text as Unicode, at 70 characters a part. A very long
 service name drops out of the text before it would spill into a second
 part. Emails are unchanged. Texts start once Twilio is set up in Vercel
 (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM).
+
+## Card machine and practice mode (10 November 2026)
+
+Checkout can send a trim's price to the shop's one card machine. The payment
+goes to that chair's barber, in their own Stripe account, and on to their own
+bank; the card fee (1.4% + 10p, plus 0.25% to split it) comes off it. Each
+barber sets up their own account in More, Card payments. No-show and
+late-cancellation fees go to the barber too. The owner can refund a paid trim
+from the diary. Payouts show card-machine takings as already paid by Stripe.
+
+With Stripe's test key everything runs in practice mode: a pretend card
+machine, "Tap a test card" at checkout, and test clients with test cards that
+the owner adds and removes from More, Card payments. Clients still never pay
+online; their card is only saved for fees. See handover/CARD-PAYMENTS.md.

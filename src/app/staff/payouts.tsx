@@ -28,6 +28,7 @@ type Item = {
   rentPence: number;
   rentWeeks: number;
   cashKeptPence: number;
+  directPence?: number;
   netPence: number;
   paid: {
     id: string;
@@ -319,6 +320,12 @@ export function Payouts({ ctx }: { ctx: Context }) {
                         <div>
                           <dt>Cash kept</dt>
                           <dd>-{pounds(i.cashKeptPence)}</dd>
+                        </div>
+                      )}
+                      {(i.directPence ?? 0) > 0 && (
+                        <div>
+                          <dt>Card machine, paid by Stripe</dt>
+                          <dd>-{pounds(i.directPence ?? 0)}</dd>
                         </div>
                       )}
                     </>

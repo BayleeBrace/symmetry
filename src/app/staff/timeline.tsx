@@ -28,6 +28,7 @@ import { attachDrag, type DragDrop } from "./drag";
 import { showsInDiary } from "@/lib/diary-visibility";
 import { toast } from "./toast";
 import { useDialog } from "./dialog";
+import { CardMachine } from "./card-machine";
 
 type Selection = { kind: "booking" | "block"; id: string } | null;
 /** Where the "select time" plus sits: a chair and a start minute. */
@@ -850,7 +851,23 @@ export function BookingSheet({
               and pay use what you record here.
             </p>
           )}
-          <p className="staff-muted">How did {customer.name} pay?</p>
+          {diary?.card_machine && (
+            <CardMachine
+              bookingId={booking.id}
+              serviceId={serviceId}
+              pricePence={pricePence}
+              client={customer.name.split(" ")[0]}
+              barber={booking.barbers?.name ?? "the barber"}
+              practice={diary.card_machine === "test"}
+              act={act}
+              onPaid={onClose}
+            />
+          )}
+          <p className="staff-muted">
+            {diary?.card_machine
+              ? "Or record how they paid:"
+              : `How did ${customer.name} pay?`}
+          </p>
           <div className="checkout-methods">
             {(["card", "cash", "other"] as PaidBy[]).map((method) => (
               <button
@@ -883,6 +900,42 @@ export function BookingSheet({
           </div>
         </div>
       )}
+      {owner &&
+        diary?.card_machine &&
+        booking.status === "done" &&
+        booking.paid_by === "card" &&
+        booking.payment_intent &&
+        booking.price_pence > 0 && (
+          <div className="sheet-fee">
+            <p>Paid £{pounds(booking.price_pence)} on the card machine.</p>
+            <div className="sheet-actions">
+              <button
+                type="button"
+                className="button-secondary"
+                disabled={busy}
+                onClick={() => {
+                  if (
+                    confirm(
+                      `Refund the full £${pounds(booking.price_pence)} to ${customer.name}'s card? It comes back out of ${booking.barbers?.name ?? "the barber"}'s takings.`,
+                    )
+                  )
+                    void act("/api/staff/terminal", {
+                      action: "refund",
+                      id: booking.id,
+                    }).then(
+                      () =>
+                        toast(
+                          "Refunded. It shows on their card in a few days.",
+                        ),
+                      () => undefined,
+                    );
+                }}
+              >
+                Refund
+              </button>
+            </div>
+          </div>
+        )}
       {booking.fee_pence > 0 && (
         <div className="sheet-fee">
           <p>

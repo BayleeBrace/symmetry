@@ -40,6 +40,8 @@ export type PayoutItem = {
   grossPence: number;
   rentPence: number;
   cashKeptPence: number;
+  /** Card takings Stripe paid straight to the barber from the shop's card machine. */
+  directPence: number;
   netPence: number;
   rentWeeks: number;
   paid: {
@@ -60,7 +62,7 @@ export async function payoutFigures(
   const trims = fetchAll((start, end) => {
     let query = db
       .from("bookings")
-      .select("barber_id,price_pence,paid_by,status")
+      .select("barber_id,price_pence,paid_by,status,payment_intent")
       .gte("local_date", from)
       .lte("local_date", to)
       .eq("status", "done");
@@ -102,6 +104,10 @@ export async function payoutFigures(
       const salesPence = sum(mine);
       const cardPence = sum(mine.filter((t) => t.paid_by === "card"));
       const cashPence = sum(mine.filter((t) => t.paid_by === "cash"));
+      // Taken on the shop's card machine: already in the barber's own account.
+      const directPence = sum(
+        mine.filter((t) => t.paid_by === "card" && t.payment_intent),
+      );
       const record =
         paid.data.find(
           (p) =>
@@ -124,6 +130,7 @@ export async function payoutFigures(
         weeklyRentPence: rule.weekly_rent_pence,
         rentWeeks,
         keepsCash: rule.keeps_cash,
+        directPence,
       });
       return {
         barber: { id: b.id, name: b.name, owner: ownerChairs.has(b.id) },

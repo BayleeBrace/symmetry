@@ -13,6 +13,8 @@
  *            been charged in an earlier payout
  * keepsCash  cash is already in the barber's hands, so it comes off what the
  *            shop transfers
+ * direct     card takings Stripe has already paid into the barber's own bank
+ *            (trims taken on the shop's card machine), which also come off
  *
  * A negative result means the barber owes the shop for the period.
  */
@@ -24,17 +26,21 @@ export type PayoutInput = {
   weeklyRentPence: number;
   rentWeeks: number;
   keepsCash: boolean;
+  /** Card takings paid straight to the barber by Stripe. Zero if not given. */
+  directPence?: number;
 };
 
 export function computePayout(input: PayoutInput) {
   const gross = Math.round((input.salesPence * input.sharePercent) / 100);
   const rent = input.weeklyRentPence * input.rentWeeks;
   const cashKept = input.keepsCash ? input.cashPence : 0;
+  const direct = input.directPence ?? 0;
   return {
     grossPence: gross,
     rentPence: rent,
     cashKeptPence: cashKept,
-    netPence: gross - rent - cashKept,
+    directPence: direct,
+    netPence: gross - rent - cashKept - direct,
   };
 }
 

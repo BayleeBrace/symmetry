@@ -11,11 +11,13 @@ import { type Theme, THEME_LABEL, applyTheme, readTheme } from "./theme";
 import { NotificationSettings } from "./notify";
 import { toast } from "./toast";
 import { Loading } from "./spinner";
+import { CardPayments } from "./card-payments";
 
 export type SettingsTab =
   | "home"
   | "account"
   | "notify"
+  | "payments"
   | "appearance"
   | "policy"
   | "checks"
@@ -44,6 +46,11 @@ const PAGES: {
     id: "notify",
     title: "Notifications",
     detail: "Turn them on for this phone, choose what you get, send a test.",
+  },
+  {
+    id: "payments",
+    title: "Card payments",
+    detail: "Your own payouts, the card machine, and practice mode.",
   },
   {
     id: "appearance",
@@ -75,6 +82,7 @@ const PAGE_ICON: Record<Exclude<SettingsTab, "home">, string> = {
   account:
     "M12 4.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7zM5 20c1-3.5 3.8-5.5 7-5.5s6 2 7 5.5",
   notify: "M6 16v-5a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20.5a2 2 0 0 0 4 0",
+  payments: "M3.5 6h17v12h-17zM3.5 10h17M7 14.5h4",
   appearance: "M12 3.5a8.5 8.5 0 1 1 0 17zM12 3.5a8.5 8.5 0 1 0 0 17",
   policy: "M3.5 5h17v15h-17zM3.5 10h17M8 3v4M16 3v4M10 13.5l4 4M14 13.5l-4 4",
   checks:
@@ -253,6 +261,7 @@ export function SettingsSection({
       </header>
       {page.id === "account" && <Account owner={owner} name={name} />}
       {page.id === "notify" && <NotificationSettings />}
+      {page.id === "payments" && <CardPayments owner={owner} />}
       {page.id === "appearance" && <Appearance />}
       {page.id === "policy" && <PolicyForm act={act} busy={busy} />}
       {page.id === "checks" && <Readiness />}

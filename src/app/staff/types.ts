@@ -35,6 +35,8 @@ export type Booking = {
   updated_at: string;
   late_minutes: number;
   paid_by?: PaidBy | null;
+  /** The Stripe payment for this trim: a card machine payment once done, or a no-show fee. */
+  payment_intent?: string | null;
   squeezed?: boolean;
   source?: string;
   barbers: { name: string; slug: string } | null;
@@ -99,6 +101,8 @@ export type Diary = {
   history?: Record<string, CustomerHistory>;
   /** How many people are waiting for each day shown. */
   waiting?: Record<string, number>;
+  /** "test" for the practice card machine, "live" for the real one, null before Stripe is connected. */
+  card_machine?: "test" | "live" | null;
 };
 
 /** The part of the diary every section needs: who is signed in, the chairs, the menu. */

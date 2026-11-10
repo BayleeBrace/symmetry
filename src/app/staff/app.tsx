@@ -159,7 +159,14 @@ export function StaffApp() {
     } catch {}
     return "calendar";
   });
-  const [settingsTab, setSettingsTab] = useState<SettingsTab>("home");
+  // Stripe's sign-up sends a barber back to ?section=settings&tab=payments.
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>(() => {
+    try {
+      if (new URLSearchParams(window.location.search).get("tab") === "payments")
+        return "payments";
+    } catch {}
+    return "home";
+  });
   const [prefill, setPrefill] = useState<BookPrefill | null>(null);
   // The plus in the tab bar opens the calendar's Add menu from any section.
   const [addOpen, setAddOpen] = useState(false);
@@ -189,6 +196,7 @@ export function StaffApp() {
         return;
       url.searchParams.delete("date");
       url.searchParams.delete("section");
+      url.searchParams.delete("tab");
       window.history.replaceState(
         null,
         "",

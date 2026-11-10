@@ -18,6 +18,7 @@ import {
   parseDate,
 } from "@/lib/booking-data";
 import { getCatalog } from "@/lib/catalog";
+import { stripeMode } from "@/lib/card-fees";
 import { fetchAll, forChunks } from "@/lib/paging";
 import { sameOrigin, privateJson, publicError } from "@/lib/security";
 const actions = z.discriminatedUnion("action", [
@@ -351,6 +352,8 @@ export async function GET(req: Request) {
       staff,
       date,
       to,
+      // Whether checkout can send the price to the shop's card machine, and if it's the practice one.
+      card_machine: stripeMode(process.env.STRIPE_SECRET_KEY),
       hours: catalog.hours[parseDate(date).getUTCDay()] ?? null,
       hoursByDay: Object.fromEntries(
         Array.from({ length: days }, (_, i) => addDays(date, i)).map((d) => [
