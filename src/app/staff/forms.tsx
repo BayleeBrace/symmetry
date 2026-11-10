@@ -1,7 +1,14 @@
 "use client";
 import { useEffect, useState } from "react";
 import { staffApi as api } from "@/lib/staff-client";
-import { addDays, clock, parseDate, shopToday } from "@/lib/booking-data";
+import {
+  addDays,
+  clock,
+  parseDate,
+  shopMinute,
+  shopToday,
+} from "@/lib/booking-data";
+import { clashes, soonestStart, startChoices } from "@/lib/squeeze";
 import {
   type Act,
   type Barber,
@@ -196,11 +203,36 @@ export function NewAppointment({
   const slots = day ? freeTimes(day, date, barberId, duration) : null;
   const hours = day ? hoursFor(day, date) : null;
   const working = day ? chairHours(day, date, barberId) : null;
-  // Every quarter hour the chair is working, taken ones included: staff can squeeze a trim in.
+  // Every quarter hour the chair is working, taken ones included: staff can
+  // squeeze a trim in. Today starts from the next five minutes, so a walk-in
+  // can start now; a time that has gone would be refused.
   const inHours =
     working && !slots?.closed
-      ? timeOptions(working[0], working[1] - duration)
+      ? startChoices({
+          working,
+          duration,
+          isToday: date === shopToday(),
+          nowMinute: shopMinute(),
+          asked: time,
+        })
       : [];
+  // What's already in this chair that day: open trims and blocked time.
+  const busySpans: [number, number][] = day
+    ? [
+        ...day.bookings.filter(
+          (b) =>
+            (!b.local_date || b.local_date === date) &&
+            b.barber_id === barberId &&
+            OPEN_STATUSES.includes(b.status),
+        ),
+        ...day.blocks.filter(
+          (b) =>
+            (!b.local_date || b.local_date === date) &&
+            b.barber_id === barberId &&
+            b.duration < 1440,
+        ),
+      ].map((b) => [b.start_minute, b.start_minute + b.duration])
+    : [];
   // A time from outside the chair's hours is only kept on a day the chair is
   // not working (staff adding to a closed day). On a working day it moves to
   // the nearest start that still finishes in time.
@@ -218,7 +250,13 @@ export function NewAppointment({
         )
       : (choices[0] ?? null);
   const moved = time !== null && value !== null && value !== time && !!slots;
-  const taken = value !== null && slots ? !slots.free.includes(value) : false;
+  const taken =
+    value !== null && slots ? clashes(busySpans, value, duration) : false;
+  // When the time is taken, the next one that's clear, in case it can wait.
+  const nextClear =
+    taken && value !== null
+      ? choices.find((m) => m > value && !clashes(busySpans, m, duration))
+      : undefined;
   const overlapping =
     day && value !== null
       ? day.bookings.filter(
@@ -345,11 +383,25 @@ export function NewAppointment({
         {(moved || taken) && value !== null && (
           <p className="when-note wide">
             {moved && time !== null
-              ? `${clock(time)} would run past ${barber?.name ?? "the chair"}’s hours, so this starts at ${clock(value)}. `
+              ? date === shopToday() && time < soonestStart(shopMinute())
+                ? `${clock(time)} has gone, so this starts at ${clock(value)}. `
+                : `${clock(time)} would run past ${barber?.name ?? "the chair"}’s hours, so this starts at ${clock(value)}. `
               : ""}
             {taken
               ? `${clock(value)} is taken: this will be squeezed in alongside.`
               : ""}
+            {nextClear !== undefined && (
+              <button
+                type="button"
+                className="text-button when-next"
+                onClick={() => {
+                  setTime(nextClear);
+                  setConfirmSqueeze(false);
+                }}
+              >
+                Or the next free time, {clock(nextClear)}
+              </button>
+            )}
           </p>
         )}
         {whenOpen && (
@@ -402,7 +454,7 @@ export function NewAppointment({
                 {choices.map((minute) => (
                   <option key={minute} value={minute}>
                     {clock(minute)}
-                    {slots && !slots.free.includes(minute)
+                    {slots && clashes(busySpans, minute, duration)
                       ? " (taken, squeeze in)"
                       : ""}
                   </option>

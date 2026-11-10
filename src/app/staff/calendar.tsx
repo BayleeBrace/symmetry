@@ -44,6 +44,7 @@ import {
 } from "./timeline";
 import { attachDrag, type DragDrop } from "./drag";
 import { showsInDiary } from "@/lib/diary-visibility";
+import { soonestStart, squeezeStart } from "@/lib/squeeze";
 import {
   type BlockPrefill,
   BlockedTime,
@@ -319,6 +320,21 @@ export function Calendar({
       Math.max(hours[0], Math.min(earliest, hours[1] - minutes))
     );
   };
+  /**
+   * A walk-in starts now, in the next five minutes, even over a trim that's
+   * already there: the form then offers it as a squeeze-in, or the next free
+   * time if it can wait. Before opening, or another day, the next free time.
+   */
+  const walkInStart = (barberId: string) => {
+    if (!dayData || date !== today) return nextFree(barberId);
+    const hours = chairHours(dayData, date, barberId);
+    const now = soonestStart(shopMinute());
+    return hours &&
+      now >= hours[0] &&
+      now + firstServiceMinutes(barberId) <= hours[1]
+      ? now
+      : nextFree(barberId);
+  };
   /** Fresha's "select time": drop a plus on the day, drag it about, then fill in the trim. */
   const startPlacing = () => {
     setAddOpen(false);
@@ -520,7 +536,7 @@ export function Calendar({
                 openNew({
                   client: { name: WALK_IN, email: "", phone: "" },
                   barberId: chair?.id,
-                  minute: (chair && nextFree(chair.id)) ?? undefined,
+                  minute: (chair && walkInStart(chair.id)) ?? undefined,
                 });
               }}
             >
@@ -944,6 +960,10 @@ function WeekGrid({
               onRebook={(b) => {
                 setSelected(null);
                 onRebook?.(b);
+              }}
+              onSqueeze={(b) => {
+                setSelected(null);
+                onGap(b.local_date, squeezeStart(b, today, shopMinute()));
               }}
             />
           )}

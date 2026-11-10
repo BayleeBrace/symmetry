@@ -233,3 +233,18 @@ With Stripe's test key everything runs in practice mode: a pretend card
 machine, "Tap a test card" at checkout, and test clients with test cards that
 the owner adds and removes from More, Card payments. Clients still never pay
 online; their card is only saved for fees. See handover/CARD-PAYMENTS.md.
+
+## Squeezing someone in (10 November 2026)
+
+Sean asked to fit a quick cut in over a trim that's already booked, for
+when someone walks in and there's time before the next client. Squeeze-ins
+already worked from New appointment, but were hard to find. Now:
+
+- Every open trim has **Squeeze in** next to Move: it opens a new
+  appointment on the same chair, alongside that trim (or from now if it has
+  already started). Saving puts the two side by side in the diary.
+- **Walk-in now** starts now (the next five minutes), even if the chair is
+  taken, and offers it as a squeeze-in, with "Or the next free time" if the
+  client can wait.
+- Today's times start from now, in five minutes, instead of offering times
+  that have gone (which the diary refused).

@@ -4811,3 +4811,11 @@ html[data-staff-theme="dark"]
   color: var(--black);
   font: inherit;
 }
+
+/* New appointment: a taken time offers the next free one, in case it can wait. */
+.when-note .when-next {
+  display: block;
+  margin-top: 4px;
+  padding: 0;
+  text-align: left;
+}

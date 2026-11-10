@@ -29,6 +29,7 @@ import { showsInDiary } from "@/lib/diary-visibility";
 import { toast } from "./toast";
 import { useDialog } from "./dialog";
 import { CardMachine } from "./card-machine";
+import { squeezeStart } from "@/lib/squeeze";
 
 type Selection = { kind: "booking" | "block"; id: string } | null;
 /** Where the "select time" plus sits: a chair and a start minute. */
@@ -539,6 +540,12 @@ export function DayTimeline({
                 setSelected(null);
                 onRebook?.(b);
               }}
+              onSqueeze={(b) => {
+                const chair = barbers.find((x) => x.id === b.barber_id);
+                setSelected(null);
+                if (chair)
+                  onWalkIn(chair, squeezeStart(b, today, shopMinute()));
+              }}
             />
           )}
           {selectedBlock && (
@@ -573,6 +580,7 @@ const ICON = {
   noShow:
     "M10 4.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7zM3.5 20c1-3.5 3.5-5.5 6.5-5.5 1.5 0 2.8.4 3.9 1.2M16 15l5 5M21 15l-5 5",
   cancel: "M12 3.5a8.5 8.5 0 1 1 0 17 8.5 8.5 0 0 1 0-17zM9 9l6 6M15 9l-6 6",
+  squeeze: "M4 4.5h9v15H4zM15.5 9v6M12.5 12h6M20 4.5v15",
 };
 export function SheetIcon({ d }: { d: string }) {
   return (
@@ -603,6 +611,7 @@ export function BookingSheet({
   diary,
   onClose,
   onRebook,
+  onSqueeze,
 }: {
   booking: Booking;
   serviceName: string;
@@ -614,6 +623,8 @@ export function BookingSheet({
   diary?: Diary;
   onClose: () => void;
   onRebook?: (booking: Booking) => void;
+  /** Book someone else over this trim, side by side, for a quick cut that fits around it. */
+  onSqueeze?: (booking: Booking) => void;
 }) {
   const customer = customerOf(booking);
   const isOpen = OPEN_STATUSES.includes(booking.status);
@@ -775,6 +786,17 @@ export function BookingSheet({
               <SheetIcon d={ICON.move} />
               Move
             </button>
+            {onSqueeze && (
+              <button
+                type="button"
+                disabled={busy}
+                title="Book someone else alongside this trim"
+                onClick={() => onSqueeze(booking)}
+              >
+                <SheetIcon d={ICON.squeeze} />
+                Squeeze in
+              </button>
+            )}
             <button
               type="button"
               disabled={busy || !started}
