@@ -15,7 +15,15 @@ import { getCatalog } from "./catalog";
 import { shopContact } from "./shop-contact";
 import { busyFor } from "./availability";
 import { fetchAll } from "./paging";
-import { bookingText, sentence, waitlistOfferText } from "./message-copy";
+import {
+  bookingText,
+  sentence,
+  shortDate,
+  smsText,
+  smsWaitlistText,
+  waitlistOfferText,
+} from "./message-copy";
+import { shortCode } from "./short-link";
 import { offerOrder } from "./waitlist-order";
 import type { BusyPeriod } from "./booking-data";
 const escape = (s: string) =>
@@ -48,6 +56,8 @@ export async function processNotifications() {
         url = job.payload.url as string | undefined,
         text = "",
         lead = "",
+        // A text's own wording, written to fit one paid part; email keeps the full copy.
+        sms = "",
         subject = "Your Symmetry trim";
       if (job.group_id) {
         const { data: g, error } = await db
@@ -104,6 +114,22 @@ export async function processNotifications() {
         }
         const service = b.services as unknown as { name: string; slug: string };
         const barber = b.barbers as unknown as { name: string; slug: string };
+        if (job.channel === "sms" && job.kind !== "thanks")
+          sms = smsText({
+            kind: job.kind,
+            trims: trims.map((t) => ({
+              date: shortDate(t.local_date),
+              time: clock(t.start_minute),
+              service: (t.services as unknown as { name: string }).name,
+              barber: (t.barbers as unknown as { name: string }).name,
+            })),
+            link:
+              siteUrl() +
+              "/b/" +
+              shortCode(g.id, process.env.LINK_SIGNING_SECRET!),
+            lateMinutes: b.late_minutes,
+            minutes: job.payload.minutes,
+          });
         subject =
           job.kind === "thanks"
             ? "Thanks for coming in"
@@ -188,6 +214,7 @@ export async function processNotifications() {
         subject = "A chair is available";
         const day = job.payload.day as string | undefined;
         text = waitlistOfferText(day ? fullDate(day) : null);
+        sms = smsWaitlistText(day ? shortDate(day) : null, url!);
       }
       let providerId: string | undefined;
       if (job.channel === "email") {
@@ -273,7 +300,7 @@ export async function processNotifications() {
             body: new URLSearchParams({
               To: phone,
               From: process.env.TWILIO_FROM,
-              Body: (lead ? lead + "\n" : "") + text + " " + url,
+              Body: sms || (lead ? lead + "\n" : "") + text + " " + url,
             }),
             signal: AbortSignal.timeout(15000),
           },

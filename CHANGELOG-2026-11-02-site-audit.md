@@ -206,3 +206,16 @@ so a cancelled walk-in no longer sits beside the next one. One stays only
 while a late-cancellation fee waits for the owner to charge or waive, since
 the booking is where that is done. Cancelled trims still appear in the
 client's past visits, sales and reports. No shows still show (dashed).
+
+## Text reminders fit one part (10 November 2026)
+
+Texts (confirmations, the day-before reminder, moves, cancellations, no
+shows, running late, running behind and waitlist offers) now fit in one
+160-character part, so each costs one part instead of three. They carry a
+short booking link, symmetrywales.com/b/ and a 35-character code, which
+opens the usual signed booking page and lasts the same 180 days. They use
+plain characters only, since one curly apostrophe would make the network
+send the whole text as Unicode, at 70 characters a part. A very long
+service name drops out of the text before it would spill into a second
+part. Emails are unchanged. Texts start once Twilio is set up in Vercel
+(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM).

@@ -17,6 +17,7 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/api/") ||
     pathname.startsWith("/staff") ||
     pathname.startsWith("/bookings") ||
+    pathname.startsWith("/b/") ||
     pathname === "/cancellation-policy" ||
     pathname === "/waitlist" ||
     pathname.endsWith("/opengraph-image") ||
