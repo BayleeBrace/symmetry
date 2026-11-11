@@ -102,7 +102,8 @@ export async function createBarberAccount(
       configuration: {
         // Merchant: the barber is the seller on their own payments.
         merchant: {
-          mcc: "7241",
+          // 7230: beauty and barber shops.
+          mcc: "7230",
           capabilities: { card_payments: { requested: true } },
         },
         // Recipient: the shop's account can pass each payment on to them.
@@ -114,7 +115,8 @@ export async function createBarberAccount(
       },
       metadata: { [BARBER_KEY]: barber.id },
     },
-    { idempotencyKey: `barber-account-${barber.id}` },
+    // The first attempts used a code Stripe rejects; a new key so none of them is replayed.
+    { idempotencyKey: `barber-account-7230-${barber.id}` },
   );
   // Weekly payouts from the start; taking a payment sets it again in case
   // Stripe wasn't ready for it yet.
