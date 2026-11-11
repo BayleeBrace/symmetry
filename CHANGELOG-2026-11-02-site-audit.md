@@ -257,3 +257,20 @@ search (every word has to match, and part-words count); with nothing typed
 it's listed by topic. Barbers don't see the owner's how-tos. It opens
 directly at /staff?section=settings&tab=help. The articles live in
 src/lib/help.ts: update them there when a screen changes.
+
+## Sean's answers, meeting of 11 November 2026
+
+- **Online booking up to two months ahead.** Clients can book, move their own
+  trim and join the waitlist up to the same date two months on (to the end
+  of a shorter month). Staff can still book up to 120 days ahead, for
+  regulars' repeats.
+- **Weekly payouts, on Mondays.** Set on each barber's Stripe account when
+  it's opened, and again whenever they take a payment.
+- **Tips on the card machine.** 10, 15 or 20%, or £1, £2 or £3 under £10.
+  Tips go to the barber; the trim's price stays its price in sales. Practice
+  mode has a "Test card, £2 tip" button.
+- **Stripe's 10p a payout and £2 a month per barber: the shop pays.**
+  Nothing to change: that's how it's billed.
+- **Sean's own cuts go on the card machine too.** His chair gets its own
+  Stripe account like the boys'.
+- **Switch-over: Monday 11 January 2027.**

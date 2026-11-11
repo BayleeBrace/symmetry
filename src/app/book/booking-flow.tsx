@@ -36,6 +36,7 @@ import {
   Slot,
   type Service,
   type OPENING_HOURS,
+  onlineHorizon,
 } from "@/lib/booking-data";
 
 type Draft = Slot & { date: string; service: string; alternatives?: Slot[] };
@@ -443,9 +444,9 @@ export function BookingFlow({
         date: addDays(start, every * index),
       }),
     );
-    if (drafts.some((item) => item.date > addDays(initialDate, 120)))
+    if (drafts.some((item) => item.date > onlineHorizon(initialDate)))
       return setError(
-        "Those repeats go beyond our 120-day diary. Choose fewer trims.",
+        "You can book up to two months ahead. Choose fewer trims.",
       );
     if (basket.length + drafts.length > 12)
       return setError("You can book up to 12 trims together.");
@@ -497,7 +498,7 @@ export function BookingFlow({
       for (let offset = 1; offset <= 7; offset++) {
         const nextDate = addDays(pending[index].date, offset);
         if (
-          nextDate > addDays(initialDate, 120) ||
+          nextDate > onlineHorizon(initialDate) ||
           !catalog.hours[parseDate(nextDate).getUTCDay()]
         )
           continue;
@@ -893,7 +894,7 @@ export function BookingFlow({
                     <strong>{monthTitle(month)}</strong>
                     <button
                       onClick={() => setMonth(shiftMonth(month, 1))}
-                      disabled={month >= addDays(initialDate, 120).slice(0, 7)}
+                      disabled={month >= onlineHorizon(initialDate).slice(0, 7)}
                       aria-label="Next month"
                     >
                       ›
@@ -911,7 +912,7 @@ export function BookingFlow({
                     {days.dates.map((value) => {
                       const enabled =
                         value >= initialDate &&
-                        value <= addDays(initialDate, 120) &&
+                        value <= onlineHorizon(initialDate) &&
                         Boolean(catalog.hours[parseDate(value).getUTCDay()]);
                       return (
                         <button

@@ -11,7 +11,7 @@
  *   splitting      0.25%       (Connect's charge for paying it on to the barber)
  *
  * Connect's 10p a payout and £2 a month per barber are billed to the shop and
- * are not in here: who covers them is the owner's choice.
+ * are not in here: Sean decided the shop covers them.
  */
 export const IN_PERSON = { percent: 1.4, fixedPence: 10 };
 export const ONLINE = { percent: 1.5, fixedPence: 20 };

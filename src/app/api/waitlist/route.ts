@@ -13,7 +13,12 @@ import {
   privateJson,
   publicError,
 } from "@/lib/security";
-import { validDate, shopToday, addDays } from "@/lib/booking-data";
+import {
+  validDate,
+  shopToday,
+  addDays,
+  onlineHorizon,
+} from "@/lib/booking-data";
 export async function POST(req: Request) {
   try {
     sameOrigin(req);
@@ -28,8 +33,8 @@ export async function POST(req: Request) {
         until: z.string().refine(validDate).or(z.literal("")).optional(),
       })
       .parse(await req.json());
-    if (p.date < shopToday() || p.date > addDays(shopToday(), 120))
-      throw new Error("Choose a date within the next 120 days");
+    if (p.date < shopToday() || p.date > onlineHorizon(shopToday()))
+      throw new Error("Choose a date within the next two months");
     const until = p.until && p.until > p.date ? p.until : null;
     if (until && until > addDays(p.date, 14))
       throw new Error("Choose a run of up to two weeks");

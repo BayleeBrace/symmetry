@@ -86,7 +86,7 @@ export async function createBarberAccount(
   barber: { id: string; name: string },
   email: string | undefined,
 ) {
-  return stripe.v2.core.accounts.create(
+  const account = await stripe.v2.core.accounts.create(
     {
       display_name: barber.name,
       ...(email ? { contact_email: email } : {}),
@@ -116,7 +116,59 @@ export async function createBarberAccount(
     },
     { idempotencyKey: `barber-account-${barber.id}` },
   );
+  // Weekly payouts from the start; taking a payment sets it again in case
+  // Stripe wasn't ready for it yet.
+  await setWeeklyPayouts(stripe, account.id).catch(() => {});
+  return account;
 }
+
+/** Card takings are paid into each barber's bank once a week, on Mondays (Sean's choice). */
+export async function setWeeklyPayouts(stripe: Stripe, account: string) {
+  await stripe.balanceSettings.update(
+    {
+      payments: {
+        payouts: {
+          schedule: { interval: "weekly", weekly_payout_days: ["monday"] },
+        },
+      },
+    },
+    { stripeAccount: account },
+  );
+}
+
+/**
+ * The tip screen on the shop's card machine (Sean's choice): 10, 15 or 20%
+ * on a trim of £10 or more, £1, £2 or £3 below that, or no tip. Tips are
+ * added to the payment and go to that chair's barber.
+ */
+export const TIPPING = {
+  percentages: [10, 15, 20],
+  fixed_amounts: [100, 200, 300],
+  smart_tip_threshold: 1000,
+};
+
+export async function ensureTipping(
+  stripe: Stripe,
+  location: Stripe.Terminal.Location,
+) {
+  if (location.configuration_overrides) {
+    await stripe.terminal.configurations.update(
+      location.configuration_overrides,
+      { tipping: { gbp: TIPPING } },
+    );
+    return;
+  }
+  const config = await stripe.terminal.configurations.create({
+    tipping: { gbp: TIPPING },
+  });
+  await stripe.terminal.locations.update(location.id, {
+    configuration_overrides: config.id,
+  });
+}
+
+/** The tip on a card payment, in pence: none when there wasn't one. */
+export const tipOf = (pi: Stripe.PaymentIntent) =>
+  pi.amount_details?.tip?.amount ?? 0;
 
 /** The shop's card machine: the first one online, else the first one registered. */
 export async function shopReader(stripe: Stripe) {
@@ -154,10 +206,13 @@ export async function finishCardPayment(
   if (pi.status !== "succeeded" || pi.metadata?.kind !== "trim") return false;
   const id = pi.metadata.booking;
   if (!id) return false;
+  // The price is what the trim cost; a tip on top goes to the barber and
+  // isn't counted in sales.
+  const tip = tipOf(pi);
   const update: Record<string, unknown> = {
     status: "done",
     paid_by: "card",
-    price_pence: pi.amount,
+    price_pence: pi.amount - tip,
     updated_at: new Date().toISOString(),
   };
   if (pi.metadata.service) update.service_id = pi.metadata.service;
@@ -178,6 +233,7 @@ export async function finishCardPayment(
     actor: pi.metadata.actor || null,
     detail: {
       amount: pi.amount,
+      tip,
       fee: pi.application_fee_amount,
       payment_intent: pi.id,
     },

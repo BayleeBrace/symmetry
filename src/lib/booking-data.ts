@@ -105,6 +105,24 @@ export function addDays(value: string, days: number) {
   return dateKey(date);
 }
 
+/** How many months ahead clients can book online (Sean's rule). Staff can book further, up to the diary's 120 days. */
+export const ONLINE_MONTHS = 2;
+
+/**
+ * The last day a client can book online: the same date two months on,
+ * or that month's last day when it is shorter (31 December gives 28
+ * February).
+ */
+export function onlineHorizon(today: string) {
+  const [y, m, d] = today.split("-").map(Number);
+  const first = new Date(Date.UTC(y, m - 1 + ONLINE_MONTHS, 1, 12));
+  const lastDay = new Date(
+    Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0, 12),
+  ).getUTCDate();
+  first.setUTCDate(Math.min(d, lastDay));
+  return dateKey(first);
+}
+
 export function shopToday() {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Europe/London",

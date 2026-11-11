@@ -7,6 +7,7 @@ import { toast } from "./toast";
 type Reply = {
   status: "waiting" | "paid" | "failed" | "cancelled";
   amount?: number;
+  tip?: number;
   barber_gets?: number;
   message?: string;
   practice?: boolean;
@@ -55,8 +56,12 @@ export function CardMachine({
     if (!alive.current) return;
     if (r.status === "paid") {
       if (timer.current) clearTimeout(timer.current);
+      const tip = r.tip ?? 0;
+      const total = r.amount ?? pricePence ?? 0;
       toast(
-        `Paid £${pounds(r.amount ?? pricePence ?? 0)} on the card machine.` +
+        (tip
+          ? `Paid £${pounds(total - tip)} plus a £${pounds(tip)} tip on the card machine.`
+          : `Paid £${pounds(total)} on the card machine.`) +
           (r.barber_gets
             ? ` £${pounds(r.barber_gets)} goes to ${barber} after the card fee.`
             : ""),
@@ -118,7 +123,7 @@ export function CardMachine({
 
   const run = async (
     action: "simulate" | "cancel",
-    card?: "ok" | "declined",
+    card?: "ok" | "declined" | "tip",
   ) => {
     setWorking(true);
     try {
@@ -207,6 +212,14 @@ export function CardMachine({
                 onClick={() => void run("simulate", "ok")}
               >
                 Tap a test card
+              </button>
+              <button
+                type="button"
+                className="button-secondary"
+                disabled={working}
+                onClick={() => void run("simulate", "tip")}
+              >
+                Test card, £2 tip
               </button>
               <button
                 type="button"

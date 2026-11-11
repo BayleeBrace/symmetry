@@ -16,7 +16,14 @@ Clients never pay online; their card is only saved, at booking, for fees.
   (43p on £20). No-show fees on a saved card: 1.5% + 20p, plus 0.25%. Set in
   `src/lib/card-fees.ts`.
 - **Shop's costs**: Stripe also bills the shop 10p a payout and £2 a month for
-  each barber who's paid that month. Not passed on yet; the owner decides.
+  each barber who's paid that month. The shop covers these (Sean, 11 November).
+- **Payouts**: weekly, on Mondays, set on each barber's account at sign-up and
+  again whenever they take a payment.
+- **Tips**: the machine offers 10, 15 or 20% (or £1, £2, £3 under £10). Tips go
+  to the barber and aren't counted in sales; the shop absorbs the small card
+  fee on the tip.
+- **Online booking**: clients can book up to two months ahead (Sean's rule);
+  staff can book up to 120 days.
 - **Refunds**: owner only, on a paid trim in the diary. The barber's share
   comes back from their account.
 - **Payouts screen**: card-machine takings show as "paid by Stripe" and come

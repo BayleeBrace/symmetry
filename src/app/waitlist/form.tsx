@@ -1,6 +1,12 @@
 "use client";
 import { useState } from "react";
-import { BARBERS, SERVICES, shopToday, addDays } from "@/lib/booking-data";
+import {
+  BARBERS,
+  SERVICES,
+  shopToday,
+  addDays,
+  onlineHorizon,
+} from "@/lib/booking-data";
 export function WaitlistForm({
   token,
   leave,
@@ -49,7 +55,7 @@ export function WaitlistForm({
               type="date"
               required
               min={shopToday()}
-              max={addDays(shopToday(), 120)}
+              max={onlineHorizon(shopToday())}
             />
           </label>
           <label>

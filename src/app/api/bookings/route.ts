@@ -7,11 +7,11 @@ import {
 // Full metadata, so the line type (mobile or landline) is known for every country.
 import { parsePhoneNumberFromString as parseWithTypes } from "libphonenumber-js/max";
 import {
-  addDays,
   shopToday,
   shopMinute,
   validDate,
   parseDate,
+  onlineHorizon,
 } from "@/lib/booking-data";
 import { createAdminClient, hasSupabase } from "@/lib/supabase/admin";
 import { busyFor } from "@/lib/availability";
@@ -98,7 +98,7 @@ export async function POST(request: Request) {
         a.duration !== detail.duration ||
         !hours ||
         a.date < shopToday() ||
-        a.date > addDays(shopToday(), 120) ||
+        a.date > onlineHorizon(shopToday()) ||
         a.time % 15 ||
         a.time < hours[0] ||
         a.time + detail.duration > hours[1] ||

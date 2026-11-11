@@ -10,7 +10,7 @@ import {
   privateJson,
   publicError,
 } from "@/lib/security";
-import { validDate, shopToday } from "@/lib/booking-data";
+import { validDate, shopToday, onlineHorizon } from "@/lib/booking-data";
 const schema = z.object({
   token: z.string().min(20).max(2000),
   bookingId: z.uuid().optional(),
@@ -102,6 +102,8 @@ export async function PATCH(req: Request) {
       (!p.date || p.time === undefined || !p.barber || !p.service)
     )
       throw new Error("Choose a barber, trim, date and time");
+    if (p.action === "reschedule" && p.date! > onlineHorizon(shopToday()))
+      throw new Error("You can book up to two months ahead.");
     const { data, error } = await db.rpc("change_customer_booking", {
       p_group: group.id,
       p_booking: b.id,

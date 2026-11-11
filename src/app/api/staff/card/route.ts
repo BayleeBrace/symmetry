@@ -9,6 +9,7 @@ import {
   barberAccountIds,
   cardMessage,
   cardMode,
+  ensureTipping,
   shopLocation,
   shopReader,
 } from "@/lib/card-payments";
@@ -112,6 +113,8 @@ export async function POST(req: Request) {
     if (mode === "live" && !p.code)
       throw new CardError("Type the words shown on the card machine’s screen");
     const location = await shopLocation(stripe);
+    // The tip screen on every payment, as Sean chose.
+    await ensureTipping(stripe, location);
     const reader = await stripe.terminal.readers.create({
       registration_code: mode === "test" ? "simulated-s700" : p.code!,
       label: mode === "test" ? "Practice card machine" : "Shop card machine",

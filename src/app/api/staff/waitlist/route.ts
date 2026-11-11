@@ -3,7 +3,12 @@ import { randomBytes, createHash } from "node:crypto";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 import { requireStaff } from "@/lib/staff";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { addDays, shopToday, validDate } from "@/lib/booking-data";
+import {
+  addDays,
+  shopToday,
+  validDate,
+  onlineHorizon,
+} from "@/lib/booking-data";
 import { sameOrigin, privateJson, publicError } from "@/lib/security";
 
 /**
@@ -96,8 +101,10 @@ export async function POST(req: Request) {
       if (error) throw new Error("Could not take them off the list");
       return privateJson({ ok: true });
     }
-    if (p.date < shopToday() || p.date > addDays(shopToday(), 120))
-      throw new Error("Choose a day within the next 120 days");
+    if (p.date < shopToday() || p.date > onlineHorizon(shopToday()))
+      throw new Error(
+        "Choose a day within the next two months: clients can only book that far ahead",
+      );
     const until = p.until && p.until > p.date ? p.until : null;
     if (until && until > addDays(p.date, 14))
       throw new Error("Choose a run of up to two weeks");

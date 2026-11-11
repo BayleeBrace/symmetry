@@ -7,11 +7,11 @@ import {
   makeSlots,
   money,
   shopToday,
-  addDays,
   type Slot,
   type BarberId,
   type Service,
   type OPENING_HOURS,
+  onlineHorizon,
 } from "@/lib/booking-data";
 import type { ManagedBookingGroup } from "@/lib/manage-bookings";
 import {
@@ -298,7 +298,7 @@ export function ManageBookings({ token }: { token: string }) {
                     <input
                       type="date"
                       min={shopToday()}
-                      max={addDays(shopToday(), 120)}
+                      max={onlineHorizon(shopToday())}
                       value={date}
                       onChange={(e) => void availability(e.target.value)}
                     />

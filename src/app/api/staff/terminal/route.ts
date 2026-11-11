@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { after } from "next/server";
 import type Stripe from "stripe";
 import { requireStaff } from "@/lib/staff";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -12,7 +13,9 @@ import {
   cardMode,
   finishCardPayment,
   readyAccount,
+  setWeeklyPayouts,
   shopReader,
+  tipOf,
 } from "@/lib/card-payments";
 
 /**
@@ -35,14 +38,18 @@ const actions = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("simulate"),
     id: z.uuid(),
-    card: z.enum(["ok", "declined"]).default("ok"),
+    card: z.enum(["ok", "declined", "tip"]).default("ok"),
   }),
   z.object({ action: z.literal("cancel"), id: z.uuid() }),
   z.object({ action: z.literal("refund"), id: z.uuid() }),
 ]);
 
 /** Test cards Stripe's pretend machine understands. */
-const TEST_CARD = { ok: "4242424242424242", declined: "4000000000009995" };
+const TEST_CARD = {
+  ok: "4242424242424242",
+  declined: "4000000000009995",
+  tip: "4242424242424242",
+};
 
 export async function POST(req: Request) {
   try {
@@ -147,6 +154,8 @@ export async function POST(req: Request) {
         serviceName = s.name;
       }
       const account = await readyAccount(stripe, b.barber_id, barberName);
+      // Weekly payouts on Mondays, set again here in case it didn't take at sign-up.
+      after(() => setWeeklyPayouts(stripe, account).catch(() => {}));
       // A payment already waiting for this trim at the same price is reused,
       // so a second tap or a retry after a decline never charges twice.
       let pi: Stripe.PaymentIntent | null = null;
@@ -241,6 +250,8 @@ export async function POST(req: Request) {
         {
           type: "card_present",
           card_present: { number: TEST_CARD[p.card] },
+          // A pretend £2 tip, as if chosen on the machine's tip screen.
+          ...(p.card === "tip" ? { amount_tip: 200 } : {}),
         },
       );
     }
@@ -278,7 +289,8 @@ export async function POST(req: Request) {
       return privateJson({
         status: "paid",
         amount: now.amount,
-        barber_gets: barberGets(now.amount, "in_person"),
+        tip: tipOf(now),
+        barber_gets: now.amount - (now.application_fee_amount ?? 0),
       });
     }
     if (now.status === "canceled") return privateJson({ status: "cancelled" });

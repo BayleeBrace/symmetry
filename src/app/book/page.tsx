@@ -10,6 +10,7 @@ import {
   parseDate,
   shopToday,
   validDate,
+  onlineHorizon,
 } from "@/lib/booking-data";
 
 export const metadata: Metadata = {
@@ -47,7 +48,7 @@ export default async function BookPage({
     date &&
     validDate(date) &&
     date >= shopToday() &&
-    date <= addDays(shopToday(), 120)
+    date <= onlineHorizon(shopToday())
       ? date
       : shopToday();
   for (
