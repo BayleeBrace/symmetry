@@ -172,8 +172,6 @@ export function BookingFlow({
   const [period, setPeriod] = useState<"morning" | "afternoon" | "evening">(
     "morning",
   );
-  const [repeat, setRepeat] = useState(0);
-  const [count, setCount] = useState(4);
   const [basket, setBasket] = useState<Draft[]>([]);
   const [pending, setPending] = useState<Draft[] | null>(null);
   const [loading, setLoading] = useState(quickBook);
@@ -266,7 +264,6 @@ export function BookingFlow({
   }
   const timesRef = useRef<HTMLHeadingElement>(null);
   const timeGridRef = useRef<HTMLDivElement>(null);
-  const repeatRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const errorRef = useRef<HTMLParagraphElement>(null);
   const scrollPending = useRef(false);
@@ -426,7 +423,8 @@ export function BookingFlow({
 
   async function addDates() {
     if (!slot) return;
-    await addTrims(date, slot, repeat, count);
+    // One trim at a time online: repeats for regulars are booked by the shop.
+    await addTrims(date, slot, 0, 1);
   }
 
   async function addTrims(
@@ -445,9 +443,7 @@ export function BookingFlow({
       }),
     );
     if (drafts.some((item) => item.date > onlineHorizon(initialDate)))
-      return setError(
-        "You can book up to two months ahead. Choose fewer trims.",
-      );
+      return setError("You can book up to two months ahead.");
     if (basket.length + drafts.length > 12)
       return setError("You can book up to 12 trims together.");
     setLoading(true);
@@ -961,10 +957,7 @@ export function BookingFlow({
                           className={`time-cell ${slot?.time === choice.time && slot.barber === choice.barber ? "selected" : ""}`}
                           key={`${choice.barber}-${choice.time}`}
                           style={{ "--i": index } as CSSProperties}
-                          onClick={() => {
-                            setSlot(choice);
-                            reveal(repeatRef);
-                          }}
+                          onClick={() => setSlot(choice)}
                         >
                           {clock(choice.time)}
                           {barber === "any" && (
@@ -983,41 +976,6 @@ export function BookingFlow({
                       <a href="/waitlist">join the waitlist</a>.
                     </p>
                   )}
-                  <div ref={repeatRef} className="repeat-box">
-                    <label>
-                      Repeat this trim
-                      <select
-                        value={repeat}
-                        onChange={(event) =>
-                          setRepeat(Number(event.target.value))
-                        }
-                      >
-                        <option value="0">Just once</option>
-                        <option value="7">Every week</option>
-                        <option value="14">Every 2 weeks</option>
-                        <option value="21">Every 3 weeks</option>
-                        <option value="28">Every 4 weeks</option>
-                        <option value="42">Every 6 weeks</option>
-                      </select>
-                    </label>
-                    {repeat > 0 && (
-                      <label>
-                        Trims in total
-                        <select
-                          value={count}
-                          onChange={(event) =>
-                            setCount(Number(event.target.value))
-                          }
-                        >
-                          {[2, 3, 4, 5, 6, 8].map((value) => (
-                            <option value={value} key={value}>
-                              {value}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                    )}
-                  </div>
                 </>
               )}
             </>
@@ -1326,9 +1284,7 @@ export function BookingFlow({
                     : step === 2
                       ? pending
                         ? "Keep these dates"
-                        : repeat
-                          ? "Add these trims"
-                          : "Add this trim"
+                        : "Add this trim"
                       : mode === "live"
                         ? "Save card and book"
                         : "Finish preview"}

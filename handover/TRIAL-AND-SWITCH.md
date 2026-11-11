@@ -12,7 +12,7 @@ Use staging, Stripe test cards and designated test recipients. Keep real public 
 
 ## Customer trial
 
-- Book a single trim and four fortnightly trims. Create one clash and change only that week.
+- Book a single trim online. Clients can’t set repeats online (Sean books regulars’ repeats), so in the staff app book four fortnightly trims for a regular, create one clash and change only that week.
 - Leave checkout before saving the card. Return in the same tab within two hours and recover the selected trims.
 - Change a price or reserve one of those dates before recovery: current prices should appear and the unavailable date should be omitted with an explanation.
 - Complete card setup once, refresh its completion page, and verify only one booking exists.

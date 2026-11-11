@@ -274,3 +274,7 @@ src/lib/help.ts: update them there when a screen changes.
 - **Sean's own cuts go on the card machine too.** His chair gets its own
   Stripe account like the boys'.
 - **Switch-over: Monday 11 January 2027.**
+- **No repeat bookings online.** Sean wants control of regulars' repeats, so
+  the "Repeat this trim" option is gone from the booking page; clients book
+  one trim at a time (they can still add another trim to the same booking).
+  Staff still book repeats from New appointment.

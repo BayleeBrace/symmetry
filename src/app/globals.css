@@ -280,22 +280,13 @@ h2 {
   color: var(--muted);
   font-size: 0.75rem;
 }
-.repeat-box {
-  scroll-margin-top: 1rem;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.75rem;
-  margin-top: 1.8rem;
-}
-.field label,
-.repeat-box label {
+.field label {
   display: block;
   color: var(--muted);
   font-size: 0.78rem;
 }
 .field input,
-.field select,
-.repeat-box select {
+.field select {
   width: 100%;
   min-height: 50px;
   margin-top: 0.35rem;
@@ -479,9 +470,6 @@ p[role="alert"] {
   }
   .time-grid {
     grid-template-columns: repeat(2, 1fr);
-  }
-  .repeat-box {
-    grid-template-columns: 1fr;
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -2164,8 +2152,7 @@ h2 {
   line-height: 1.6;
 }
 /* Booking form labels: Jost Regular at a readable size (were 12.5px Light). */
-.field label,
-.repeat-box label {
+.field label {
   font-size: 0.9375rem;
   font-weight: 400;
 }

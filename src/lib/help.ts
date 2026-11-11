@@ -45,7 +45,7 @@ export const HELP: HelpArticle[] = [
       "Choose the service, then type the client’s name to find them, or add someone new.",
       "Tap Book.",
     ],
-    note: "For a regular, set it to repeat every few weeks in the same form. Clients can book online up to two months ahead; staff can book further.",
+    note: "For a regular, set it to repeat every few weeks in the same form: clients can’t book repeats online, so that’s the shop’s job. Clients can book online up to two months ahead; staff can book further.",
   },
   {
     id: "walk-in",
