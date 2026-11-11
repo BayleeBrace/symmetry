@@ -4819,3 +4819,83 @@ html[data-staff-theme="dark"]
   padding: 0;
   text-align: left;
 }
+
+/* More, Help: searchable how-tos */
+.help {
+  max-width: 720px;
+}
+.help-search input {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--white);
+  color: var(--black);
+  font: inherit;
+  font-size: 1rem;
+}
+.help-list {
+  margin: 18px 0 0;
+}
+.help-topic {
+  margin: 0 0 6px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.help-count,
+.help-none {
+  margin: 0 0 6px;
+}
+.help-item {
+  border-bottom: 1px solid var(--line);
+}
+.help-item summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px 0;
+  cursor: pointer;
+  list-style: none;
+}
+.help-item summary::-webkit-details-marker {
+  display: none;
+}
+.help-item summary::after {
+  content: "+";
+  color: var(--muted);
+  font-size: 1.2rem;
+  line-height: 1;
+}
+.help-item[open] summary::after {
+  content: "\2212";
+}
+.help-owner {
+  margin-left: auto;
+  padding: 1px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+.help-steps {
+  margin: 0 0 10px;
+  padding-left: 20px;
+}
+.help-steps li {
+  margin: 0 0 6px;
+  line-height: 1.45;
+}
+.help-note {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--bone);
+  color: var(--black);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}

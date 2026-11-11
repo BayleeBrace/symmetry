@@ -248,3 +248,12 @@ already worked from New appointment, but were hard to find. Now:
   client can wait.
 - Today's times start from now, in five minutes, instead of offering times
   that have gone (which the diary refused).
+
+## Help in the app (11 November 2026)
+
+More, Help: short how-tos for everything in the staff app, from booking and
+squeezing someone in to card payments, refunds, rent and sign-ins. Type to
+search (every word has to match, and part-words count); with nothing typed
+it's listed by topic. Barbers don't see the owner's how-tos. It opens
+directly at /staff?section=settings&tab=help. The articles live in
+src/lib/help.ts: update them there when a screen changes.

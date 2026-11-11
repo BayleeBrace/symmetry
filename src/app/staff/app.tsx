@@ -162,8 +162,8 @@ export function StaffApp() {
   // Stripe's sign-up sends a barber back to ?section=settings&tab=payments.
   const [settingsTab, setSettingsTab] = useState<SettingsTab>(() => {
     try {
-      if (new URLSearchParams(window.location.search).get("tab") === "payments")
-        return "payments";
+      const asked = new URLSearchParams(window.location.search).get("tab");
+      if (asked === "payments" || asked === "help") return asked;
     } catch {}
     return "home";
   });

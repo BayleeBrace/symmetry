@@ -12,9 +12,11 @@ import { NotificationSettings } from "./notify";
 import { toast } from "./toast";
 import { Loading } from "./spinner";
 import { CardPayments } from "./card-payments";
+import { Help } from "./help";
 
 export type SettingsTab =
   | "home"
+  | "help"
   | "account"
   | "notify"
   | "payments"
@@ -37,6 +39,11 @@ const PAGES: {
   detail: string;
   owner?: boolean;
 }[] = [
+  {
+    id: "help",
+    title: "Help",
+    detail: "How to do anything in the app. Search it.",
+  },
   {
     id: "account",
     title: "Your account",
@@ -79,6 +86,7 @@ const PAGES: {
 
 /** A line icon for each settings row. */
 const PAGE_ICON: Record<Exclude<SettingsTab, "home">, string> = {
+  help: "M12 3.5a8.5 8.5 0 1 1 0 17 8.5 8.5 0 0 1 0-17zM9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5v.7M12 16.8v.2",
   account:
     "M12 4.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7zM5 20c1-3.5 3.8-5.5 7-5.5s6 2 7 5.5",
   notify: "M6 16v-5a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20.5a2 2 0 0 0 4 0",
@@ -259,6 +267,7 @@ export function SettingsSection({
       <header className="sec-head">
         <h1>{page.title}</h1>
       </header>
+      {page.id === "help" && <Help owner={owner} />}
       {page.id === "account" && <Account owner={owner} name={name} />}
       {page.id === "notify" && <NotificationSettings />}
       {page.id === "payments" && <CardPayments owner={owner} />}
