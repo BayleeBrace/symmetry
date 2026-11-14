@@ -12,6 +12,7 @@ import {
   cardMessage,
   cardMode,
   finishCardPayment,
+  isPretend,
   readyAccount,
   setWeeklyPayouts,
   shopReader,
@@ -23,7 +24,7 @@ import {
  *
  * start     sends the price to the machine (a payment on behalf of the chair's barber)
  * check     what's happened: waiting, paid, or declined with the reason
- * simulate  practice mode only: a pretend card tapped on the pretend machine
+ * simulate  practice mode only: a pretend card tapped on Stripe's pretend machine
  * cancel    stops the machine waiting and drops the payment
  * refund    owner only: gives a card-machine payment back in full
  */
@@ -120,6 +121,9 @@ export async function POST(req: Request) {
     }
 
     const reader = await shopReader(stripe);
+    // Only Stripe's pretend machine can be tapped from the app; a real machine
+    // in practice mode needs Stripe's physical test card.
+    const tapHere = mode === "test" && isPretend(reader);
 
     if (p.action === "start") {
       if (!open) throw new CardError("This trim is already closed");
@@ -167,7 +171,7 @@ export async function POST(req: Request) {
         }
         // The bank is still deciding on the last tap: never start a second payment over it.
         if (old.metadata?.kind === "trim" && old.status === "processing")
-          return privateJson({ status: "waiting", practice: mode === "test" });
+          return privateJson({ status: "waiting", pretend: tapHere });
         if (
           old.metadata?.kind === "trim" &&
           old.amount === p.price_pence &&
@@ -226,7 +230,7 @@ export async function POST(req: Request) {
         status: "waiting",
         amount: pi.amount,
         barber_gets: barberGets(pi.amount, "in_person"),
-        practice: mode === "test",
+        pretend: tapHere,
       });
     }
 
@@ -240,11 +244,13 @@ export async function POST(req: Request) {
       throw new CardError("This trim’s payment isn’t a card machine payment");
 
     if (p.action === "simulate") {
-      if (mode !== "test")
-        throw new CardError(
-          "Only the practice card machine can be tapped from here",
-        );
       if (!reader) throw new CardError("There’s no practice card machine");
+      if (!tapHere)
+        throw new CardError(
+          mode === "test"
+            ? "The real card machine is connected: tap Stripe’s test card on it."
+            : "Only the practice card machine can be tapped from here",
+        );
       await stripe.testHelpers.terminal.readers.presentPaymentMethod(
         reader.id,
         {
@@ -315,7 +321,7 @@ export async function POST(req: Request) {
         status: "failed",
         message: now.last_payment_error.message || "The card was declined.",
       });
-    return privateJson({ status: "waiting", practice: mode === "test" });
+    return privateJson({ status: "waiting", pretend: tapHere });
   } catch (e) {
     return publicError(new Error(cardMessage(e) || (e as Error).message), 409);
   }

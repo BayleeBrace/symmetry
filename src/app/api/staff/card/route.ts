@@ -10,6 +10,7 @@ import {
   cardMessage,
   cardMode,
   ensureTipping,
+  isPretend,
   shopLocation,
   shopReader,
 } from "@/lib/card-payments";
@@ -77,9 +78,11 @@ const actions = z.discriminatedUnion("action", [
   z.object({ action: z.literal("dashboard") }),
   z.object({
     action: z.literal("add_reader"),
-    // The words a real machine shows when it's ready to register. Practice mode makes a pretend one.
+    // The words a real machine shows when it's ready to register. Without
+    // them, practice mode makes a pretend one.
     code: z.string().trim().min(3).max(60).optional(),
   }),
+  z.object({ action: z.literal("remove_reader") }),
 ]);
 
 export async function POST(req: Request) {
@@ -109,18 +112,37 @@ export async function POST(req: Request) {
       }
     }
     if (staff.role !== "owner")
-      throw new CardError("Only the owner can add the card machine");
+      throw new CardError("Only the owner can change the card machine");
+    if (p.action === "remove_reader") {
+      // Frees the machine so it can be registered elsewhere, such as on the
+      // live account at switch-over. A practice machine goes the same way.
+      const { data } = await stripe.terminal.readers.list({ limit: 10 });
+      for (const r of data) await stripe.terminal.readers.del(r.id);
+      return privateJson({ ok: true, removed: data.length });
+    }
     if (mode === "live" && !p.code)
       throw new CardError("Type the words shown on the card machine’s screen");
     const location = await shopLocation(stripe);
     // The tip screen on every payment, as Sean chose.
     await ensureTipping(stripe, location);
+    const real = Boolean(p.code);
     const reader = await stripe.terminal.readers.create({
-      // Practice: a pretend BBPOS WisePOS E, the same model as the shop’s.
-      registration_code: mode === "test" ? "simulated-wpe" : p.code!,
-      label: mode === "test" ? "Practice card machine" : "Shop card machine",
+      // Practice without words: a pretend BBPOS WisePOS E, the shop’s model.
+      registration_code: real ? p.code! : "simulated-wpe",
+      label: !real
+        ? "Practice card machine"
+        : mode === "test"
+          ? "Shop card machine (practice)"
+          : "Shop card machine",
       location: location.id,
     });
+    // One machine at a time: the real one replaces a pretend one.
+    if (real) {
+      const { data } = await stripe.terminal.readers.list({ limit: 10 });
+      for (const r of data)
+        if (r.id !== reader.id && isPretend(r))
+          await stripe.terminal.readers.del(r.id).catch(() => {});
+    }
     // Test clients added before Stripe was connected get their test cards now.
     if (mode === "test") await addTestCards(stripe).catch(() => 0);
     return privateJson({ ok: true, label: reader.label });

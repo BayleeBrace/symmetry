@@ -172,10 +172,16 @@ export async function ensureTipping(
 export const tipOf = (pi: Stripe.PaymentIntent) =>
   pi.amount_details?.tip?.amount ?? 0;
 
-/** The shop's card machine: the first one online, else the first one registered. */
+/** Whether a machine is Stripe's pretend one, which the app taps for you. */
+export const isPretend = (r: Stripe.Terminal.Reader | null | undefined) =>
+  Boolean(r?.device_type.startsWith("simulated"));
+
+/** The shop's card machine: a real one over a pretend one, then one that's switched on. */
 export async function shopReader(stripe: Stripe) {
   const { data } = await stripe.terminal.readers.list({ limit: 10 });
-  return data.find((r) => r.status === "online") ?? data[0] ?? null;
+  const rank = (r: Stripe.Terminal.Reader) =>
+    (isPretend(r) ? 0 : 2) + (r.status === "online" ? 1 : 0);
+  return [...data].sort((a, b) => rank(b) - rank(a))[0] ?? null;
 }
 
 /** The shop's Terminal location, made the first time a machine is added. */

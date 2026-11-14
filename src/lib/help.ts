@@ -247,11 +247,11 @@ export const HELP: HelpArticle[] = [
     words: ["reader", "wisepos", "register", "machine", "stripe", "practice", "pairing", "wifi"],
     steps: [
       "More, Card payments.",
-      "In practice mode, tap Add a practice card machine.",
+      "To practise without the machine, tap Add a practice card machine.",
       "For the real one: on the machine, swipe in from the left edge, tap Settings, enter the PIN 07139 and tap Generate pairing code.",
-      "Type the words it shows into the app, then tap Register the card machine.",
+      "Type the words it shows into the app, then tap Register (in practice mode, Register the real machine).",
     ],
-    note: "The machine needs the shop Wi-Fi: same Settings menu, then Wi-Fi. Register it once, when card payments go live.",
+    note: "The machine needs the shop Wi-Fi: same Settings menu, then Wi-Fi. In practice mode the real machine only takes Stripe’s physical test card; real bank cards are declined. Before going live, tap Remove the card machine, then register it again once card payments are live.",
   },
 
   // Clients

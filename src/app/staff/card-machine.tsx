@@ -10,13 +10,15 @@ type Reply = {
   tip?: number;
   barber_gets?: number;
   message?: string;
-  practice?: boolean;
+  /** Stripe's pretend machine, which the app can tap a test card on. */
+  pretend?: boolean;
 };
 
 /**
  * Checkout's card machine: sends the price to the shop's machine, waits for
- * the card, and marks the trim paid when it goes through. In practice mode
- * there's no machine to tap, so it offers a pretend card instead.
+ * the card, and marks the trim paid when it goes through. With Stripe's
+ * pretend machine there's nothing to tap, so it offers a pretend card instead;
+ * the real machine in practice mode takes Stripe's physical test card.
  */
 export function CardMachine({
   bookingId,
@@ -42,6 +44,8 @@ export function CardMachine({
   );
   const [message, setMessage] = useState("");
   const [working, setWorking] = useState(false);
+  // Until the first reply says otherwise, assume the pretend machine.
+  const [pretend, setPretend] = useState(true);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const alive = useRef(true);
   useEffect(() => {
@@ -54,6 +58,7 @@ export function CardMachine({
 
   const handle = async (r: Reply) => {
     if (!alive.current) return;
+    if (r.pretend !== undefined) setPretend(r.pretend);
     if (r.status === "paid") {
       if (timer.current) clearTimeout(timer.current);
       const tip = r.tip ?? 0;
@@ -201,9 +206,11 @@ export function CardMachine({
           <p className="card-machine-text">
             {phase === "sending"
               ? "One moment."
-              : `£${pounds(pricePence ?? 0)} is on the machine. ${client} can tap their card or phone.`}
+              : practice && !pretend
+                ? `£${pounds(pricePence ?? 0)} is on the machine. Practice mode: tap Stripe’s test card on it. Real bank cards are declined.`
+                : `£${pounds(pricePence ?? 0)} is on the machine. ${client} can tap their card or phone.`}
           </p>
-          {practice && phase === "waiting" && (
+          {practice && pretend && phase === "waiting" && (
             <div className="card-machine-actions">
               <button
                 type="button"

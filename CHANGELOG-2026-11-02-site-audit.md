@@ -285,3 +285,9 @@ src/lib/help.ts: update them there when a screen changes.
   now a pretend WisePOS E too, and the help explains getting its pairing
   words (Settings, PIN 07139, Generate pairing code). It's registered on the
   live account at switch-over.
+- **The real card machine works in practice mode.** The owner can register
+  the WisePOS E with its pairing words while Stripe is still in practice
+  mode; it replaces the pretend machine and takes Stripe's physical test
+  card. Checkout hides the pretend "Tap a test card" buttons when the real
+  machine is connected. "Remove the card machine" frees it to be registered
+  on the live account at switch-over.

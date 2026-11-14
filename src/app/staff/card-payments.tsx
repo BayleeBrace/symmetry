@@ -191,9 +191,39 @@ export function CardPayments({ owner }: { owner: boolean }) {
             {!owner && " The owner adds it here."}
           </p>
         )}
-        {owner && !state.reader && (
+        {practice && state.reader && !state.reader.simulated && (
+          <p className="staff-muted">
+            The real machine in practice mode: pay with Stripe’s physical test
+            card. Real bank cards are declined. Before going live, remove it
+            here so it can be registered on the live account.
+          </p>
+        )}
+        {owner && practice && !state.reader && (
           <div className="form-actions">
-            {!practice && (
+            <button
+              type="button"
+              className="button-primary"
+              disabled={working !== ""}
+              onClick={() =>
+                void run("reader", { action: "add_reader" }, () => {
+                  toast("Practice card machine added.");
+                  void load();
+                })
+              }
+            >
+              Add a practice card machine
+            </button>
+          </div>
+        )}
+        {owner && (!state.reader || state.reader.simulated) && (
+          <>
+            <p className="staff-muted">
+              {practice &&
+                `${state.reader ? "Or use" : "Or register"} the shop’s real machine for practice. `}
+              On the machine, swipe in from the left edge, tap Settings, enter
+              07139 and tap Generate pairing code. Type the words it shows.
+            </p>
+            <div className="form-actions">
               <label className="card-code">
                 Words on the machine’s screen
                 <input
@@ -204,27 +234,45 @@ export function CardPayments({ owner }: { owner: boolean }) {
                   placeholder="e.g. apple-grape-orange"
                 />
               </label>
-            )}
+              <button
+                type="button"
+                className={practice ? "button-secondary" : "button-primary"}
+                disabled={working !== "" || code.trim().length < 3}
+                onClick={() =>
+                  void run("reader", { action: "add_reader", code }, () => {
+                    setCode("");
+                    toast("Card machine registered.");
+                    void load();
+                  })
+                }
+              >
+                {practice
+                  ? "Register the real machine"
+                  : "Register the card machine"}
+              </button>
+            </div>
+          </>
+        )}
+        {owner && state.reader && !state.reader.simulated && (
+          <div className="form-actions">
             <button
               type="button"
-              className="button-primary"
-              disabled={working !== "" || (!practice && code.trim().length < 3)}
-              onClick={() =>
-                void run(
-                  "reader",
-                  practice
-                    ? { action: "add_reader" }
-                    : { action: "add_reader", code },
-                  () => {
-                    toast("Card machine added.");
-                    void load();
-                  },
+              className="button-secondary"
+              disabled={working !== ""}
+              onClick={() => {
+                if (
+                  !confirm(
+                    "Remove the card machine from the app? You can register it again with new words from its screen.",
+                  )
                 )
-              }
+                  return;
+                void run("remove", { action: "remove_reader" }, () => {
+                  toast("Card machine removed.");
+                  void load();
+                });
+              }}
             >
-              {practice
-                ? "Add a practice card machine"
-                : "Register the card machine"}
+              Remove the card machine
             </button>
           </div>
         )}
