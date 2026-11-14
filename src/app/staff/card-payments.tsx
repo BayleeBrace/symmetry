@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { staffApi as api } from "@/lib/staff-client";
 import { toast } from "./toast";
 import { Loading } from "./spinner";
@@ -253,6 +253,7 @@ export function CardPayments({ owner }: { owner: boolean }) {
             </div>
           </>
         )}
+        {owner && state.reader && !state.reader.simulated && <MachineTest />}
         {owner && state.reader && !state.reader.simulated && (
           <div className="form-actions">
             <button
@@ -421,5 +422,138 @@ function TestClients({ mode }: { mode: "test" | "live" | null }) {
         </button>
       </div>
     </section>
+  );
+}
+
+type TestReply = {
+  status: "waiting" | "refunded" | "failed" | "cancelled";
+  id?: string;
+  amount?: number;
+  card?: string | null;
+  message?: string;
+};
+
+/**
+ * Owner only: 30p on the real machine, paid into the shop's own Stripe account
+ * and refunded the moment it goes through. Proves the machine, the Wi-Fi and
+ * a real card work, with no barber's account needed.
+ */
+function MachineTest() {
+  const [phase, setPhase] = useState<
+    "idle" | "sending" | "waiting" | "done" | "failed"
+  >("idle");
+  const [id, setId] = useState("");
+  const [message, setMessage] = useState("");
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const alive = useRef(true);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+      if (timer.current) clearTimeout(timer.current);
+    };
+  }, []);
+
+  const handle = (r: TestReply) => {
+    if (!alive.current) return;
+    if (timer.current) clearTimeout(timer.current);
+    if (r.status === "refunded") {
+      setPhase("done");
+      setMessage(
+        `Paid 30p${r.card ? ` on ${r.card}` : ""} and refunded straight away. The card machine works.`,
+      );
+      return;
+    }
+    if (r.status === "failed") {
+      setPhase("failed");
+      setMessage(r.message || "The card didn’t go through.");
+      return;
+    }
+    if (r.status === "cancelled") {
+      setPhase("idle");
+      return;
+    }
+    if (r.id) setId(r.id);
+    setPhase("waiting");
+    const next = r.id ?? id;
+    timer.current = setTimeout(() => void check(next), 1500);
+  };
+
+  const check = async (pi: string) => {
+    try {
+      handle(
+        (await api("/api/staff/card", {
+          action: "test_check",
+          id: pi,
+        })) as TestReply,
+      );
+    } catch {
+      if (alive.current) timer.current = setTimeout(() => void check(pi), 3000);
+    }
+  };
+
+  const start = async () => {
+    setPhase("sending");
+    setMessage("");
+    try {
+      handle(
+        (await api("/api/staff/card", {
+          action: "test_payment",
+        })) as TestReply,
+      );
+    } catch (e) {
+      setPhase("failed");
+      setMessage((e as Error).message);
+    }
+  };
+
+  const cancel = async () => {
+    if (timer.current) clearTimeout(timer.current);
+    try {
+      handle(
+        (await api("/api/staff/card", {
+          action: "test_cancel",
+          id,
+        })) as TestReply,
+      );
+    } catch {
+      setPhase("idle");
+    }
+  };
+
+  return (
+    <div className="machine-test">
+      <p className="staff-muted">
+        {phase === "waiting"
+          ? "30p is on the machine. Tap any card or phone."
+          : phase === "sending"
+            ? "Sending 30p to the machine…"
+            : phase === "done" || phase === "failed"
+              ? message
+              : "Test the machine with a real card: 30p goes into the shop’s Stripe account and is refunded straight away. Stripe keeps about 10p as its fee. No barber needs to be set up."}
+      </p>
+      <div className="form-actions">
+        {phase === "waiting" ? (
+          <button
+            type="button"
+            className="button-secondary"
+            onClick={() => void cancel()}
+          >
+            Cancel the test
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="button-primary"
+            disabled={phase === "sending"}
+            onClick={() => void start()}
+          >
+            {phase === "done" || phase === "failed"
+              ? "Test again"
+              : "Test the card machine (30p)"}
+          </button>
+        )}
+      </div>
+    </div>
   );
 }

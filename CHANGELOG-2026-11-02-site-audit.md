@@ -291,3 +291,7 @@ src/lib/help.ts: update them there when a screen changes.
   card. Checkout hides the pretend "Tap a test card" buttons when the real
   machine is connected. "Remove the card machine" frees it to be registered
   on the live account at switch-over.
+- **Test the card machine (30p).** Owner only, once the real machine is
+  registered: 30p on any card, paid into the shop's own Stripe account (no
+  barber needed) and refunded as soon as it goes through, with the card's
+  brand and last four digits shown. No tip screen on the test.

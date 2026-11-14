@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type Stripe from "stripe";
 import { requireStaff } from "@/lib/staff";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { stripeClient } from "@/lib/stripe";
@@ -15,6 +16,7 @@ import {
   shopReader,
 } from "@/lib/card-payments";
 import { onboardingLink } from "@/lib/card-onboarding";
+import { MIN_CARD_PENCE } from "@/lib/card-fees";
 import { addTestCards } from "@/lib/test-data";
 
 /**
@@ -83,7 +85,42 @@ const actions = z.discriminatedUnion("action", [
     code: z.string().trim().min(3).max(60).optional(),
   }),
   z.object({ action: z.literal("remove_reader") }),
+  // A 30p test on the real machine, paid to the shop and refunded at once.
+  z.object({ action: z.literal("test_payment") }),
+  z.object({
+    action: z.literal("test_check"),
+    id: z.string().startsWith("pi_"),
+  }),
+  z.object({
+    action: z.literal("test_cancel"),
+    id: z.string().startsWith("pi_"),
+  }),
 ]);
+
+/** Refunds a finished machine test once, and says which card it was. */
+async function refundTest(stripe: Stripe, pi: Stripe.PaymentIntent) {
+  const { data } = await stripe.refunds.list({
+    payment_intent: pi.id,
+    limit: 1,
+  });
+  if (!data.length)
+    await stripe.refunds.create(
+      { payment_intent: pi.id, metadata: { kind: "machine_test" } },
+      { idempotencyKey: `machine-test-refund-${pi.id}` },
+    );
+  const charge =
+    typeof pi.latest_charge === "string"
+      ? await stripe.charges.retrieve(pi.latest_charge)
+      : pi.latest_charge;
+  const card = charge?.payment_method_details?.card_present;
+  return privateJson({
+    status: "refunded",
+    amount: pi.amount,
+    card: card?.last4
+      ? `${card.brand ? card.brand[0].toUpperCase() + card.brand.slice(1) : "Card"} ending ${card.last4}`
+      : null,
+  });
+}
 
 export async function POST(req: Request) {
   try {
@@ -119,6 +156,62 @@ export async function POST(req: Request) {
       const { data } = await stripe.terminal.readers.list({ limit: 10 });
       for (const r of data) await stripe.terminal.readers.del(r.id);
       return privateJson({ ok: true, removed: data.length });
+    }
+    if (p.action === "test_payment") {
+      const reader = await shopReader(stripe);
+      if (!reader || isPretend(reader))
+        throw new CardError("Register the shop’s card machine first");
+      // No barber: it settles in the shop's own account and is refunded once it's through.
+      const pi = await stripe.paymentIntents.create({
+        amount: MIN_CARD_PENCE,
+        currency: "gbp",
+        allowed_payment_method_types: ["card_present"],
+        capture_method: "automatic",
+        description: "Card machine test, refunded straight away",
+        metadata: { kind: "machine_test", actor: staff.user_id },
+      });
+      await stripe.terminal.readers.processPaymentIntent(reader.id, {
+        payment_intent: pi.id,
+        process_config: { skip_tipping: true },
+      });
+      return privateJson({ status: "waiting", id: pi.id, amount: pi.amount });
+    }
+    if (p.action === "test_check" || p.action === "test_cancel") {
+      const pi = await stripe.paymentIntents.retrieve(p.id);
+      if (pi.metadata?.kind !== "machine_test")
+        throw new CardError("That isn’t a card machine test");
+      if (pi.status === "succeeded") return refundTest(stripe, pi);
+      if (pi.status === "canceled") return privateJson({ status: "cancelled" });
+      const reader = await shopReader(stripe);
+      const action = reader?.action;
+      const forThis = action?.process_payment_intent?.payment_intent === pi.id;
+      if (p.action === "test_cancel") {
+        if (reader && forThis)
+          await stripe.terminal.readers.cancelAction(reader.id).catch(() => {});
+        const now = await stripe.paymentIntents.retrieve(pi.id);
+        // The card went through just as Cancel was tapped: give it back.
+        if (now.status === "succeeded") return refundTest(stripe, now);
+        if (now.status !== "canceled")
+          await stripe.paymentIntents.cancel(now.id).catch(() => {});
+        return privateJson({ status: "cancelled" });
+      }
+      if (forThis && action?.status === "failed")
+        return privateJson({
+          status: "failed",
+          message:
+            pi.last_payment_error?.message ||
+            action.failure_message ||
+            "The card didn’t go through.",
+        });
+      if (
+        pi.last_payment_error &&
+        (!forThis || action?.status !== "in_progress")
+      )
+        return privateJson({
+          status: "failed",
+          message: pi.last_payment_error.message || "The card was declined.",
+        });
+      return privateJson({ status: "waiting", id: pi.id });
     }
     if (mode === "live" && !p.code)
       throw new CardError("Type the words shown on the card machine’s screen");

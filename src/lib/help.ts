@@ -251,7 +251,7 @@ export const HELP: HelpArticle[] = [
       "For the real one: on the machine, swipe in from the left edge, tap Settings, enter the PIN 07139 and tap Generate pairing code.",
       "Type the words it shows into the app, then tap Register (in practice mode, Register the real machine).",
     ],
-    note: "The machine needs the shop Wi-Fi: same Settings menu, then Wi-Fi. In practice mode the real machine only takes Stripe’s physical test card; real bank cards are declined. Before going live, tap Remove the card machine, then register it again once card payments are live.",
+    note: "The machine needs the shop Wi-Fi: same Settings menu, then Wi-Fi. In practice mode the real machine only takes Stripe’s physical test card; real bank cards are declined. Before going live, tap Remove the card machine, then register it again once card payments are live. Once it’s registered, Test the card machine puts 30p through on any card and refunds it straight away.",
   },
 
   // Clients

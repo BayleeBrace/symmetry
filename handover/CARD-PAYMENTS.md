@@ -99,5 +99,9 @@ pretend money:
    code, and the owner types the words in More, Card payments, Register the
    card machine. A practice machine registered earlier stays in the sandbox.
 4. Each barber sets up again in live mode with their real details.
+   To check the machine before any barber is ready, the owner taps **Test
+   the card machine (30p)** in Card payments: 30p on any real card, paid to
+   the shop's own Stripe account and refunded at once (Stripe keeps about
+   10p).
 5. Practice accounts and the pretend machine stay in the sandbox and never
    mix with real ones.

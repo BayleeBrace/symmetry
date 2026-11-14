@@ -4796,6 +4796,11 @@ html[data-staff-theme="dark"]
   color: var(--muted);
   font-size: 0.82rem;
 }
+.machine-test {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
 .card-code {
   display: grid;
   gap: 6px;
