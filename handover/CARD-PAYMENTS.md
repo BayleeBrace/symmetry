@@ -35,7 +35,7 @@ With Stripe's test key (`sk_test_…`) in Vercel, everything runs on Stripe's
 pretend money:
 
 - More, Card payments shows "Practice mode".
-- The owner adds a **practice card machine** (a pretend Stripe S700).
+- The owner adds a **practice card machine** (a pretend BBPOS WisePOS E, the shop's model).
 - At checkout, "Tap a test card" or "Try a declined card" stands in for a
   real card.
 - On Stripe's sign-up pages use test details: the test buttons where offered,
@@ -83,8 +83,11 @@ pretend money:
 1. Remove the test clients (More, Card payments).
 2. In the live Stripe account, repeat steps 3 to 5 above with the live keys.
    A restricted key (`rk_live_…`) is safer than the secret key.
-3. Order the Stripe Reader S700. When it shows its registration words, the
-   owner types them in More, Card payments, Register the card machine.
+3. Register the shop's BBPOS WisePOS E (bought November 2026). Before the day,
+   connect it to the shop Wi-Fi and let it update: swipe in from the left,
+   Settings, admin PIN 07139, Wi-Fi. On the day: Settings, Generate pairing
+   code, and the owner types the words in More, Card payments, Register the
+   card machine. A practice machine registered earlier stays in the sandbox.
 4. Each barber sets up again in live mode with their real details.
 5. Practice accounts and the pretend machine stay in the sandbox and never
    mix with real ones.

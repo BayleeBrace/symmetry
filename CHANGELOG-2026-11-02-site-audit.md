@@ -278,3 +278,10 @@ src/lib/help.ts: update them there when a screen changes.
   the "Repeat this trim" option is gone from the booking page; clients book
   one trim at a time (they can still add another trim to the same booking).
   Staff still book repeats from New appointment.
+- **Barber card accounts use Stripe's barber category, 7230.** The app sent
+  7241, which Stripe rejected, so "Set up card payments" failed on the first
+  try in the sandbox (14 November).
+- **The shop's card machine is a BBPOS WisePOS E.** The practice machine is
+  now a pretend WisePOS E too, and the help explains getting its pairing
+  words (Settings, PIN 07139, Generate pairing code). It's registered on the
+  live account at switch-over.

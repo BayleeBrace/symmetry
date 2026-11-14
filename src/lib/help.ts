@@ -244,12 +244,14 @@ export const HELP: HelpArticle[] = [
     title: "Add the card machine",
     topic: "Checkout and cards",
     owner: true,
-    words: ["reader", "s700", "register", "machine", "stripe", "practice"],
+    words: ["reader", "wisepos", "register", "machine", "stripe", "practice", "pairing", "wifi"],
     steps: [
       "More, Card payments.",
       "In practice mode, tap Add a practice card machine.",
-      "For the real one, type the words on the machine’s screen, then tap Register the card machine.",
+      "For the real one: on the machine, swipe in from the left edge, tap Settings, enter the PIN 07139 and tap Generate pairing code.",
+      "Type the words it shows into the app, then tap Register the card machine.",
     ],
+    note: "The machine needs the shop Wi-Fi: same Settings menu, then Wi-Fi. Register it once, when card payments go live.",
   },
 
   // Clients

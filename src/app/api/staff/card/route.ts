@@ -116,7 +116,8 @@ export async function POST(req: Request) {
     // The tip screen on every payment, as Sean chose.
     await ensureTipping(stripe, location);
     const reader = await stripe.terminal.readers.create({
-      registration_code: mode === "test" ? "simulated-s700" : p.code!,
+      // Practice: a pretend BBPOS WisePOS E, the same model as the shop’s.
+      registration_code: mode === "test" ? "simulated-wpe" : p.code!,
       label: mode === "test" ? "Practice card machine" : "Shop card machine",
       location: location.id,
     });
